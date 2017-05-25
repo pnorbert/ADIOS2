@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
         // Define method for engine creation, it is basically straight-forward
         // parameters
         adios::Method &bpWriterSettings = adios.DeclareMethod(
-            "SingleFile"); // default method type is BPWriter
+            "Output"); // default method type is BPWriter
         bpWriterSettings.SetParameters("profile_units=mus");
         bpWriterSettings.AddTransport(
             "File", "profile_units=mus",

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<adios-config>
+
+    <io name="Output">
+        <engine name="BPFileWriter">verbose=4;profile_units=mus</engine>
+        <transport name= "File">
+            profile_units=mus; 
+            have_metadata_file 
+               =
+                 no;
+        </transport>
+        <transform var="myDoubles" name="zfp">accuracy=0.001</transform>
+        <transform var="myMatrix" name="none"/>
+        <transform var="myMatrix2" name="none"/>
+        <transform var="ThisVarDoesNotExists" name="zlib"/>
+        <buffer max-size-MB="20"/>
+    </io>
+
+</adios-config>
+
