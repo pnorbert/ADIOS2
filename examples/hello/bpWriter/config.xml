@@ -5,14 +5,35 @@
         <engine name="BPFileWriter">verbose=4;profile_units=mus</engine>
         <transport name= "File">
             profile_units=mus; 
+            abort_on_error;
             have_metadata_file 
                =
                  no;
         </transport>
-        <transform var="myDoubles" name="zfp">accuracy=0.001</transform>
-        <transform var="myMatrix" name="none"/>
-        <transform var="myMatrix2" name="none"/>
-        <transform var="ThisVarDoesNotExists" name="zlib"/>
+
+        <!-- Create a named transform and add variables to it here. 
+             name is optional, required only if it is used outside the definition
+             options is optional to pass parameters to the transformation
+        -->
+        <transform name="LossyCompression" transform="zfp" options="accuracy=0.001">
+            <var name="myMatrix"/>
+            <var name="ThisVarDoesNotExists"/>
+        </transform>
+
+        <!-- Unnamed transformation -->
+        <transform transform="bzip2">
+            <var name="myMatrix2"/>
+        </transform>
+
+        <!-- A variable can have its own private transform definition. 
+             Also its own ordered chain of transformations.
+             Also can refer to a transform defined previously
+        -->
+        <var name="myDoubles"> 
+            <transform transform="identity">verbose=DEBUG</transform>
+            <transform name="LossyCompression"/>
+        </var>
+
         <buffer max-size-MB="20"/>
     </io>
 

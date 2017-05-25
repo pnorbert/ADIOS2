@@ -23,7 +23,8 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
     const bool adiosDebug = true;
-    adios::ADIOS adios(MPI_COMM_WORLD, adios::Verbose::INFO, adiosDebug);
+    adios::ADIOS adios("config.xml", MPI_COMM_WORLD, adios::Verbose::INFO,
+                       adiosDebug);
 
     // Application variable
     std::vector<double> myDoubles = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
