@@ -518,6 +518,7 @@ void InSituMPIReader::ProcessReceives()
                  insitumpi::MpiTags::ReadCompleted, m_CommWorld);
     }
 
+    TAU_START("InSituMPIReader::DeserializeReceivedData");
     // Deserialize received messages
     for (int i = 0; i < nRequests; i++)
     {
@@ -527,10 +528,13 @@ void InSituMPIReader::ProcessReceives()
                 m_OngoingReceives[i].temporaryDataArray;
             const helper::SubFileInfo &sfi = m_OngoingReceives[i].sfi;
             const std::string *name = m_OngoingReceives[i].varNamePointer;
+            TAU_START("Deserializer::ClipMemory");
             m_BP3Deserializer.ClipMemory(*name, m_IO, rawData, sfi.BlockBox,
                                          sfi.IntersectionBox);
+            TAU_STOP("Deserializer::ClipMemory");
         }
     }
+    TAU_STOP("InSituMPIReader::DeserializeReceivedData");
 
     m_OngoingReceives.clear();
     m_MPIRequests.clear();
