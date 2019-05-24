@@ -29,15 +29,16 @@ namespace engine
 {
 
 InSituMPIWriter::InSituMPIWriter(IO &io, const std::string &name,
-                                 const Mode mode, MPI_Comm mpiComm)
-: Engine("InSituMPIWriter", io, name, mode, mpiComm),
-  m_BP3Serializer(mpiComm, m_DebugMode)
+                                 const Mode mode, AMPI_Comm acomm)
+: Engine("InSituMPIWriter", io, name, mode, acomm),
+  m_BP3Serializer(acomm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("InSituMPIWriter::Open");
     m_EndMessage = " in call to InSituMPIWriter " + m_Name + " Open\n";
     Init();
     m_BP3Serializer.InitParameters(m_IO.m_Parameters);
 
+    MPI_Comm mpiComm = acomm.comm; // Must be real MPI comm
     m_RankAllPeers = insitumpi::FindPeers(mpiComm, m_Name, true, m_CommWorld);
     for (int i = 0; i < m_RankAllPeers.size(); i++)
     {
@@ -155,7 +156,7 @@ void InSituMPIWriter::PerformPuts()
             m_BP3Serializer.SerializeData(m_IO, true); // advance timestep
             m_BP3Serializer.SerializeMetadataInData();
             m_BP3Serializer.AggregateCollectiveMetadata(
-                m_MPIComm, m_BP3Serializer.m_Metadata, true);
+                m_AMPIComm, m_BP3Serializer.m_Metadata, true);
 
             // store length long enough to survive Isend() completion
             // so don't move this into the next if branch
@@ -219,7 +220,7 @@ void InSituMPIWriter::PerformPuts()
                          &status);
             }
             // broadcast fixed schedule flag to every reader
-            MPI_Bcast(&fixed, 1, MPI_INT, 0, m_MPIComm);
+            MPI_Bcast(&fixed, 1, MPI_INT, 0, m_AMPIComm.comm);
             m_RemoteDefinitionsLocked = (fixed ? true : false);
             if (m_BP3Serializer.m_RankMPI == 0)
             {
@@ -327,7 +328,7 @@ void InSituMPIWriter::EndStep()
         MPI_Recv(&dummy, 1, MPI_INT, m_RankDirectPeers[0],
                  insitumpi::MpiTags::ReadCompleted, m_CommWorld, &status);
     }
-    MPI_Bcast(&dummy, 1, MPI_INT, 0, m_MPIComm);
+    MPI_Bcast(&dummy, 1, MPI_INT, 0, m_AMPIComm.comm);
     TAU_STOP("WaitForReaderAck");
 
     if (m_Verbosity == 5)
@@ -442,7 +443,7 @@ void InSituMPIWriter::ReceiveReadSchedule(
 
     // Each writer receives the number of its peer readers
     MPI_Scatter(nReaderPerWriter.data(), 1, MPI_INT, &nPeerReaders, 1, MPI_INT,
-                0, m_MPIComm);
+                0, m_AMPIComm.comm);
 
     std::vector<MPI_Request> requests(nPeerReaders);
     // Reader global rank -> length of serialized read schedule

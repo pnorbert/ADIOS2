@@ -15,11 +15,11 @@
 
 #include <string>
 
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
 #include "adios2/core/IO.h" // for CreateVar
 #include "adios2/core/Variable.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 #include <stdexcept> // for Intel Compiler
 
@@ -121,7 +121,7 @@ public:
     static const std::string PARAMETER_CHUNK_VARS;
 
     void ParseParameters(core::IO &io);
-    void Init(const std::string &name, MPI_Comm comm, bool toWrite);
+    void Init(const std::string &name, AMPI_Comm acomm, bool toWrite);
 
     template <class T>
     void Write(core::Variable<T> &variable, const T *values);

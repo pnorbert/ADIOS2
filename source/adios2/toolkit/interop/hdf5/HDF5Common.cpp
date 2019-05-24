@@ -16,7 +16,6 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "adios2/ADIOSMPI.h"
 #include "adios2/helper/adiosFunctions.h" // IsRowMajor
 #include <cstring>                        // strlen
 
@@ -111,15 +110,15 @@ void HDF5Common::ParseParameters(core::IO &io)
     }
 }
 
-void HDF5Common::Init(const std::string &name, MPI_Comm comm, bool toWrite)
+void HDF5Common::Init(const std::string &name, AMPI_Comm acomm, bool toWrite)
 {
     m_WriteMode = toWrite;
     m_PropertyListId = H5Pcreate(H5P_FILE_ACCESS);
 
 #ifdef ADIOS2_HAVE_MPI
-    H5Pset_fapl_mpio(m_PropertyListId, comm, MPI_INFO_NULL);
-    MPI_Comm_rank(comm, &m_CommRank);
-    MPI_Comm_size(comm, &m_CommSize);
+    H5Pset_fapl_mpio(m_PropertyListId, acomm.comm, MPI_INFO_NULL);
+    acomm.Rank(&m_CommRank);
+    acomm.Size(&m_CommSize);
 #endif
 
     // std::string ts0 = "/AdiosStep0";

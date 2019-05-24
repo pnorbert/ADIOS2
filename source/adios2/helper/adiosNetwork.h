@@ -20,7 +20,7 @@
 #include <vector>
 /// \endcond
 
-#include "adios2/ADIOSMPI.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -33,14 +33,14 @@ namespace helper
  */
 std::vector<std::string> AvailableIpAddresses() noexcept;
 
-void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
+void HandshakeWriter(AMPI_Comm acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName,
                      const int basePort, const int channelsPerRank,
                      const int maxRanksPerNode = 100,
                      const int maxAppsPerNode = 10);
 
-void HandshakeReader(MPI_Comm mpiComm, size_t &appID,
+void HandshakeReader(AMPI_Comm acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName);
 

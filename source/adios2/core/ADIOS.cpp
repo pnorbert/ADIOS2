@@ -13,9 +13,14 @@
 #include <algorithm> // std::transform
 #include <ios>       //std::ios_base::failure
 
-#include "adios2/ADIOSMPI.h"
+#ifdef ADIOS2_HAVE_MPI
+#include "adios2/toolkit/comm/RealMPI.h"
+#include <mpi.h>
+#endif
+
 #include "adios2/core/IO.h"
 #include "adios2/helper/adiosFunctions.h" //InquireKey, BroadcastFile
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 // OPERATORS
 
@@ -45,30 +50,11 @@ namespace adios2
 namespace core
 {
 
-ADIOS::ADIOS(const std::string configFile, MPI_Comm mpiComm,
-             const bool debugMode, const std::string hostLanguage)
-: m_ConfigFile(configFile), m_DebugMode(debugMode), m_HostLanguage(hostLanguage)
+ADIOS::ADIOS(const std::string configFile, AMPI_Comm comm, const bool debugMode,
+             const std::string hostLanguage)
+: m_ConfigFile(configFile), m_DebugMode(debugMode),
+  m_HostLanguage(hostLanguage), m_AMPIComm(comm.Duplicate())
 {
-    if (m_DebugMode && mpiComm == MPI_COMM_NULL)
-    {
-        throw std::ios_base::failure(
-            "ERROR: MPI communicator is MPI_COMM_NULL, "
-            " in call to ADIOS constructor\n");
-    }
-
-    int flag;
-    MPI_Initialized(&flag);
-    if (flag)
-    {
-        MPI_Comm_dup(mpiComm, &m_MPIComm);
-        m_NeedMPICommFree = true;
-    }
-    else
-    {
-        m_MPIComm = mpiComm;
-        m_NeedMPICommFree = false;
-    }
-
     if (!configFile.empty())
     {
         if (configFile.substr(configFile.size() - 3) == "xml")
@@ -79,32 +65,7 @@ ADIOS::ADIOS(const std::string configFile, MPI_Comm mpiComm,
     }
 }
 
-ADIOS::ADIOS(const std::string configFile, const bool debugMode,
-             const std::string hostLanguage)
-: ADIOS(configFile, MPI_COMM_SELF, debugMode, hostLanguage)
-{
-}
-
-ADIOS::ADIOS(MPI_Comm mpiComm, const bool debugMode,
-             const std::string hostLanguage)
-: ADIOS("", mpiComm, debugMode, hostLanguage)
-{
-}
-
-ADIOS::ADIOS(const bool debugMode, const std::string hostLanguage)
-: ADIOS("", MPI_COMM_SELF, debugMode, hostLanguage)
-{
-}
-
-ADIOS::~ADIOS()
-{
-    int flag;
-    MPI_Finalized(&flag);
-    if (!flag && m_NeedMPICommFree)
-    {
-        MPI_Comm_free(&m_MPIComm);
-    }
-}
+ADIOS::~ADIOS() {}
 
 IO &ADIOS::DeclareIO(const std::string name)
 {
@@ -132,7 +93,7 @@ IO &ADIOS::DeclareIO(const std::string name)
     }
 
     auto ioPair = m_IOs.emplace(
-        name, IO(*this, name, m_MPIComm, false, m_HostLanguage, m_DebugMode));
+        name, IO(*this, name, m_AMPIComm, false, m_HostLanguage, m_DebugMode));
     IO &io = ioPair.first->second;
     io.SetDeclared();
     return io;

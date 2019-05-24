@@ -151,7 +151,7 @@ void ParseConfigXML(
 
     auto lf_FileContents = [&](const std::string &configXML) -> std::string {
         const std::string fileContents(helper::BroadcastFile(
-            configXML, adios.m_MPIComm,
+            configXML, adios.m_AMPIComm,
             "when parsing configXML file, in call to the ADIOS constructor"));
 
         if (adios.m_DebugMode)
@@ -289,7 +289,7 @@ void ParseConfigXML(
         // Build the IO object
         auto itCurrentIO =
             ios.emplace(ioName.value(),
-                        core::IO(adios, ioName.value(), adios.m_MPIComm, true,
+                        core::IO(adios, ioName.value(), adios.m_AMPIComm, true,
                                  adios.m_HostLanguage, adios.m_DebugMode));
         core::IO &currentIO = itCurrentIO.first->second;
 

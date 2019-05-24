@@ -27,15 +27,15 @@ namespace engine
 {
 
 SstReader::SstReader(IO &io, const std::string &name, const Mode mode,
-                     MPI_Comm mpiComm)
-: Engine("SstReader", io, name, mode, mpiComm)
+                     AMPI_Comm acomm)
+: Engine("SstReader", io, name, mode, acomm)
 {
     char *cstr = new char[name.length() + 1];
     std::strcpy(cstr, name.c_str());
 
     Init();
 
-    m_Input = SstReaderOpen(cstr, &Params, mpiComm);
+    m_Input = SstReaderOpen(cstr, &Params, acomm.comm);
     if (!m_Input)
     {
         throw std::invalid_argument("ERROR: SstReader did not find active "
@@ -251,7 +251,8 @@ StepStatus SstReader::BeginStep(StepMode Mode, const float timeout_sec)
         //   whatever transport it is using.  But it is opaque to the Engine
         //   (and to the control plane).)
 
-        m_BP3Deserializer = new format::BP3Deserializer(m_MPIComm, m_DebugMode);
+        m_BP3Deserializer =
+            new format::BP3Deserializer(m_AMPIComm, m_DebugMode);
         m_BP3Deserializer->InitParameters(m_IO.m_Parameters);
 
         m_BP3Deserializer->m_Metadata.Resize(

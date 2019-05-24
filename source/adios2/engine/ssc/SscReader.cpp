@@ -26,23 +26,23 @@ namespace engine
 {
 
 SscReader::SscReader(IO &io, const std::string &name, const Mode mode,
-                     MPI_Comm mpiComm)
-: Engine("SscReader", io, name, mode, mpiComm),
+                     AMPI_Comm acomm)
+: Engine("SscReader", io, name, mode, acomm),
   m_DataManSerializer(helper::IsRowMajor(io.m_HostLanguage), true,
-                      helper::IsLittleEndian(), mpiComm),
+                      helper::IsLittleEndian(), acomm),
   m_RepliedMetadata(std::make_shared<std::vector<char>>())
 {
     TAU_SCOPED_TIMER_FUNC();
     m_DataTransport = std::make_shared<transportman::StagingMan>(
-        mpiComm, Mode::Read, m_Timeout, 1e9);
+        acomm, Mode::Read, m_Timeout, 1e9);
     m_MetadataTransport = std::make_shared<transportman::StagingMan>(
-        mpiComm, Mode::Read, m_Timeout, 1e8);
+        acomm, Mode::Read, m_Timeout, 1e8);
     m_EndMessage = " in call to IO Open SscReader " + m_Name + "\n";
-    MPI_Comm_rank(mpiComm, &m_MpiRank);
+    acomm.Rank(&m_AMpiRank);
     Init();
     if (m_Verbosity >= 5)
     {
-        std::cout << "Staging Reader " << m_MpiRank << " Open(" << m_Name
+        std::cout << "Staging Reader " << m_AMpiRank << " Open(" << m_Name
                   << ") in constructor." << std::endl;
     }
 }
@@ -52,7 +52,7 @@ SscReader::~SscReader()
     TAU_SCOPED_TIMER_FUNC();
     if (m_Verbosity >= 5)
     {
-        std::cout << "Staging Reader " << m_MpiRank << " destructor on "
+        std::cout << "Staging Reader " << m_AMpiRank << " destructor on "
                   << m_Name << "\n";
     }
     m_MetadataTransport->CloseTransport();
@@ -340,10 +340,11 @@ void SscReader::Init()
     TAU_SCOPED_TIMER_FUNC();
     srand(time(NULL));
     InitParameters();
-    helper::HandshakeReader(m_MPIComm, m_AppID, m_FullAddresses, m_Name, "ssc");
+    helper::HandshakeReader(m_AMPIComm, m_AppID, m_FullAddresses, m_Name,
+                            "ssc");
 
     format::VecPtr reply = std::make_shared<std::vector<char>>();
-    if (m_MpiRank == 0)
+    if (m_AMpiRank == 0)
     {
         std::vector<char> request(2 * sizeof(int64_t));
         reinterpret_cast<int64_t *>(request.data())[0] = m_AppID;
@@ -354,7 +355,7 @@ void SscReader::Init()
             reply = m_MetadataTransport->Request(request, address);
         }
     }
-    m_DataManSerializer.PutAggregatedMetadata(reply, m_MPIComm);
+    m_DataManSerializer.PutAggregatedMetadata(reply, m_AMPIComm);
     m_DataManSerializer.GetAttributes(m_IO);
 
     if (m_Verbosity >= 5)
@@ -390,7 +391,7 @@ void SscReader::RequestMetadata(const int64_t step)
 {
     TAU_SCOPED_TIMER_FUNC();
     format::VecPtr reply = std::make_shared<std::vector<char>>();
-    if (m_MpiRank == 0)
+    if (m_AMpiRank == 0)
     {
         std::vector<char> request(2 * sizeof(int64_t));
         reinterpret_cast<int64_t *>(request.data())[0] = m_AppID;
@@ -398,7 +399,7 @@ void SscReader::RequestMetadata(const int64_t step)
         std::string address = m_FullAddresses[rand() % m_FullAddresses.size()];
         reply = m_MetadataTransport->Request(request, address);
     }
-    m_DataManSerializer.PutAggregatedMetadata(reply, m_MPIComm);
+    m_DataManSerializer.PutAggregatedMetadata(reply, m_AMPIComm);
 }
 
 void SscReader::DoClose(const int transportIndex)
@@ -406,7 +407,7 @@ void SscReader::DoClose(const int transportIndex)
     TAU_SCOPED_TIMER_FUNC();
     if (m_Verbosity >= 5)
     {
-        std::cout << "Staging Reader " << m_MpiRank << " Close(" << m_Name
+        std::cout << "Staging Reader " << m_AMpiRank << " Close(" << m_Name
                   << ")\n";
     }
 }
@@ -419,7 +420,7 @@ void SscReader::Log(const int level, const std::string &message, const bool mpi,
     {
         if (mpi)
         {
-            std::cout << "[Rank " << m_MpiRank << "] ";
+            std::cout << "[Rank " << m_AMpiRank << "] ";
         }
         std::cout << message;
         if (endline)

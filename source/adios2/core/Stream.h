@@ -13,12 +13,12 @@
 
 #include <memory> //std::shared_ptr
 
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
 #include "adios2/core/ADIOS.h"
 #include "adios2/core/Engine.h"
 #include "adios2/core/IO.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -47,13 +47,13 @@ public:
      */
     Engine *m_Engine = nullptr;
 
-    Stream(const std::string &name, const Mode mode, MPI_Comm comm,
+    Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
            const std::string engineType, const std::string hostLanguage);
 
     Stream(const std::string &name, const Mode mode,
            const std::string engineType, const std::string hostLanguage);
 
-    Stream(const std::string &name, const Mode mode, MPI_Comm comm,
+    Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
            const std::string configFile, const std::string ioInConfigFile,
            const std::string hostLanguage);
 

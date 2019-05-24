@@ -45,11 +45,11 @@ const std::map<int, std::string> BP4Base::m_TransformTypesToNames = {
     //    {transform_blosc, "blosc"},
 };
 
-BP4Base::BP4Base(MPI_Comm mpiComm, const bool debugMode)
-: m_MPIComm(mpiComm), m_DebugMode(debugMode)
+BP4Base::BP4Base(AMPI_Comm acomm, const bool debugMode)
+: m_AMPIComm(acomm), m_DebugMode(debugMode)
 {
-    MPI_Comm_rank(m_MPIComm, &m_RankMPI);
-    MPI_Comm_size(m_MPIComm, &m_SizeMPI);
+    m_AMPIComm.Rank(&m_RankMPI);
+    m_AMPIComm.Size(&m_SizeMPI);
     m_Profiler.IsActive = true; // default
 }
 
@@ -880,7 +880,7 @@ void BP4Base::InitParameterSubStreams(const std::string value)
 
     if (subStreams < m_SizeMPI)
     {
-        m_Aggregator.Init(subStreams, m_MPIComm);
+        m_Aggregator.Init(subStreams, m_AMPIComm);
     }
 }
 

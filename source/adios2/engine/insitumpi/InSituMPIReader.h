@@ -20,6 +20,8 @@
 #include "adios2/helper/adiosFunctions.h"
 #include "adios2/toolkit/format/bp3/BP3.h"
 
+#include <mpi.h>
+
 namespace adios2
 {
 namespace core
@@ -42,7 +44,7 @@ public:
      * @param hostLanguage
      */
     InSituMPIReader(IO &adios, const std::string &name, const Mode mode,
-                    MPI_Comm mpiComm);
+                    AMPI_Comm acomm);
 
     ~InSituMPIReader();
     StepStatus BeginStep(StepMode mode = StepMode::NextAvailable,

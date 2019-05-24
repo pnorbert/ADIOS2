@@ -26,12 +26,11 @@ namespace engine
 {
 
 BP4Writer::BP4Writer(IO &io, const std::string &name, const Mode mode,
-                     MPI_Comm mpiComm)
-: Engine("BP4Writer", io, name, mode, mpiComm),
-  m_BP4Serializer(mpiComm, m_DebugMode),
-  m_FileDataManager(mpiComm, m_DebugMode),
-  m_FileMetadataManager(mpiComm, m_DebugMode),
-  m_FileMetadataIndexManager(mpiComm, m_DebugMode)
+                     AMPI_Comm acomm)
+: Engine("BP4Writer", io, name, mode, acomm),
+  m_BP4Serializer(acomm, m_DebugMode), m_FileDataManager(acomm, m_DebugMode),
+  m_FileMetadataManager(acomm, m_DebugMode),
+  m_FileMetadataIndexManager(acomm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("BP4Writer::Open");
     m_IO.m_ReadStreaming = false;
@@ -313,7 +312,7 @@ void BP4Writer::WriteProfilingJSONFile()
     if (m_BP4Serializer.m_RankMPI == 0)
     {
         // std::cout << "write profiling file!" << std::endl;
-        transport::FileFStream profilingJSONStream(m_MPIComm, m_DebugMode);
+        transport::FileFStream profilingJSONStream(m_AMPIComm, m_DebugMode);
         auto bpBaseNames = m_BP4Serializer.GetBPBaseNames({m_Name});
         profilingJSONStream.Open(bpBaseNames[0] + "/profiling.json",
                                  Mode::Write);
@@ -395,7 +394,7 @@ void BP4Writer::WriteCollectiveMetadataFile(const bool isFinal)
 {
     TAU_SCOPED_TIMER("BP4Writer::WriteCollectiveMetadataFile");
     m_BP4Serializer.AggregateCollectiveMetadata(
-        m_MPIComm, m_BP4Serializer.m_Metadata, true);
+        m_AMPIComm, m_BP4Serializer.m_Metadata, true);
 
     if (m_BP4Serializer.m_RankMPI == 0)
     {
@@ -542,10 +541,10 @@ void BP4Writer::AggregateWriteData(const bool isFinal, const int transportIndex)
     // async?
     for (int r = 0; r < m_BP4Serializer.m_Aggregator.m_Size; ++r)
     {
-        std::vector<std::vector<MPI_Request>> dataRequests =
+        std::vector<std::vector<AMPI_Request>> dataRequests =
             m_BP4Serializer.m_Aggregator.IExchange(m_BP4Serializer.m_Data, r);
 
-        std::vector<std::vector<MPI_Request>> absolutePositionRequests =
+        std::vector<std::vector<AMPI_Request>> absolutePositionRequests =
             m_BP4Serializer.m_Aggregator.IExchangeAbsolutePosition(
                 m_BP4Serializer.m_Data, r);
 

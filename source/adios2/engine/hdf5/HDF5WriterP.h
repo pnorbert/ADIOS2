@@ -14,9 +14,9 @@
 #include <hdf5.h>
 
 #include "adios2/ADIOSConfig.h"
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/core/Engine.h"
 #include "adios2/core/IO.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 #include "adios2/toolkit/interop/hdf5/HDF5Common.h"
 
 namespace adios2
@@ -38,7 +38,7 @@ public:
      * @param method
      */
     HDF5WriterP(IO &io, const std::string &name, const Mode mode,
-                MPI_Comm mpiComm);
+                AMPI_Comm acomm);
 
     ~HDF5WriterP();
 

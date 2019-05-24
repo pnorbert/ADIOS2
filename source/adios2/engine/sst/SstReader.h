@@ -11,7 +11,7 @@
 #ifndef ADIOS2_ENGINE_SST_SSTREADER_H_
 #define ADIOS2_ENGINE_SST_SSTREADER_H_
 
-#include <adios2/ADIOSMPI.h>
+#include <adios2/toolkit/comm/AMPIComm.h>
 
 #include "adios2/toolkit/sst/sst.h"
 
@@ -34,13 +34,13 @@ public:
      * @param adios
      * @param name
      * @param accessMode
-     * @param mpiComm
+     * @param acomm
      * @param method
      * @param debugMode
      * @param nthreads
      */
     SstReader(IO &io, const std::string &name, const Mode mode,
-              MPI_Comm mpiComm);
+              AMPI_Comm acomm);
 
     virtual ~SstReader();
 

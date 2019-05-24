@@ -21,13 +21,13 @@
 /// \endcond
 
 #include "adios2/ADIOSConfig.h"
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
 #include "adios2/core/ADIOS.h"
 #include "adios2/core/Attribute.h"
 #include "adios2/core/Variable.h"
 #include "adios2/core/VariableCompound.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -56,7 +56,7 @@ public:
 
     /** from ADIOS class passed to Engine created with Open
      *  if no new communicator is passed */
-    MPI_Comm m_MPIComm;
+    AMPI_Comm m_AMPIComm;
 
     /** true: extra exceptions checks */
     const bool m_DebugMode = false;
@@ -109,7 +109,7 @@ public:
      * @param hostLanguage current language using the adios2 library
      * @param debugMode true: extra exception checks (recommended)
      */
-    IO(ADIOS &adios, const std::string name, MPI_Comm mpiComm,
+    IO(ADIOS &adios, const std::string name, AMPI_Comm acomm,
        const bool inConfigFile, const std::string hostLanguage,
        const bool debugMode);
 
@@ -360,7 +360,7 @@ public:
      * @exception std::invalid_argument if Engine with unique name is already
      * created with another Open, in debug mode only
      */
-    Engine &Open(const std::string &name, const Mode mode, MPI_Comm mpiComm);
+    Engine &Open(const std::string &name, const Mode mode, AMPI_Comm ampiComm);
 
     /**
      * Overloaded version that reuses the MPI_Comm object passed

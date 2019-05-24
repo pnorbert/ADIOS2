@@ -23,13 +23,13 @@ namespace format
 
 DataManSerializer::DataManSerializer(bool isRowMajor,
                                      const bool contiguousMajor,
-                                     bool isLittleEndian, MPI_Comm mpiComm)
+                                     bool isLittleEndian, AMPI_Comm acomm)
 : m_IsRowMajor(isRowMajor), m_IsLittleEndian(isLittleEndian),
-  m_ContiguousMajor(contiguousMajor), m_MpiComm(mpiComm),
+  m_ContiguousMajor(contiguousMajor), m_AMpiComm(acomm),
   m_DeferredRequestsToSend(std::make_shared<DeferredRequestMap>())
 {
-    MPI_Comm_size(m_MpiComm, &m_MpiSize);
-    MPI_Comm_rank(m_MpiComm, &m_MpiRank);
+    m_AMpiComm.Size(&m_MpiSize);
+    m_AMpiComm.Rank(&m_MpiRank);
     New(1024);
 }
 
@@ -74,7 +74,8 @@ void DataManSerializer::AggregateMetadata()
     auto localJsonPack = SerializeJson(m_MetadataJson);
     unsigned int size = localJsonPack->size();
     unsigned int maxSize;
-    MPI_Allreduce(&size, &maxSize, 1, MPI_UNSIGNED, MPI_MAX, m_MpiComm);
+    m_AMpiComm.Driver().Allreduce(&size, &maxSize, 1, AMPI_UNSIGNED, AMPI_MAX,
+                                  m_AMpiComm);
     maxSize += sizeof(uint64_t);
     localJsonPack->resize(maxSize, '\0');
     *(reinterpret_cast<uint64_t *>(localJsonPack->data() +
@@ -82,8 +83,9 @@ void DataManSerializer::AggregateMetadata()
       1) = size;
 
     std::vector<char> globalJsonStr(m_MpiSize * maxSize);
-    MPI_Allgather(localJsonPack->data(), maxSize, MPI_CHAR,
-                  globalJsonStr.data(), maxSize, MPI_CHAR, m_MpiComm);
+    m_AMpiComm.Driver().Allgather(localJsonPack->data(), maxSize, AMPI_CHAR,
+                                  globalJsonStr.data(), maxSize, AMPI_CHAR,
+                                  m_AMpiComm);
 
     nlohmann::json aggMetadata;
 
@@ -261,7 +263,7 @@ VecPtr DataManSerializer::GetAggregatedMetadataPack(const int64_t stepRequested,
     return ret;
 }
 
-void DataManSerializer::PutAggregatedMetadata(VecPtr input, MPI_Comm mpiComm)
+void DataManSerializer::PutAggregatedMetadata(VecPtr input, AMPI_Comm acomm)
 {
     TAU_SCOPED_TIMER_FUNC();
     if (input == nullptr)
@@ -272,7 +274,7 @@ void DataManSerializer::PutAggregatedMetadata(VecPtr input, MPI_Comm mpiComm)
         return;
     }
 
-    helper::BroadcastVector(*input, mpiComm);
+    helper::BroadcastVector(*input, acomm);
 
     if (input->size() > 0)
     {
@@ -1119,7 +1121,7 @@ void DataManSerializer::Log(const int level, const std::string &message,
 {
     TAU_SCOPED_TIMER_FUNC();
     int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    m_AMpiComm.Rank(&rank);
 
     if (m_Verbosity >= level)
     {

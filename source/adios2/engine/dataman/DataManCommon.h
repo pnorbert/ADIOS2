@@ -32,7 +32,7 @@ class DataManCommon : public Engine
 
 public:
     DataManCommon(const std::string engineType, IO &io, const std::string &name,
-                  const Mode mode, MPI_Comm mpiComm);
+                  const Mode mode, AMPI_Comm acomm);
 
     virtual ~DataManCommon() = default;
 

@@ -30,9 +30,8 @@ public:
      * @param size shared-memory pre-allocated data size
      * @param debugMode true: extra checks
      */
-    ShmSystemV(const unsigned int projectID, const size_t size,
-               MPI_Comm mpiComm, const bool debugMode = false,
-               const bool removeAtClose = false);
+    ShmSystemV(const unsigned int projectID, const size_t size, AMPI_Comm acomm,
+               const bool debugMode = false, const bool removeAtClose = false);
 
     ~ShmSystemV();
 

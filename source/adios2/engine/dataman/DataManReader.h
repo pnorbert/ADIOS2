@@ -26,7 +26,7 @@ class DataManReader : public DataManCommon
 
 public:
     DataManReader(IO &io, const std::string &name, const Mode mode,
-                  MPI_Comm mpiComm);
+                  AMPI_Comm acomm);
     virtual ~DataManReader();
     StepStatus BeginStep(StepMode stepMode,
                          const float timeoutSeconds = -1.0) final;

@@ -10,8 +10,8 @@
 
 #include "MPIChain.h"
 
-#include "adios2/ADIOSMPI.h"
 #include "adios2/helper/adiosFunctions.h" //helper::CheckMPIReturn
+#include "adios2/toolkit/comm/AMPI.h"
 
 namespace adios2
 {
@@ -20,7 +20,7 @@ namespace aggregator
 
 MPIChain::MPIChain() : MPIAggregator() {}
 
-void MPIChain::Init(const size_t subStreams, MPI_Comm parentComm)
+void MPIChain::Init(const size_t subStreams, AMPI_Comm parentComm)
 {
     InitComm(subStreams, parentComm);
     HandshakeRank(0);
@@ -33,12 +33,12 @@ void MPIChain::Init(const size_t subStreams, MPI_Comm parentComm)
     }
 }
 
-std::vector<std::vector<MPI_Request>> MPIChain::IExchange(BufferSTL &bufferSTL,
-                                                          const int step)
+std::vector<std::vector<AMPI_Request>> MPIChain::IExchange(BufferSTL &bufferSTL,
+                                                           const int step)
 {
     if (m_Size == 1)
     {
-        return std::vector<std::vector<MPI_Request>>();
+        return std::vector<std::vector<AMPI_Request>>();
     }
 
     BufferSTL &sendBuffer = GetSender(bufferSTL);
@@ -46,19 +46,19 @@ std::vector<std::vector<MPI_Request>> MPIChain::IExchange(BufferSTL &bufferSTL,
     const bool sender = (m_Rank >= 1 && m_Rank <= endRank) ? true : false;
     const bool receiver = (m_Rank < endRank) ? true : false;
 
-    std::vector<std::vector<MPI_Request>> requests(2);
+    std::vector<std::vector<AMPI_Request>> requests(2);
 
     if (sender) // sender
     {
         requests[0].resize(1);
 
-        helper::CheckMPIReturn(MPI_Isend(&sendBuffer.m_Position, 1,
-                                         ADIOS2_MPI_SIZE_T, m_Rank - 1, 0,
-                                         m_Comm, &requests[0][0]),
+        helper::CheckMPIReturn(m_Comm.Driver().Isend(&sendBuffer.m_Position, 1,
+                                                     AMPI_SIZE_T, m_Rank - 1, 0,
+                                                     m_Comm, &requests[0][0]),
                                ", aggregation Isend size at iteration " +
                                    std::to_string(step) + "\n");
 
-        const std::vector<MPI_Request> requestsISend64 = helper::Isend64(
+        const std::vector<AMPI_Request> requestsISend64 = helper::Isend64(
             sendBuffer.m_Buffer.data(), sendBuffer.m_Position, m_Rank - 1, 1,
             m_Comm,
             ", aggregation Isend64 data at iteration " + std::to_string(step));
@@ -70,16 +70,16 @@ std::vector<std::vector<MPI_Request>> MPIChain::IExchange(BufferSTL &bufferSTL,
     if (receiver)
     {
         size_t bufferSize = 0;
-        MPI_Request receiveSizeRequest;
-        helper::CheckMPIReturn(MPI_Irecv(&bufferSize, 1, ADIOS2_MPI_SIZE_T,
-                                         m_Rank + 1, 0, m_Comm,
-                                         &receiveSizeRequest),
-                               ", aggregation Irecv size at iteration " +
-                                   std::to_string(step) + "\n");
-
-        MPI_Status receiveStatus;
+        AMPI_Request receiveSizeRequest;
         helper::CheckMPIReturn(
-            MPI_Wait(&receiveSizeRequest, &receiveStatus),
+            m_Comm.Driver().Irecv(&bufferSize, 1, AMPI_SIZE_T, m_Rank + 1, 0,
+                                  m_Comm, &receiveSizeRequest),
+            ", aggregation Irecv size at iteration " + std::to_string(step) +
+                "\n");
+
+        AMPI_Status receiveStatus;
+        helper::CheckMPIReturn(
+            m_Comm.Driver().Wait(&receiveSizeRequest, &receiveStatus),
             ", aggregation waiting for receiver size at iteration " +
                 std::to_string(step) + "\n");
 
@@ -98,12 +98,12 @@ std::vector<std::vector<MPI_Request>> MPIChain::IExchange(BufferSTL &bufferSTL,
     return requests;
 }
 
-std::vector<std::vector<MPI_Request>>
+std::vector<std::vector<AMPI_Request>>
 MPIChain::IExchangeAbsolutePosition(BufferSTL &bufferSTL, const int step)
 {
     if (m_Size == 1)
     {
-        return std::vector<std::vector<MPI_Request>>();
+        return std::vector<std::vector<AMPI_Request>>();
     }
 
     if (m_IsInExchangeAbsolutePosition)
@@ -113,8 +113,8 @@ MPIChain::IExchangeAbsolutePosition(BufferSTL &bufferSTL, const int step)
     }
 
     const int destination = (step != m_Size - 1) ? step + 1 : 0;
-    std::vector<std::vector<MPI_Request>> requests(2,
-                                                   std::vector<MPI_Request>(1));
+    std::vector<std::vector<AMPI_Request>> requests(
+        2, std::vector<AMPI_Request>(1));
 
     if (step == 0)
     {
@@ -129,16 +129,16 @@ MPIChain::IExchangeAbsolutePosition(BufferSTL &bufferSTL, const int step)
                           : m_SizeSend + bufferSTL.m_AbsolutePosition;
 
         helper::CheckMPIReturn(
-            MPI_Isend(&m_ExchangeAbsolutePosition, 1, ADIOS2_MPI_SIZE_T,
-                      destination, 0, m_Comm, &requests[0][0]),
+            m_Comm.Driver().Isend(&m_ExchangeAbsolutePosition, 1, AMPI_SIZE_T,
+                                  destination, 0, m_Comm, &requests[0][0]),
             ", aggregation Isend absolute position at iteration " +
                 std::to_string(step) + "\n");
     }
     else if (m_Rank == destination)
     {
         helper::CheckMPIReturn(
-            MPI_Irecv(&bufferSTL.m_AbsolutePosition, 1, ADIOS2_MPI_SIZE_T, step,
-                      0, m_Comm, &requests[1][0]),
+            m_Comm.Driver().Irecv(&bufferSTL.m_AbsolutePosition, 1, AMPI_SIZE_T,
+                                  step, 0, m_Comm, &requests[1][0]),
             ", aggregation Irecv absolute position at iteration " +
                 std::to_string(step) + "\n");
     }
@@ -147,7 +147,7 @@ MPIChain::IExchangeAbsolutePosition(BufferSTL &bufferSTL, const int step)
     return requests;
 }
 
-void MPIChain::Wait(std::vector<std::vector<MPI_Request>> &requests,
+void MPIChain::Wait(std::vector<std::vector<AMPI_Request>> &requests,
                     const int step)
 {
     if (m_Size == 1)
@@ -159,13 +159,13 @@ void MPIChain::Wait(std::vector<std::vector<MPI_Request>> &requests,
     const bool sender = (m_Rank >= 1 && m_Rank <= endRank) ? true : false;
     const bool receiver = (m_Rank < endRank) ? true : false;
 
-    MPI_Status status;
+    AMPI_Status status;
     if (receiver)
     {
         for (auto &req : requests[1])
         {
             helper::CheckMPIReturn(
-                MPI_Wait(&req, &status),
+                m_Comm.Driver().Wait(&req, &status),
                 ", aggregation waiting for receiver request at iteration " +
                     std::to_string(step) + "\n");
         }
@@ -176,7 +176,7 @@ void MPIChain::Wait(std::vector<std::vector<MPI_Request>> &requests,
         for (auto &req : requests[0])
         {
             helper::CheckMPIReturn(
-                MPI_Wait(&req, &status),
+                m_Comm.Driver().Wait(&req, &status),
                 ", aggregation waiting for sender request at iteration " +
                     std::to_string(step) + "\n");
         }
@@ -184,7 +184,7 @@ void MPIChain::Wait(std::vector<std::vector<MPI_Request>> &requests,
 }
 
 void MPIChain::WaitAbsolutePosition(
-    std::vector<std::vector<MPI_Request>> &requests, const int step)
+    std::vector<std::vector<AMPI_Request>> &requests, const int step)
 {
     if (m_Size == 1)
     {
@@ -197,13 +197,13 @@ void MPIChain::WaitAbsolutePosition(
                                  "existing exchange is not active.");
     }
 
-    MPI_Status status;
+    AMPI_Status status;
     const int destination = (step != m_Size - 1) ? step + 1 : 0;
 
     if (m_Rank == destination)
     {
         helper::CheckMPIReturn(
-            MPI_Wait(&requests[1][0], &status),
+            m_Comm.Driver().Wait(&requests[1][0], &status),
             ", aggregation Irecv Wait absolute position at iteration " +
                 std::to_string(step) + "\n");
     }
@@ -211,7 +211,7 @@ void MPIChain::WaitAbsolutePosition(
     if (m_Rank == step)
     {
         helper::CheckMPIReturn(
-            MPI_Wait(&requests[0][0], &status),
+            m_Comm.Driver().Wait(&requests[0][0], &status),
             ", aggregation Isend Wait absolute position at iteration " +
                 std::to_string(step) + "\n");
     }
@@ -235,33 +235,34 @@ void MPIChain::HandshakeLinks()
 {
     int link = -1;
 
-    MPI_Request sendRequest;
+    AMPI_Request sendRequest;
     if (m_Rank > 0) // send
     {
         helper::CheckMPIReturn(
-            MPI_Isend(&m_Rank, 1, MPI_INT, m_Rank - 1, 0, m_Comm, &sendRequest),
+            m_Comm.Driver().Isend(&m_Rank, 1, AMPI_INT, m_Rank - 1, 0, m_Comm,
+                                  &sendRequest),
             "Isend handshake with neighbor, MPIChain aggregator, at Open");
     }
 
     if (m_Rank < m_Size - 1) // receive
     {
-        MPI_Request receiveRequest;
+        AMPI_Request receiveRequest;
         helper::CheckMPIReturn(
-            MPI_Irecv(&link, 1, MPI_INT, m_Rank + 1, 0, m_Comm,
-                      &receiveRequest),
+            m_Comm.Driver().Irecv(&link, 1, AMPI_INT, m_Rank + 1, 0, m_Comm,
+                                  &receiveRequest),
             "Irecv handshake with neighbor, MPIChain aggregator, at Open");
 
-        MPI_Status receiveStatus;
+        AMPI_Status receiveStatus;
         helper::CheckMPIReturn(
-            MPI_Wait(&receiveRequest, &receiveStatus),
+            m_Comm.Driver().Wait(&receiveRequest, &receiveStatus),
             "Irecv Wait handshake with neighbor, MPIChain aggregator, at Open");
     }
 
     if (m_Rank > 0)
     {
-        MPI_Status sendStatus;
+        AMPI_Status sendStatus;
         helper::CheckMPIReturn(
-            MPI_Wait(&sendRequest, &sendStatus),
+            m_Comm.Driver().Wait(&sendRequest, &sendStatus),
             "Isend wait handshake with neighbor, MPIChain aggregator, at Open");
     }
 }

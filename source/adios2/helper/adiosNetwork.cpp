@@ -70,7 +70,7 @@ std::vector<std::string> AvailableIpAddresses() noexcept
     return ips;
 }
 
-void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
+void HandshakeWriter(AMPI_Comm acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName,
                      const int basePort, const int channelsPerRank,
@@ -79,8 +79,8 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
 
     int mpiRank;
     int mpiSize;
-    MPI_Comm_rank(mpiComm, &mpiRank);
-    MPI_Comm_size(mpiComm, &mpiSize);
+    acomm.Rank(&mpiRank);
+    acomm.Size(&mpiSize);
 
     const std::string globalFilename = ".socket";
     const std::string globalLockFilename = ".socket.lock";
@@ -99,7 +99,7 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
     // Check total number of writer apps
     if (mpiRank == 0)
     {
-        transport::FileFStream lockCheck(mpiComm, false);
+        transport::FileFStream lockCheck(acomm, false);
         while (true)
         {
             try
@@ -112,10 +112,10 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
                 break;
             }
         }
-        transport::FileFStream lockWrite(mpiComm, false);
+        transport::FileFStream lockWrite(acomm, false);
         lockWrite.Open(globalLockFilename, Mode::Write);
 
-        transport::FileFStream numRead(mpiComm, false);
+        transport::FileFStream numRead(acomm, false);
         try
         {
             numRead.Open(globalFilename, Mode::Read);
@@ -129,7 +129,7 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
         catch (...)
         {
         }
-        transport::FileFStream numWrite(mpiComm, false);
+        transport::FileFStream numWrite(acomm, false);
         numWrite.Open(globalFilename, Mode::Write);
         std::string numAppsString = std::to_string(appID);
         numWrite.Write(numAppsString.data(), numAppsString.size());
@@ -139,7 +139,7 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
         remove(globalLockFilename.c_str());
     }
 
-    appID = helper::BroadcastValue(appID, mpiComm);
+    appID = helper::BroadcastValue(appID, acomm);
 
     // Make full addresses
     for (int i = 0; i < channelsPerRank; ++i)
@@ -158,7 +158,7 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
                 localAddressesStr.size());
     std::vector<char> globalAddressesChar(64 * channelsPerRank * mpiSize, '\0');
     helper::GatherArrays(localAddressesChar.data(), 64 * channelsPerRank,
-                         globalAddressesChar.data(), mpiComm);
+                         globalAddressesChar.data(), acomm);
 
     // Writing handshake file
     if (mpiRank == 0)
@@ -174,9 +174,9 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
             }
         }
         std::string globalAddressesStr = globalAddressesJson.dump();
-        transport::FileFStream lockstream(mpiComm, false);
+        transport::FileFStream lockstream(acomm, false);
         lockstream.Open(engineLockFilename, Mode::Write);
-        transport::FileFStream ipstream(mpiComm, false);
+        transport::FileFStream ipstream(acomm, false);
         ipstream.Open(engineFilename, Mode::Write);
         ipstream.Write(globalAddressesStr.data(), globalAddressesStr.size());
         ipstream.Close();
@@ -185,7 +185,7 @@ void HandshakeWriter(MPI_Comm mpiComm, size_t &appID,
     }
 }
 
-void HandshakeReader(MPI_Comm mpiComm, size_t &appID,
+void HandshakeReader(AMPI_Comm acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName)
 {
@@ -202,9 +202,9 @@ void HandshakeReader(MPI_Comm mpiComm, size_t &appID,
         std::hash<std::string> hash_fn;
         appID = hash_fn(ips[0]);
     }
-    helper::BroadcastValue(appID, mpiComm);
+    helper::BroadcastValue(appID, acomm);
 
-    transport::FileFStream ipstream(mpiComm, false);
+    transport::FileFStream ipstream(acomm, false);
     while (true)
     {
         try
@@ -218,7 +218,7 @@ void HandshakeReader(MPI_Comm mpiComm, size_t &appID,
         }
     }
 
-    transport::FileFStream lockstream(mpiComm, false);
+    transport::FileFStream lockstream(acomm, false);
     while (true)
     {
         try

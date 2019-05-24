@@ -66,7 +66,7 @@ public:
      */
     ADIOS(const std::string &configFile = "", MPI_Comm comm = MPI_COMM_SELF,
           const bool debugMode = true);
-#else
+#endif
 
     /**
      * Starting point for non-MPI serial apps. Creates an ADIOS object allowing
@@ -87,7 +87,6 @@ public:
      * incorrect
      */
     ADIOS(const bool debugMode = true);
-#endif
 
     /** object inspection true: valid object, false: invalid object */
     explicit operator bool() const noexcept;

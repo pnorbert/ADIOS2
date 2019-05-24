@@ -32,10 +32,10 @@ public:
      * @param io
      * @param name
      * @param openMode only read
-     * @param mpiComm
+     * @param acomm
      */
     BP4Reader(IO &io, const std::string &name, const Mode mode,
-              MPI_Comm mpiComm);
+              AMPI_Comm acomm);
 
     virtual ~BP4Reader() = default;
 

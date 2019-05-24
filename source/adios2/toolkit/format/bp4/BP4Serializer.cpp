@@ -30,8 +30,8 @@ namespace format
 
 std::mutex BP4Serializer::m_Mutex;
 
-BP4Serializer::BP4Serializer(MPI_Comm mpiComm, const bool debugMode)
-: BP4Base(mpiComm, debugMode)
+BP4Serializer::BP4Serializer(AMPI_Comm acomm, const bool debugMode)
+: BP4Base(acomm, debugMode)
 {
 }
 
@@ -303,7 +303,7 @@ BP4Serializer::AggregateProfilingJSON(const std::string &rankProfilingLog)
     return SetCollectiveProfilingJSON(rankProfilingLog);
 }
 
-void BP4Serializer::AggregateCollectiveMetadata(MPI_Comm comm,
+void BP4Serializer::AggregateCollectiveMetadata(AMPI_Comm acomm,
                                                 BufferSTL &bufferSTL,
                                                 const bool inMetadataBuffer)
 {
@@ -317,7 +317,7 @@ void BP4Serializer::AggregateCollectiveMetadata(MPI_Comm comm,
     /* save the starting position of the pgindex in the metadata file*/
     m_MetadataSet.pgIndexStart =
         inMetadataBuffer ? position : position + bufferSTL.m_AbsolutePosition;
-    AggregateIndex(m_MetadataSet.PGIndex, m_MetadataSet.DataPGCount, comm,
+    AggregateIndex(m_MetadataSet.PGIndex, m_MetadataSet.DataPGCount, acomm,
                    bufferSTL);
 
     // const uint64_t variablesIndexStart =
@@ -325,17 +325,18 @@ void BP4Serializer::AggregateCollectiveMetadata(MPI_Comm comm,
     /* save the starting position of the varindex in the metadata file*/
     m_MetadataSet.varIndexStart =
         inMetadataBuffer ? position : position + bufferSTL.m_AbsolutePosition;
-    AggregateMergeIndex(m_MetadataSet.VarsIndices, comm, bufferSTL);
+    AggregateMergeIndex(m_MetadataSet.VarsIndices, acomm, bufferSTL);
 
     // const uint64_t attributesIndexStart =
     //    inMetadataBuffer ? position : position + bufferSTL.m_AbsolutePosition;
     /* save the starting position of the attrindex in the metadata file*/
     m_MetadataSet.attrIndexStart =
         inMetadataBuffer ? position : position + bufferSTL.m_AbsolutePosition;
-    AggregateMergeIndex(m_MetadataSet.AttributesIndices, comm, bufferSTL, true);
+    AggregateMergeIndex(m_MetadataSet.AttributesIndices, acomm, bufferSTL,
+                        true);
 
     int rank;
-    MPI_Comm_rank(comm, &rank);
+    acomm.Rank(&rank);
     if (rank == 0)
     {
         /* no more minifooter in the global metadata*/
@@ -815,16 +816,16 @@ void BP4Serializer::PutMinifooter(const uint64_t pgIndexStart,
 }
 
 void BP4Serializer::AggregateIndex(const SerialElementIndex &index,
-                                   const size_t count, MPI_Comm comm,
+                                   const size_t count, AMPI_Comm acomm,
                                    BufferSTL &bufferSTL)
 {
     auto &buffer = bufferSTL.m_Buffer;
     auto &position = bufferSTL.m_Position;
     int rank;
-    MPI_Comm_rank(comm, &rank);
+    acomm.Rank(&rank);
 
     size_t countPosition = position;
-    const size_t totalCount = helper::ReduceValues<size_t>(count, comm);
+    const size_t totalCount = helper::ReduceValues<size_t>(count, acomm);
 
     if (rank == 0)
     {
@@ -836,7 +837,7 @@ void BP4Serializer::AggregateIndex(const SerialElementIndex &index,
     }
 
     // write contents
-    helper::GathervVectors(index.Buffer, buffer, position, comm);
+    helper::GathervVectors(index.Buffer, buffer, position, acomm);
 
     // get total length and write it after count and before index
     if (rank == 0)
@@ -849,16 +850,16 @@ void BP4Serializer::AggregateIndex(const SerialElementIndex &index,
 
 void BP4Serializer::AggregateMergeIndex(
     const std::unordered_map<std::string, SerialElementIndex> &indices,
-    MPI_Comm comm, BufferSTL &bufferSTL, const bool isRankConstant)
+    AMPI_Comm acomm, BufferSTL &bufferSTL, const bool isRankConstant)
 {
     // first serialize index
-    std::vector<char> serializedIndices = SerializeIndices(indices, comm);
+    std::vector<char> serializedIndices = SerializeIndices(indices, acomm);
     // gather in rank 0
     std::vector<char> gatheredSerialIndices;
     size_t gatheredSerialIndicesPosition = 0;
 
     helper::GathervVectors(serializedIndices, gatheredSerialIndices,
-                           gatheredSerialIndicesPosition, comm);
+                           gatheredSerialIndicesPosition, acomm);
 
     // deallocate local serialized Indices
     std::vector<char>().swap(serializedIndices);
@@ -866,13 +867,13 @@ void BP4Serializer::AggregateMergeIndex(
     // deserialize in [name][rank] order
     const std::unordered_map<std::string, std::vector<SerialElementIndex>>
         nameRankIndices = DeserializeIndicesPerRankThreads(
-            gatheredSerialIndices, comm, isRankConstant);
+            gatheredSerialIndices, acomm, isRankConstant);
 
     // deallocate gathered serial indices (full in rank 0 only)
     std::vector<char>().swap(gatheredSerialIndices);
 
     int rank;
-    MPI_Comm_rank(comm, &rank);
+    acomm.Rank(&rank);
 
     if (rank == 0)
     {
@@ -892,7 +893,7 @@ void BP4Serializer::AggregateMergeIndex(
 
         // MergeSerializeIndices(nameRankIndices, comm, bufferSTL);
         /* merge and serialize all the indeices at each step */
-        MergeSerializeIndicesPerStep(nameRankIndices, comm, bufferSTL);
+        MergeSerializeIndicesPerStep(nameRankIndices, acomm, bufferSTL);
 
         // Write length
         const uint64_t totalLengthU64 =
@@ -903,7 +904,7 @@ void BP4Serializer::AggregateMergeIndex(
 
 std::vector<char> BP4Serializer::SerializeIndices(
     const std::unordered_map<std::string, SerialElementIndex> &indices,
-    MPI_Comm comm) const noexcept
+    AMPI_Comm acomm) const noexcept
 {
     // pre-allocate
     size_t serializedIndicesSize = 0;
@@ -922,7 +923,7 @@ std::vector<char> BP4Serializer::SerializeIndices(
     serializedIndices.reserve(serializedIndicesSize);
 
     int rank;
-    MPI_Comm_rank(comm, &rank);
+    acomm.Rank(&rank);
 
     for (const auto &indexPair : indices)
     {
@@ -948,7 +949,7 @@ std::vector<char> BP4Serializer::SerializeIndices(
 
 std::unordered_map<std::string, std::vector<BP4Base::SerialElementIndex>>
 BP4Serializer::DeserializeIndicesPerRankThreads(
-    const std::vector<char> &serialized, MPI_Comm comm,
+    const std::vector<char> &serialized, AMPI_Comm acomm,
     const bool isRankConstant) const noexcept
 {
     std::unordered_map<std::string, std::vector<SerialElementIndex>>
@@ -1045,7 +1046,7 @@ BP4Serializer::DeserializeIndicesPerRankThreads(
     // BODY OF FUNCTION starts here
     const size_t serializedSize = serialized.size();
     int rank;
-    MPI_Comm_rank(comm, &rank);
+    acomm.Rank(&rank);
 
     if (rank != 0 || serializedSize < 8)
     {
@@ -1131,7 +1132,7 @@ BP4Serializer::DeserializeIndicesPerRankThreads(
 void BP4Serializer::MergeSerializeIndicesPerStep(
     const std::unordered_map<std::string, std::vector<SerialElementIndex>>
         &nameRankIndices,
-    MPI_Comm comm, BufferSTL &bufferSTL)
+    AMPI_Comm acomm, BufferSTL &bufferSTL)
 {
     auto lf_GetCharacteristics = [&](const std::vector<char> &buffer,
                                      size_t &position, const uint8_t dataType,
@@ -1456,7 +1457,7 @@ void BP4Serializer::MergeSerializeIndicesPerStep(
 void BP4Serializer::MergeSerializeIndices(
     const std::unordered_map<std::string, std::vector<SerialElementIndex>>
         &nameRankIndices,
-    MPI_Comm comm, BufferSTL &bufferSTL)
+    AMPI_Comm acomm, BufferSTL &bufferSTL)
 {
     auto lf_GetCharacteristics = [&](const std::vector<char> &buffer,
                                      size_t &position, const uint8_t dataType,
@@ -1818,7 +1819,7 @@ BP4Serializer::SetCollectiveProfilingJSON(const std::string &rankLog) const
     // Gather sizes
     const size_t rankLogSize = rankLog.size();
     std::vector<size_t> rankLogsSizes =
-        helper::GatherValues(rankLogSize, m_MPIComm);
+        helper::GatherValues(rankLogSize, m_AMPIComm);
 
     // Gatherv JSON per rank
     std::vector<char> profilingJSON(3);
@@ -1839,7 +1840,7 @@ BP4Serializer::SetCollectiveProfilingJSON(const std::string &rankLog) const
 
     helper::GathervArrays(rankLog.c_str(), rankLog.size(), rankLogsSizes.data(),
                           rankLogsSizes.size(), &profilingJSON[position],
-                          m_MPIComm);
+                          m_AMPIComm);
 
     if (m_RankMPI == 0) // add footer to close JSON
     {

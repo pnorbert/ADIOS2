@@ -25,7 +25,7 @@ class FileStdio : public Transport
 {
 
 public:
-    FileStdio(MPI_Comm mpiComm, const bool debugMode);
+    FileStdio(AMPI_Comm acomm, const bool debugMode);
 
     ~FileStdio();
 

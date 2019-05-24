@@ -33,11 +33,11 @@ public:
      * Constructor for single HDF5 reader engine, reads from HDF5 format
      * @param name unique name given to the engine
      * @param accessMode
-     * @param mpiComm
+     * @param acomm
      * @param method
      */
     HDF5ReaderP(IO &adios, const std::string &name, const Mode openMode,
-                MPI_Comm mpiComm);
+                AMPI_Comm acomm);
 
     ~HDF5ReaderP();
 

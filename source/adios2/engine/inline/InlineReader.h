@@ -33,13 +33,13 @@ public:
      * heap capsule
      * @param name unique name given to the engine
      * @param accessMode
-     * @param mpiComm
+     * @param acomm
      * @param method
      * @param debugMode
      * @param hostLanguage
      */
     InlineReader(IO &adios, const std::string &name, const Mode mode,
-                 MPI_Comm mpiComm);
+                 AMPI_Comm acomm);
 
     ~InlineReader();
     StepStatus BeginStep(StepMode mode = StepMode::NextAvailable,

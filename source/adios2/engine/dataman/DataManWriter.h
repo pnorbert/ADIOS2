@@ -27,7 +27,7 @@ class DataManWriter : public DataManCommon
 
 public:
     DataManWriter(IO &io, const std::string &name, const Mode mode,
-                  MPI_Comm mpiComm);
+                  AMPI_Comm acomm);
     ~DataManWriter() = default;
 
     StepStatus BeginStep(StepMode mode,

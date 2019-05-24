@@ -56,6 +56,12 @@ add_library(adios2
   engine/null/NullEngine.cpp
 
 #toolkit
+  
+  toolkit/comm/AMPIComm.cpp
+  toolkit/comm/AMPIStatus.cpp
+  toolkit/comm/AMPIRequest.cpp
+  toolkit/comm/DummyMPI.cpp
+  
   toolkit/format/BufferSTL.cpp
 
   toolkit/format/bp3/BP3Base.cpp toolkit/format/bp3/BP3Base.tcc
@@ -90,6 +96,7 @@ add_library(adios2
 
   toolkit/aggregator/mpi/MPIAggregator.cpp
   toolkit/aggregator/mpi/MPIChain.cpp
+
 )
 target_include_directories(adios2
   PUBLIC
@@ -145,7 +152,7 @@ if(ADIOS2_HAVE_SSC)
     target_link_libraries(adios2 PRIVATE nlohmann_json)
 endif()
 
-
+if(ADIOS2_HAVE_MPI)
 if(ADIOS2_HAVE_SST)
   add_subdirectory(toolkit/sst)
   target_sources(adios2 PRIVATE
@@ -154,6 +161,7 @@ if(ADIOS2_HAVE_SST)
     engine/sst/SstParamParser.cpp
   )
   target_link_libraries(adios2 PRIVATE sst)
+endif()
 endif()
 
 
@@ -182,6 +190,7 @@ if(ADIOS2_HAVE_MPI)
     engine/insitumpi/InSituMPIWriter.cpp engine/insitumpi/InSituMPIWriter.tcc
     engine/insitumpi/InSituMPIReader.cpp engine/insitumpi/InSituMPIReader.tcc
     engine/insitumpi/InSituMPIFunctions.cpp engine/insitumpi/InSituMPISchedules.cpp
+    toolkit/comm/RealMPI.cpp
   )
   target_link_libraries(adios2 PUBLIC MPI::MPI_C)
 else()

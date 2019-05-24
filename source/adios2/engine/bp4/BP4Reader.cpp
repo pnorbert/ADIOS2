@@ -22,11 +22,11 @@ namespace engine
 {
 
 BP4Reader::BP4Reader(IO &io, const std::string &name, const Mode mode,
-                     MPI_Comm mpiComm)
-: Engine("BP4Reader", io, name, mode, mpiComm),
-  m_BP4Deserializer(mpiComm, m_DebugMode), m_FileManager(mpiComm, m_DebugMode),
-  m_SubFileManager(mpiComm, m_DebugMode),
-  m_FileMetadataIndexManager(mpiComm, m_DebugMode)
+                     AMPI_Comm acomm)
+: Engine("BP4Reader", io, name, mode, acomm),
+  m_BP4Deserializer(acomm, m_DebugMode), m_FileManager(acomm, m_DebugMode),
+  m_SubFileManager(acomm, m_DebugMode),
+  m_FileMetadataIndexManager(acomm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("BP4Reader::Open");
     Init();
@@ -211,11 +211,11 @@ void BP4Reader::InitBuffer()
             metadataIndexFileSize);
     }
     // broadcast buffer to all ranks from zero
-    helper::BroadcastVector(m_BP4Deserializer.m_Metadata.m_Buffer, m_MPIComm);
+    helper::BroadcastVector(m_BP4Deserializer.m_Metadata.m_Buffer, m_AMPIComm);
 
     // broadcast metadata index buffer to all ranks from zero
     helper::BroadcastVector(m_BP4Deserializer.m_MetadataIndex.m_Buffer,
-                            m_MPIComm);
+                            m_AMPIComm);
 
     /* Parse metadata index table */
     m_BP4Deserializer.ParseMetadataIndex(m_BP4Deserializer.m_MetadataIndex);

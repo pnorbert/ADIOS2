@@ -26,10 +26,10 @@ namespace engine
 {
 
 BP3Writer::BP3Writer(IO &io, const std::string &name, const Mode mode,
-                     MPI_Comm mpiComm)
-: Engine("BP3", io, name, mode, mpiComm), m_BP3Serializer(mpiComm, m_DebugMode),
-  m_FileDataManager(mpiComm, m_DebugMode),
-  m_FileMetadataManager(mpiComm, m_DebugMode)
+                     AMPI_Comm acomm)
+: Engine("BP3", io, name, mode, acomm), m_BP3Serializer(acomm, m_DebugMode),
+  m_FileDataManager(acomm, m_DebugMode),
+  m_FileMetadataManager(acomm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("BP3Writer::Open");
     m_IO.m_ReadStreaming = false;
@@ -273,7 +273,7 @@ void BP3Writer::WriteProfilingJSONFile()
 
     if (m_BP3Serializer.m_RankMPI == 0)
     {
-        transport::FileFStream profilingJSONStream(m_MPIComm, m_DebugMode);
+        transport::FileFStream profilingJSONStream(m_AMPIComm, m_DebugMode);
         auto bpBaseNames = m_BP3Serializer.GetBPBaseNames({m_Name});
         profilingJSONStream.Open(bpBaseNames[0] + "/profiling.json",
                                  Mode::Write);
@@ -286,7 +286,7 @@ void BP3Writer::WriteCollectiveMetadataFile(const bool isFinal)
 {
     TAU_SCOPED_TIMER("BP3Writer::WriteCollectiveMetadataFile");
     m_BP3Serializer.AggregateCollectiveMetadata(
-        m_MPIComm, m_BP3Serializer.m_Metadata, true);
+        m_AMPIComm, m_BP3Serializer.m_Metadata, true);
 
     if (m_BP3Serializer.m_RankMPI == 0)
     {
@@ -344,10 +344,10 @@ void BP3Writer::AggregateWriteData(const bool isFinal, const int transportIndex)
     // async?
     for (int r = 0; r < m_BP3Serializer.m_Aggregator.m_Size; ++r)
     {
-        std::vector<std::vector<MPI_Request>> dataRequests =
+        std::vector<std::vector<AMPI_Request>> dataRequests =
             m_BP3Serializer.m_Aggregator.IExchange(m_BP3Serializer.m_Data, r);
 
-        std::vector<std::vector<MPI_Request>> absolutePositionRequests =
+        std::vector<std::vector<AMPI_Request>> absolutePositionRequests =
             m_BP3Serializer.m_Aggregator.IExchangeAbsolutePosition(
                 m_BP3Serializer.m_Data, r);
 

@@ -16,7 +16,7 @@
 #include <vector>
 /// \endcond
 
-#include "adios2/ADIOSMPI.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -24,14 +24,14 @@ namespace helper
 {
 
 template <class T>
-T BroadcastValue(const T &input, MPI_Comm mpiComm, const int rankSource = 0);
+T BroadcastValue(const T &input, AMPI_Comm acomm, const int rankSource = 0);
 
 template <class T>
-void BroadcastVector(std::vector<T> &vector, MPI_Comm mpiComm,
+void BroadcastVector(std::vector<T> &vector, AMPI_Comm acomm,
                      const int rankSource = 0);
 
 template <class T>
-T ReduceValues(const T source, MPI_Comm mpiComm, MPI_Op operation = MPI_SUM,
+T ReduceValues(const T source, AMPI_Comm acomm, AMPI_Op operation = AMPI_SUM,
                const int rankDestination = 0);
 
 /**
@@ -44,7 +44,7 @@ T ReduceValues(const T source, MPI_Comm mpiComm, MPI_Op operation = MPI_SUM,
  * @return in rankDestination: aggregated vector<T>, others: empty
  */
 template <class T>
-std::vector<T> GatherValues(const T source, MPI_Comm mpiComm,
+std::vector<T> GatherValues(const T source, AMPI_Comm acomm,
                             const int rankDestination = 0);
 
 /**
@@ -54,7 +54,7 @@ std::vector<T> GatherValues(const T source, MPI_Comm mpiComm,
  * @return in all ranks: a vector with gathered source values ordered per rank
  */
 template <class T>
-std::vector<T> AllGatherValues(const T source, MPI_Comm mpiComm);
+std::vector<T> AllGatherValues(const T source, AMPI_Comm acomm);
 
 /**
  * Gather equal size arrays
@@ -66,7 +66,7 @@ std::vector<T> AllGatherValues(const T source, MPI_Comm mpiComm);
  */
 template <class T>
 void GatherArrays(const T *source, const size_t sourceCount, T *destination,
-                  MPI_Comm mpiComm, const int rankDestination = 0);
+                  AMPI_Comm acomm, const int rankDestination = 0);
 
 /**
  * Perform AllGather for equal size arrays
@@ -77,7 +77,7 @@ void GatherArrays(const T *source, const size_t sourceCount, T *destination,
  */
 template <class T>
 void AllGatherArrays(const T *source, const size_t sourceCount, T *destination,
-                     MPI_Comm mpiComm);
+                     AMPI_Comm acomm);
 
 /**
  * Gather arrays of the same type into a destination (must be pre-allocated)
@@ -94,12 +94,12 @@ void AllGatherArrays(const T *source, const size_t sourceCount, T *destination,
 template <class T>
 void GathervArrays(const T *source, const size_t sourceCount,
                    const size_t *counts, const size_t countsSize,
-                   T *destination, MPI_Comm mpiComm,
+                   T *destination, AMPI_Comm acomm,
                    const int rankDestination = 0);
 
 template <class T>
 void GathervVectors(const std::vector<T> &in, std::vector<T> &out,
-                    size_t &position, MPI_Comm mpiComm,
+                    size_t &position, AMPI_Comm acomm,
                     const int rankDestination = 0, const size_t extraSize = 0);
 
 /**
@@ -113,19 +113,19 @@ std::vector<int> GetGathervDisplacements(const size_t *counts,
 
 void CheckMPIReturn(const int value, const std::string hint);
 
-std::string BroadcastFile(const std::string &fileName, MPI_Comm mpiComm,
+std::string BroadcastFile(const std::string &fileName, AMPI_Comm acomm,
                           const std::string hint = "",
                           const int rankSource = 0);
 
 template <class T>
-std::vector<MPI_Request> Isend64(const T *buffer, const size_t count,
-                                 int destination, int tag, MPI_Comm mpiComm,
-                                 const std::string &hint);
+std::vector<AMPI_Request> Isend64(const T *buffer, const size_t count,
+                                  int destination, int tag, AMPI_Comm acomm,
+                                  const std::string &hint);
 
 template <class T>
-std::vector<MPI_Request> Irecv64(T *buffer, const size_t count, int source,
-                                 int tag, MPI_Comm mpiComm,
-                                 const std::string &hint);
+std::vector<AMPI_Request> Irecv64(T *buffer, const size_t count, int source,
+                                  int tag, AMPI_Comm acomm,
+                                  const std::string &hint);
 
 } // end namespace helper
 } // end namespace adios2

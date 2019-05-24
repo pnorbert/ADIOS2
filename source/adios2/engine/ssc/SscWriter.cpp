@@ -26,10 +26,10 @@ namespace engine
 {
 
 SscWriter::SscWriter(IO &io, const std::string &name, const Mode mode,
-                     MPI_Comm mpiComm)
-: Engine("SscWriter", io, name, mode, mpiComm),
+                     AMPI_Comm acomm)
+: Engine("SscWriter", io, name, mode, acomm),
   m_DataManSerializer(helper::IsRowMajor(io.m_HostLanguage), true,
-                      helper::IsLittleEndian(), mpiComm)
+                      helper::IsLittleEndian(), acomm)
 {
     TAU_SCOPED_TIMER_FUNC();
     Init();
@@ -110,11 +110,11 @@ ADIOS2_FOREACH_STDTYPE_1ARG(declare_type)
 void SscWriter::Init()
 {
     TAU_SCOPED_TIMER_FUNC();
-    MPI_Comm_rank(m_MPIComm, &m_MpiRank);
-    MPI_Comm_size(m_MPIComm, &m_MpiSize);
+    m_AMPIComm.Rank(&m_MpiRank);
+    m_AMPIComm.Size(&m_MpiSize);
     srand(time(NULL));
     InitParameters();
-    helper::HandshakeWriter(m_MPIComm, m_AppID, m_FullAddresses, m_Name, "ssc",
+    helper::HandshakeWriter(m_AMPIComm, m_AppID, m_FullAddresses, m_Name, "ssc",
                             m_Port, m_Channels, m_MaxRanksPerNode,
                             m_MaxAppsPerNode);
     InitTransports();
@@ -157,7 +157,7 @@ void SscWriter::InitTransports()
 
 void SscWriter::ReplyThread(const std::string &address)
 {
-    transportman::StagingMan tpm(m_MPIComm, Mode::Write, m_Timeout, 1e9);
+    transportman::StagingMan tpm(m_AMPIComm, Mode::Write, m_Timeout, 1e9);
     tpm.OpenTransport(address);
     while (m_Listening)
     {
@@ -232,7 +232,7 @@ void SscWriter::ReplyThread(const std::string &address)
 
 void SscWriter::DoClose(const int transportIndex)
 {
-    MPI_Barrier(m_MPIComm);
+    m_AMPIComm.Driver().Barrier(m_AMPIComm);
     m_Listening = false;
     for (auto &i : m_ReplyThreads)
     {

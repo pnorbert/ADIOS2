@@ -31,10 +31,10 @@ public:
      * Constructor for file Writer in BP4 format
      * @param name unique name given to the engine
      * @param openMode w (supported), r, a from OpenMode in ADIOSTypes.h
-     * @param mpiComm MPI communicator
+     * @param acomm MPI communicator
      */
     BP4Writer(IO &io, const std::string &name, const Mode mode,
-              MPI_Comm mpiComm);
+              AMPI_Comm acomm);
 
     ~BP4Writer();
 

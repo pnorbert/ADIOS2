@@ -29,8 +29,8 @@ namespace adios2
 namespace transportman
 {
 
-TransportMan::TransportMan(MPI_Comm mpiComm, const bool debugMode)
-: m_MPIComm(mpiComm), m_DebugMode(debugMode)
+TransportMan::TransportMan(AMPI_Comm acomm, const bool debugMode)
+: m_AMPIComm(acomm), m_DebugMode(debugMode)
 {
 }
 
@@ -58,13 +58,13 @@ void TransportMan::MkDirsBarrier(const std::vector<std::string> &fileNames,
     else
     {
         int rank;
-        MPI_Comm_rank(m_MPIComm, &rank);
+        m_AMPIComm.Rank(&rank);
         if (rank == 0)
         {
             lf_CreateDirectories(fileNames);
         }
 
-        helper::CheckMPIReturn(MPI_Barrier(m_MPIComm),
+        helper::CheckMPIReturn(m_AMPIComm.Driver().Barrier(m_AMPIComm),
                                "Barrier in TransportMan.MkDirsBarrier");
     }
 }
@@ -283,18 +283,18 @@ TransportMan::OpenFileTransport(const std::string &fileName,
         if (library == "stdio")
         {
             transport =
-                std::make_shared<transport::FileStdio>(m_MPIComm, m_DebugMode);
+                std::make_shared<transport::FileStdio>(m_AMPIComm, m_DebugMode);
         }
         else if (library == "fstream")
         {
-            transport = std::make_shared<transport::FileFStream>(m_MPIComm,
+            transport = std::make_shared<transport::FileFStream>(m_AMPIComm,
                                                                  m_DebugMode);
         }
 #ifndef _WIN32
         else if (library == "POSIX" || library == "posix")
         {
             transport =
-                std::make_shared<transport::FilePOSIX>(m_MPIComm, m_DebugMode);
+                std::make_shared<transport::FilePOSIX>(m_AMPIComm, m_DebugMode);
         }
 #endif
         else

@@ -33,7 +33,7 @@ class SscReader : public Engine
 {
 public:
     SscReader(IO &adios, const std::string &name, const Mode mode,
-              MPI_Comm mpiComm);
+              AMPI_Comm acomm);
 
     ~SscReader();
     StepStatus BeginStep(
@@ -51,7 +51,7 @@ private:
     std::shared_ptr<transportman::StagingMan> m_MetadataTransport;
     format::DmvVecPtrMap m_MetaDataMap;
     int64_t m_CurrentStep = -1;
-    int m_MpiRank;
+    int m_AMpiRank;
     std::vector<std::string> m_FullAddresses;
     int m_Timeout = 3;
     int m_RetryMax = 128;

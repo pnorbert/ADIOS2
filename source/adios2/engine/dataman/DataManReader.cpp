@@ -23,10 +23,9 @@ namespace engine
 {
 
 DataManReader::DataManReader(IO &io, const std::string &name, const Mode mode,
-                             MPI_Comm mpiComm)
-: DataManCommon("DataManReader", io, name, mode, mpiComm),
-  m_DataManSerializer(m_IsRowMajor, m_ContiguousMajor, m_IsLittleEndian,
-                      mpiComm)
+                             AMPI_Comm acomm)
+: DataManCommon("DataManReader", io, name, mode, acomm),
+  m_DataManSerializer(m_IsRowMajor, m_ContiguousMajor, m_IsLittleEndian, acomm)
 {
     m_EndMessage = " in call to IO Open DataManReader " + m_Name + "\n";
     Init();
@@ -180,7 +179,7 @@ void DataManReader::Init()
     }
 
     // initialize transports
-    m_WANMan = std::make_shared<transportman::WANMan>(m_MPIComm, m_DebugMode);
+    m_WANMan = std::make_shared<transportman::WANMan>(m_AMPIComm, m_DebugMode);
     m_WANMan->OpenTransports(m_IO.m_TransportsParameters, Mode::Read,
                              m_WorkflowMode, true);
 

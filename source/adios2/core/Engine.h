@@ -24,12 +24,12 @@
 /// \endcond
 
 #include "adios2/ADIOSConfig.h"
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
 #include "adios2/core/IO.h"
 #include "adios2/core/Variable.h"
 #include "adios2/core/VariableCompound.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -63,10 +63,10 @@ public:
      * @param io object that generates this Engine
      * @param name unique engine name within IO class object
      * @param mode  open mode from ADIOSTypes.h Mode
-     * @param mpiComm new communicator passed at Open or from ADIOS class
+     * @param comm  new communicator passed at Open or from ADIOS class
      */
     Engine(const std::string engineType, IO &io, const std::string &name,
-           const Mode mode, MPI_Comm mpiComm);
+           const Mode mode, AMPI_Comm comm);
 
     virtual ~Engine();
 
@@ -429,7 +429,7 @@ public:
 protected:
     /** from ADIOS class passed to Engine created with Open
      *  if no new communicator is passed */
-    MPI_Comm m_MPIComm;
+    AMPI_Comm m_AMPIComm;
 
     /** true: additional exceptions */
     const bool m_DebugMode = false;

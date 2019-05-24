@@ -29,14 +29,15 @@ namespace engine
 {
 
 InSituMPIReader::InSituMPIReader(IO &io, const std::string &name,
-                                 const Mode mode, MPI_Comm mpiComm)
-: Engine("InSituMPIReader", io, name, mode, mpiComm),
-  m_BP3Deserializer(mpiComm, m_DebugMode)
+                                 const Mode mode, AMPI_Comm acomm)
+: Engine("InSituMPIReader", io, name, mode, acomm),
+  m_BP3Deserializer(acomm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("InSituMPIReader::Open");
     m_EndMessage = " in call to IO Open InSituMPIReader " + m_Name + "\n";
     Init();
 
+    MPI_Comm mpiComm = acomm.comm; // Must be real MPI communicator
     m_RankAllPeers = insitumpi::FindPeers(mpiComm, m_Name, false, m_CommWorld);
     MPI_Comm_rank(m_CommWorld, &m_GlobalRank);
     MPI_Comm_size(m_CommWorld, &m_GlobalNproc);
@@ -77,7 +78,7 @@ InSituMPIReader::InSituMPIReader(IO &io, const std::string &name,
     // figure out who is the Reader Root
     std::vector<int> v(m_ReaderNproc);
     MPI_Allgather(&m_ReaderRootRank, 1, MPI_INT, v.data(), 1, MPI_INT,
-                  m_MPIComm);
+                  m_AMPIComm.comm);
     for (int i = 0; i < m_ReaderNproc; i++)
     {
         if (v[i] != -1)
@@ -191,7 +192,7 @@ StepStatus InSituMPIReader::BeginStep(const StepMode mode,
         }
         /* Exchange steps */
         int maxstep;
-        MPI_Allreduce(&step, &maxstep, 1, MPI_INT, MPI_MAX, m_MPIComm);
+        MPI_Allreduce(&step, &maxstep, 1, MPI_INT, MPI_MAX, m_AMPIComm.comm);
 
         if (m_Verbosity == 5 && !m_ReaderRank)
         {
@@ -246,10 +247,11 @@ StepStatus InSituMPIReader::BeginStep(const StepMode mode,
         }
 
         // broadcast metadata to every reader
-        MPI_Bcast(&mdLen, 1, MPI_UNSIGNED_LONG, m_ReaderRootRank, m_MPIComm);
+        MPI_Bcast(&mdLen, 1, MPI_UNSIGNED_LONG, m_ReaderRootRank,
+                  m_AMPIComm.comm);
         m_BP3Deserializer.m_Metadata.m_Buffer.resize(mdLen);
         MPI_Bcast(m_BP3Deserializer.m_Metadata.m_Buffer.data(), mdLen, MPI_CHAR,
-                  m_ReaderRootRank, m_MPIComm);
+                  m_ReaderRootRank, m_AMPIComm.comm);
 
         // Parse metadata into Variables and Attributes maps
         m_IO.RemoveAllVariables();
@@ -278,7 +280,7 @@ StepStatus InSituMPIReader::BeginStep(const StepMode mode,
         }
 
         // broadcast fixed schedule flag to every reader
-        MPI_Bcast(&fixed, 1, MPI_INT, m_ReaderRootRank, m_MPIComm);
+        MPI_Bcast(&fixed, 1, MPI_INT, m_ReaderRootRank, m_AMPIComm.comm);
         m_RemoteDefinitionsLocked = (fixed ? true : false);
         if (m_ReaderRootRank == m_ReaderRank)
         {
@@ -425,7 +427,7 @@ void InSituMPIReader::SendReadSchedule(
         sendBuf = MPI_IN_PLACE;
     }
     MPI_Reduce(sendBuf, nReaderPerWriter.data(), nReaderPerWriter.size(),
-               MPI_INT, MPI_SUM, m_ReaderRootRank, m_MPIComm);
+               MPI_INT, MPI_SUM, m_ReaderRootRank, m_AMPIComm.comm);
 
     // Reader root sends nReaderPerWriter to writer root
     if (m_ReaderRootRank == m_ReaderRank)
@@ -511,7 +513,7 @@ void InSituMPIReader::ProcessReceives()
 
     // Send final acknowledgment to the Writer
     int dummy = 1;
-    MPI_Bcast(&dummy, 1, MPI_INT, m_ReaderRootRank, m_MPIComm);
+    MPI_Bcast(&dummy, 1, MPI_INT, m_ReaderRootRank, m_AMPIComm.comm);
     if (m_ReaderRootRank == m_ReaderRank)
     {
         MPI_Send(&dummy, 1, MPI_INT, m_WriteRootGlobalRank,
@@ -590,9 +592,9 @@ void InSituMPIReader::DoClose(const int transportIndex)
     {
         uint64_t inPlaceBytes, inTempBytes;
         MPI_Reduce(&m_BytesReceivedInPlace, &inPlaceBytes, 1, MPI_LONG_LONG_INT,
-                   MPI_SUM, 0, m_MPIComm);
+                   MPI_SUM, 0, m_AMPIComm.comm);
         MPI_Reduce(&m_BytesReceivedInTemporary, &inTempBytes, 1,
-                   MPI_LONG_LONG_INT, MPI_SUM, 0, m_MPIComm);
+                   MPI_LONG_LONG_INT, MPI_SUM, 0, m_AMPIComm.comm);
         if (m_ReaderRank == 0)
         {
             std::cout << "ADIOS InSituMPI Reader for " << m_Name << " received "

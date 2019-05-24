@@ -18,7 +18,7 @@
 #include <vector>
 /// \endcond
 
-#include "adios2/ADIOSMPICommOnly.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 #include "adios2/toolkit/transport/Transport.h"
 
 namespace adios2
@@ -41,10 +41,10 @@ public:
 
     /**
      * Unique base constructor
-     * @param mpiComm
+     * @param acomm
      * @param debugMode
      */
-    TransportMan(MPI_Comm mpiComm, const bool debugMode);
+    TransportMan(AMPI_Comm acomm, const bool debugMode);
 
     virtual ~TransportMan() = default;
 
@@ -147,7 +147,7 @@ public:
     bool AllTransportsClosed() const noexcept;
 
 protected:
-    MPI_Comm m_MPIComm;
+    AMPI_Comm m_AMPIComm;
     const bool m_DebugMode = false;
 
     std::shared_ptr<Transport> OpenFileTransport(const std::string &fileName,

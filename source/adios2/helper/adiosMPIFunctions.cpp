@@ -10,8 +10,8 @@
 #include "adiosMPIFunctions.h"
 #include "adiosMPIFunctions.tcc"
 
-#include "adios2/ADIOSMPI.h"
 #include "adios2/ADIOSTypes.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 #include "adios2/helper/adiosString.h"
 
@@ -57,11 +57,11 @@ void CheckMPIReturn(const int value, const std::string hint)
     throw std::runtime_error("ERROR: ADIOS2 detected " + error + ", " + hint);
 }
 
-std::string BroadcastFile(const std::string &fileName, MPI_Comm mpiComm,
+std::string BroadcastFile(const std::string &fileName, AMPI_Comm acomm,
                           const std::string hint, const int rankSource)
 {
     int rank;
-    MPI_Comm_rank(mpiComm, &rank);
+    acomm.Rank(&rank);
     std::string fileContents;
 
     // Read the file on rank 0 and broadcast it to everybody else
@@ -70,7 +70,7 @@ std::string BroadcastFile(const std::string &fileName, MPI_Comm mpiComm,
         // load file contents
         fileContents = FileToString(fileName, hint);
     }
-    fileContents = BroadcastValue(fileContents, mpiComm, rankSource);
+    fileContents = BroadcastValue(fileContents, acomm, rankSource);
 
     return fileContents;
 }

@@ -22,10 +22,9 @@ namespace engine
 {
 
 BP3Reader::BP3Reader(IO &io, const std::string &name, const Mode mode,
-                     MPI_Comm mpiComm)
-: Engine("BP3", io, name, mode, mpiComm),
-  m_BP3Deserializer(mpiComm, m_DebugMode), m_FileManager(mpiComm, m_DebugMode),
-  m_SubFileManager(mpiComm, m_DebugMode)
+                     AMPI_Comm acomm)
+: Engine("BP3", io, name, mode, acomm), m_BP3Deserializer(acomm, m_DebugMode),
+  m_FileManager(acomm, m_DebugMode), m_SubFileManager(acomm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("BP3Reader::Open");
     Init();
@@ -193,7 +192,7 @@ void BP3Reader::InitBuffer()
     }
 
     // broadcast metadata buffer to all ranks from zero
-    helper::BroadcastVector(m_BP3Deserializer.m_Metadata.m_Buffer, m_MPIComm);
+    helper::BroadcastVector(m_BP3Deserializer.m_Metadata.m_Buffer, m_AMPIComm);
 
     // fills IO with available Variables and Attributes
     m_BP3Deserializer.ParseMetadata(m_BP3Deserializer.m_Metadata, *this);

@@ -26,7 +26,7 @@ class FileFStream : public Transport
 {
 
 public:
-    FileFStream(MPI_Comm mpiComm, const bool debugMode);
+    FileFStream(AMPI_Comm acomm, const bool debugMode);
 
     ~FileFStream() = default;
 

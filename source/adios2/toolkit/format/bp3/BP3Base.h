@@ -23,12 +23,12 @@
 /// \endcond
 
 #include "adios2/ADIOSConfig.h"
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
 #include "adios2/core/Engine.h"
 #include "adios2/core/VariableBase.h"
 #include "adios2/toolkit/aggregator/mpi/MPIChain.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 #include "adios2/toolkit/format/BufferSTL.h"
 #include "adios2/toolkit/format/bp3/operation/BP3Operation.h"
 #include "adios2/toolkit/profiling/iochrono/IOChrono.h"
@@ -126,10 +126,10 @@ public:
         bool HasSubFiles = false;
     };
 
-    MPI_Comm m_MPIComm;  ///< MPI communicator from Engine
-    int m_RankMPI = 0;   ///< current MPI rank process
-    int m_SizeMPI = 1;   ///< current MPI processes size
-    int m_Processes = 1; ///< number of aggregated MPI processes
+    AMPI_Comm m_AMPIComm; ///< MPI communicator from Engine
+    int m_RankMPI = 0;    ///< current MPI rank process
+    int m_SizeMPI = 1;    ///< current MPI processes size
+    int m_Processes = 1;  ///< number of aggregated MPI processes
 
     /** statistics verbosity, only 0 is supported */
     unsigned int m_StatsLevel = 0;
@@ -196,10 +196,10 @@ public:
 
     /**
      * Unique constructor
-     * @param mpiComm for m_BP1Aggregator
+     * @param acomm for m_BP1Aggregator
      * @param debugMode true: exceptions checks
      */
-    BP3Base(MPI_Comm mpiComm, const bool debugMode);
+    BP3Base(AMPI_Comm acomm, const bool debugMode);
 
     virtual ~BP3Base();
 

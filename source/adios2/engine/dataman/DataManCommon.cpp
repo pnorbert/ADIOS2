@@ -19,14 +19,14 @@ namespace engine
 
 DataManCommon::DataManCommon(const std::string engineType, IO &io,
                              const std::string &name, const Mode mode,
-                             MPI_Comm mpiComm)
-: Engine(engineType, io, name, mode, mpiComm),
-  m_FileTransport(mpiComm, m_DebugMode)
+                             AMPI_Comm acomm)
+: Engine(engineType, io, name, mode, acomm),
+  m_FileTransport(acomm, m_DebugMode)
 {
 
     // initialize parameters
-    MPI_Comm_rank(mpiComm, &m_MpiRank);
-    MPI_Comm_size(mpiComm, &m_MpiSize);
+    acomm.Rank(&m_MpiRank);
+    acomm.Size(&m_MpiSize);
     m_IsLittleEndian = helper::IsLittleEndian();
     m_IsRowMajor = helper::IsRowMajor(io.m_HostLanguage);
     GetStringParameter(m_IO.m_Parameters, "WorkflowMode", m_WorkflowMode);

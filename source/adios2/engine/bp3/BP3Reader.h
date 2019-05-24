@@ -32,10 +32,10 @@ public:
      * @param io
      * @param name
      * @param openMode only read
-     * @param mpiComm
+     * @param acomm
      */
     BP3Reader(IO &io, const std::string &name, const Mode mode,
-              MPI_Comm mpiComm);
+              AMPI_Comm acomm);
 
     ~BP3Reader() = default;
 

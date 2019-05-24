@@ -23,12 +23,12 @@ namespace helper
 {
 
 template <class T>
-std::vector<T> GatherValues(const T source, MPI_Comm mpiComm,
+std::vector<T> GatherValues(const T source, AMPI_Comm acomm,
                             const int rankDestination)
 {
     int rank, size;
-    MPI_Comm_rank(mpiComm, &rank);
-    MPI_Comm_size(mpiComm, &size);
+    acomm.Rank(&rank);
+    acomm.Size(&size);
 
     std::vector<T> output;
 
@@ -38,36 +38,36 @@ std::vector<T> GatherValues(const T source, MPI_Comm mpiComm,
     }
 
     T sourceCopy = source; // so we can have an address for rvalues
-    GatherArrays(&sourceCopy, 1, output.data(), mpiComm, rankDestination);
+    GatherArrays(&sourceCopy, 1, output.data(), acomm, rankDestination);
 
     return output;
 }
 
 template <class T>
-std::vector<T> AllGatherValues(const T source, MPI_Comm mpiComm)
+std::vector<T> AllGatherValues(const T source, AMPI_Comm acomm)
 {
     int size;
-    MPI_Comm_size(mpiComm, &size);
+    acomm.Size(&size);
     std::vector<T> output(size);
 
     T sourceCopy = source; // so we can have an address for rvalues
-    AllGatherArrays(&sourceCopy, 1, output.data(), mpiComm);
+    AllGatherArrays(&sourceCopy, 1, output.data(), acomm);
     return output;
 }
 
 template <class T>
 void GathervVectors(const std::vector<T> &in, std::vector<T> &out,
-                    size_t &position, MPI_Comm mpiComm,
+                    size_t &position, AMPI_Comm acomm,
                     const int rankDestination, const size_t extraSize)
 {
     const size_t inSize = in.size();
     const std::vector<size_t> counts =
-        GatherValues(inSize, mpiComm, rankDestination);
+        GatherValues(inSize, acomm, rankDestination);
 
     size_t gatheredSize = 0;
 
     int rank;
-    MPI_Comm_rank(mpiComm, &rank);
+    acomm.Rank(&rank);
 
     if (rank == rankDestination) // pre-allocate vector
     {
@@ -89,7 +89,7 @@ void GathervVectors(const std::vector<T> &in, std::vector<T> &out,
     }
 
     GathervArrays(in.data(), in.size(), counts.data(), counts.size(),
-                  out.data() + position, mpiComm);
+                  out.data() + position, acomm);
     position += gatheredSize;
 }
 

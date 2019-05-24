@@ -31,7 +31,7 @@ class SscWriter : public Engine
 
 public:
     SscWriter(IO &adios, const std::string &name, const Mode mode,
-              MPI_Comm mpiComm);
+              AMPI_Comm acomm);
 
     ~SscWriter() = default;
 

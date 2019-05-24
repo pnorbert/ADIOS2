@@ -34,10 +34,10 @@ public:
 
     /**
      * Unique constructor
-     * @param mpiComm
+     * @param acomm
      * @param debug true: extra checks
      */
-    BP3Deserializer(MPI_Comm mpiComm, const bool debugMode);
+    BP3Deserializer(AMPI_Comm acomm, const bool debugMode);
 
     ~BP3Deserializer() = default;
 

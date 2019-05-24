@@ -30,12 +30,12 @@ public:
      * Constructor for Writer
      * @param name unique name given to the engine
      * @param accessMode
-     * @param mpiComm
+     * @param acomm
      * @param method
      * @param debugMode
      */
     InlineWriter(IO &adios, const std::string &name, const Mode mode,
-                 MPI_Comm mpiComm);
+                 AMPI_Comm acomm);
 
     ~InlineWriter() = default;
 

@@ -19,9 +19,9 @@
 /// \endcond
 
 #include "adios2/ADIOSConfig.h"
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSTypes.h"
 #include "adios2/core/Operator.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -39,7 +39,7 @@ public:
     const bool m_DebugMode = true;
 
     /** Passed from parallel constructor, MPI_Comm is a pointer itself. */
-    MPI_Comm m_MPIComm;
+    AMPI_Comm m_AMPIComm;
 
     /** Changed by language bindings in constructor */
     const std::string m_HostLanguage = "C++";
@@ -54,38 +54,8 @@ public:
      * false: optional feature to turn off checks on user input data,
      * recommended in stable flows
      */
-    ADIOS(const std::string configFile, MPI_Comm mpiComm, const bool debugMode,
+    ADIOS(const std::string configFile, AMPI_Comm comm, const bool debugMode,
           const std::string hostLanguage);
-
-    /**
-     * @brief Constructor for non-MPI applications WITH a XML config file (it
-     * must end with extension .xml)
-     * @param configFile XML format (maybe support different formats in the
-     * future (json)?)
-     * @param debugMode true (default): extra exception checks (recommended),
-     * false: optional feature to turn off checks on user input data,
-     * recommended in stable flows
-     */
-    ADIOS(const std::string configFile, const bool debugMode,
-          const std::string hostLanguage);
-
-    /**
-     * @brief Constructor for MPI apps WITHOUT a XML config file
-     * @param mpiComm MPI communicator from application
-     * @param debugMode true (default): extra exception checks (recommended),
-     * false: optional feature to turn off checks on user input data,
-     * recommended in stable flows
-     */
-    ADIOS(MPI_Comm mpiComm, const bool debugMode,
-          const std::string hostLanguage);
-
-    /**
-     *  @brief ADIOS no-MPI default empty constructor
-     * @param debugMode true (default): extra exception checks (recommended),
-     * false: optional feature to turn off checks on user input data,
-     * recommended in stable flows
-     */
-    ADIOS(const bool debugMode, const std::string hostLanguage);
 
     /**
      * Delete copy constructor explicitly. Objects shouldn't be allowed to be

@@ -24,8 +24,8 @@ namespace engine
 {
 
 DataManWriter::DataManWriter(IO &io, const std::string &name, const Mode mode,
-                             MPI_Comm mpiComm)
-: DataManCommon("DataManWriter", io, name, mode, mpiComm)
+                             AMPI_Comm acomm)
+: DataManCommon("DataManWriter", io, name, mode, acomm)
 {
     m_EndMessage = ", in call to Open DataManWriter\n";
     Init();
@@ -107,7 +107,7 @@ void DataManWriter::Init()
     }
 
     // initialize transports
-    m_WANMan = std::make_shared<transportman::WANMan>(m_MPIComm, m_DebugMode);
+    m_WANMan = std::make_shared<transportman::WANMan>(m_AMPIComm, m_DebugMode);
     m_WANMan->OpenTransports(m_IO.m_TransportsParameters, Mode::Write,
                              m_WorkflowMode, true);
 
@@ -116,7 +116,7 @@ void DataManWriter::Init()
     {
         m_DataManSerializer.push_back(
             std::make_shared<format::DataManSerializer>(
-                m_IsRowMajor, m_ContiguousMajor, m_IsLittleEndian, m_MPIComm));
+                m_IsRowMajor, m_ContiguousMajor, m_IsLittleEndian, m_AMPIComm));
     }
 }
 
@@ -145,7 +145,7 @@ void DataManWriter::DoClose(const int transportIndex)
 
 void DataManWriter::MetadataThread(const std::string &address)
 {
-    transportman::StagingMan tpm(m_MPIComm, Mode::Write, 0, 1e7);
+    transportman::StagingMan tpm(m_AMPIComm, Mode::Write, 0, 1e7);
     tpm.OpenTransport(address);
     while (m_Listening)
     {
