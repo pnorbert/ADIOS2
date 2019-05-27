@@ -91,8 +91,9 @@ Engine IO::Open(const std::string &name, const Mode mode, MPI_Comm comm)
 {
     helper::CheckForNullptr(m_IO,
                             "for engine " + name + ", in call to IO::Open");
-    AMPI_Comm acomm(comm);
-    return Engine(&m_IO->Open(name, mode, acomm), std::move(acomm));
+    Engine engine(comm);
+    engine.m_Engine = &m_IO->Open(name, mode, *engine.m_AMPIComm);
+    return engine;
 }
 #endif
 
@@ -100,7 +101,9 @@ Engine IO::Open(const std::string &name, const Mode mode)
 {
     helper::CheckForNullptr(m_IO,
                             "for engine " + name + ", in call to IO::Open");
-    return Engine(&m_IO->Open(name, mode), std::move(AMPI_Comm()));
+    Engine engine;
+    engine.m_Engine = &m_IO->Open(name, mode, *engine.m_AMPIComm);
+    return engine;
 }
 
 void IO::FlushAll()

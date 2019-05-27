@@ -44,7 +44,7 @@ public:
     Engine() = default;
 
     /** Using RAII STL containers only */
-    ~Engine() = default;
+    ~Engine();
 
     /** true: valid engine, false: invalid, not created with IO::Open or post
      * IO::Close*/
@@ -396,9 +396,11 @@ public:
     BlocksInfo(const Variable<T> variable, const size_t step) const;
 
 private:
-    Engine(core::Engine *engine, AMPI_Comm comm);
+    AMPI_Comm *m_AMPIComm = nullptr; // owns this object
+#ifdef ADIOS2_HAVE_MPI
+    Engine(MPI_Comm comm);
+#endif
     core::Engine *m_Engine = nullptr;
-    AMPI_Comm m_AMPIComm; // owns this object
 };
 
 #define declare_template_instantiation(T)                                      \
