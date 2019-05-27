@@ -23,7 +23,7 @@ namespace helper
 {
 
 template <class T>
-std::vector<T> GatherValues(const T source, AMPI_Comm acomm,
+std::vector<T> GatherValues(const T source, const AMPI_Comm &acomm,
                             const int rankDestination)
 {
     int rank, size;
@@ -44,7 +44,7 @@ std::vector<T> GatherValues(const T source, AMPI_Comm acomm,
 }
 
 template <class T>
-std::vector<T> AllGatherValues(const T source, AMPI_Comm acomm)
+std::vector<T> AllGatherValues(const T source, const AMPI_Comm &acomm)
 {
     int size;
     acomm.Size(&size);
@@ -57,7 +57,7 @@ std::vector<T> AllGatherValues(const T source, AMPI_Comm acomm)
 
 template <class T>
 void GathervVectors(const std::vector<T> &in, std::vector<T> &out,
-                    size_t &position, AMPI_Comm acomm,
+                    size_t &position, const AMPI_Comm &acomm,
                     const int rankDestination, const size_t extraSize)
 {
     const size_t inSize = in.size();

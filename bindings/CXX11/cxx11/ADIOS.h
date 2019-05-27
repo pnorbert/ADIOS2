@@ -24,6 +24,7 @@
 
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -198,6 +199,7 @@ public:
 
 private:
     std::shared_ptr<core::ADIOS> m_ADIOS;
+    AMPI_Comm m_AMPIComm; // owns this object
 
     void CheckPointer(const std::string hint);
 

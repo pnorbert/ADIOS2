@@ -54,10 +54,6 @@ public:
     /** unique identifier */
     const std::string m_Name;
 
-    /** from ADIOS class passed to Engine created with Open
-     *  if no new communicator is passed */
-    AMPI_Comm m_AMPIComm;
-
     /** true: extra exceptions checks */
     const bool m_DebugMode = false;
 
@@ -104,14 +100,12 @@ public:
      * Not to be used direclty in applications.
      * @param adios reference to ADIOS object that owns current IO
      * @param name unique identifier for this IO object
-     * @param mpiComm MPI communicator from ADIOS factory class
      * @param inConfigFile IO defined in config file (XML)
      * @param hostLanguage current language using the adios2 library
      * @param debugMode true: extra exception checks (recommended)
      */
-    IO(ADIOS &adios, const std::string name, AMPI_Comm acomm,
-       const bool inConfigFile, const std::string hostLanguage,
-       const bool debugMode);
+    IO(ADIOS &adios, const std::string name, const bool inConfigFile,
+       const std::string hostLanguage, const bool debugMode);
 
     ~IO() = default;
 
@@ -360,7 +354,8 @@ public:
      * @exception std::invalid_argument if Engine with unique name is already
      * created with another Open, in debug mode only
      */
-    Engine &Open(const std::string &name, const Mode mode, AMPI_Comm ampiComm);
+    Engine &Open(const std::string &name, const Mode mode,
+                 const AMPI_Comm &acomm);
 
     /**
      * Overloaded version that reuses the MPI_Comm object passed

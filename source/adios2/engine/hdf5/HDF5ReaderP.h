@@ -37,7 +37,7 @@ public:
      * @param method
      */
     HDF5ReaderP(IO &adios, const std::string &name, const Mode openMode,
-                AMPI_Comm acomm);
+                const AMPI_Comm &acomm);
 
     ~HDF5ReaderP();
 

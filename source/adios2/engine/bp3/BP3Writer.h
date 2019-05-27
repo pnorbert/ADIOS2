@@ -34,7 +34,7 @@ public:
      * @param acomm MPI communicator
      */
     BP3Writer(IO &io, const std::string &name, const Mode mode,
-              AMPI_Comm acomm);
+              const AMPI_Comm &acomm);
 
     ~BP3Writer() = default;
 

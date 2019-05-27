@@ -24,13 +24,13 @@
 #include <iostream>
 #include <string>
 
-#include "adios2/toolkit/comm/AMPIComm.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/core/ADIOS.h"
 #include "adios2/core/Engine.h"
 #include "adios2/core/IO.h"
 #include "adios2/helper/adiosFunctions.h"
 #include "adios2/helper/adiosString.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 // C headers
 #include <cerrno>
@@ -44,9 +44,11 @@ namespace utils
 Reorganize::Reorganize(int argc, char *argv[])
 : Utils("adios_reorganize", argc, argv)
 {
+#ifdef ADIOS2_HAVE_MPI
     MPI_Comm_split(MPI_COMM_WORLD, m_MPISplitColor, rank, &comm);
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &numproc);
+#endif
 
     if (argc < 5)
     {

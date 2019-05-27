@@ -30,7 +30,7 @@ namespace format
 
 std::mutex BP4Serializer::m_Mutex;
 
-BP4Serializer::BP4Serializer(AMPI_Comm acomm, const bool debugMode)
+BP4Serializer::BP4Serializer(const AMPI_Comm &acomm, const bool debugMode)
 : BP4Base(acomm, debugMode)
 {
 }
@@ -303,7 +303,7 @@ BP4Serializer::AggregateProfilingJSON(const std::string &rankProfilingLog)
     return SetCollectiveProfilingJSON(rankProfilingLog);
 }
 
-void BP4Serializer::AggregateCollectiveMetadata(AMPI_Comm acomm,
+void BP4Serializer::AggregateCollectiveMetadata(const AMPI_Comm &acomm,
                                                 BufferSTL &bufferSTL,
                                                 const bool inMetadataBuffer)
 {
@@ -816,7 +816,7 @@ void BP4Serializer::PutMinifooter(const uint64_t pgIndexStart,
 }
 
 void BP4Serializer::AggregateIndex(const SerialElementIndex &index,
-                                   const size_t count, AMPI_Comm acomm,
+                                   const size_t count, const AMPI_Comm &acomm,
                                    BufferSTL &bufferSTL)
 {
     auto &buffer = bufferSTL.m_Buffer;
@@ -850,7 +850,7 @@ void BP4Serializer::AggregateIndex(const SerialElementIndex &index,
 
 void BP4Serializer::AggregateMergeIndex(
     const std::unordered_map<std::string, SerialElementIndex> &indices,
-    AMPI_Comm acomm, BufferSTL &bufferSTL, const bool isRankConstant)
+    const AMPI_Comm &acomm, BufferSTL &bufferSTL, const bool isRankConstant)
 {
     // first serialize index
     std::vector<char> serializedIndices = SerializeIndices(indices, acomm);
@@ -904,7 +904,7 @@ void BP4Serializer::AggregateMergeIndex(
 
 std::vector<char> BP4Serializer::SerializeIndices(
     const std::unordered_map<std::string, SerialElementIndex> &indices,
-    AMPI_Comm acomm) const noexcept
+    const AMPI_Comm &acomm) const noexcept
 {
     // pre-allocate
     size_t serializedIndicesSize = 0;
@@ -949,7 +949,7 @@ std::vector<char> BP4Serializer::SerializeIndices(
 
 std::unordered_map<std::string, std::vector<BP4Base::SerialElementIndex>>
 BP4Serializer::DeserializeIndicesPerRankThreads(
-    const std::vector<char> &serialized, AMPI_Comm acomm,
+    const std::vector<char> &serialized, const AMPI_Comm &acomm,
     const bool isRankConstant) const noexcept
 {
     std::unordered_map<std::string, std::vector<SerialElementIndex>>
@@ -1132,7 +1132,7 @@ BP4Serializer::DeserializeIndicesPerRankThreads(
 void BP4Serializer::MergeSerializeIndicesPerStep(
     const std::unordered_map<std::string, std::vector<SerialElementIndex>>
         &nameRankIndices,
-    AMPI_Comm acomm, BufferSTL &bufferSTL)
+    const AMPI_Comm &acomm, BufferSTL &bufferSTL)
 {
     auto lf_GetCharacteristics = [&](const std::vector<char> &buffer,
                                      size_t &position, const uint8_t dataType,
@@ -1457,7 +1457,7 @@ void BP4Serializer::MergeSerializeIndicesPerStep(
 void BP4Serializer::MergeSerializeIndices(
     const std::unordered_map<std::string, std::vector<SerialElementIndex>>
         &nameRankIndices,
-    AMPI_Comm acomm, BufferSTL &bufferSTL)
+    const AMPI_Comm &acomm, BufferSTL &bufferSTL)
 {
     auto lf_GetCharacteristics = [&](const std::vector<char> &buffer,
                                      size_t &position, const uint8_t dataType,

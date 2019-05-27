@@ -22,7 +22,7 @@ namespace engine
 {
 
 HDF5ReaderP::HDF5ReaderP(IO &io, const std::string &name, const Mode openMode,
-                         AMPI_Comm acomm)
+                         const AMPI_Comm &acomm)
 : Engine("HDF5Reader", io, name, openMode, acomm), m_H5File(io.m_DebugMode)
 {
     m_EndMessage = ", in call to IO HDF5Reader Open " + m_Name + "\n";

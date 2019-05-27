@@ -47,19 +47,21 @@ public:
      */
     Engine *m_Engine = nullptr;
 
-    Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
+    Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
            const std::string engineType, const std::string hostLanguage);
 
-    Stream(const std::string &name, const Mode mode,
-           const std::string engineType, const std::string hostLanguage);
-
-    Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
+    Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
            const std::string configFile, const std::string ioInConfigFile,
            const std::string hostLanguage);
 
+    /*
+    Stream(const std::string &name, const Mode mode,
+           const std::string engineType, const std::string hostLanguage);
+
     Stream(const std::string &name, const Mode mode,
            const std::string configFile, const std::string ioInConfigFile,
            const std::string hostLanguage);
+           */
 
     ~Stream() = default;
 

@@ -28,7 +28,7 @@ class WANMan
 {
 
 public:
-    WANMan(AMPI_Comm acomm, const bool debugMode);
+    WANMan(const AMPI_Comm &acomm, const bool debugMode);
 
     ~WANMan();
 
@@ -46,7 +46,7 @@ public:
 private:
     std::unordered_map<size_t, std::shared_ptr<transport::SocketZmq>>
         m_Transports;
-    AMPI_Comm m_AMpiComm;
+    const AMPI_Comm &m_AMPIComm;
     bool m_DebugMode;
 
     // Objects for buffer queue

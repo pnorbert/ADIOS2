@@ -120,7 +120,10 @@ void Engine::Close(const int transportIndex)
     m_Engine->Close(transportIndex);
 }
 
-Engine::Engine(core::Engine *engine) : m_Engine(engine) {}
+Engine::Engine(core::Engine *engine, AMPI_Comm acomm)
+: m_Engine(engine), m_AMPIComm(acomm)
+{
+}
 
 #define declare_template_instantiation(T)                                      \
                                                                                \

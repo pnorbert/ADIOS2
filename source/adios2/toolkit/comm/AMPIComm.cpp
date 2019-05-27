@@ -12,24 +12,36 @@
 #include <mpi.h>
 #endif
 
+#include <iostream>
+
 namespace adios2
 {
 
 #ifdef ADIOS2_HAVE_MPI
 
 AMPI_Comm::AMPI_Comm(MPI_Comm comm)
-: comm(comm), m_Type(CommType::MPI), driver(new RealMPI()){};
-AMPI_Comm::AMPI_Comm()
-: comm(MPI_COMM_NULL), m_Type(CommType::Dummy), driver(new RealMPI()){};
-AMPI_Comm::AMPI_Comm(MPI_Comm comm, bool flag)
-: comm(comm), m_FreeOnDestruct(flag), m_Type(CommType::MPI),
-  driver(new RealMPI()){};
+: m_Type(CommType::MPI), driver(std::make_shared<RealMPI>())
+{
+    // std::cout << "AMPI_Comm(comm) called" << std::endl;
+    MPI_Comm_dup(comm, &this->comm);
+};
 
-#else
-
-AMPI_Comm::AMPI_Comm() : m_Type(CommType::Dummy), driver(new DummyMPI()){};
+AMPI_Comm::AMPI_Comm(MPI_Comm comm, std::shared_ptr<AMPI> driver, bool flag)
+: comm(comm), m_Type(CommType::MPI), m_FreeOnDestruct(flag),
+  driver(driver){
+      // std::cout << "AMPI_Comm(comm, flag, driver) called" << std::endl;
+  };
 
 #endif
+
+AMPI_Comm::AMPI_Comm()
+: m_Type(CommType::Dummy),
+  driver(std::make_shared<DummyMPI>()){
+      // std::cout << "AMPI_Comm() called" << std::endl;
+  };
+
+AMPI_Comm::AMPI_Comm(std::shared_ptr<AMPI> driver, bool flag)
+: m_Type(CommType::Dummy), m_FreeOnDestruct(flag), driver(driver){};
 
 AMPI_Comm::~AMPI_Comm()
 {
@@ -45,31 +57,33 @@ AMPI_Comm::~AMPI_Comm()
         }
 #endif
     }
-    delete (driver);
+    /*std::cout << "AMPI_Comm destructor called. Remove driver "
+              << (m_Type == CommType::MPI ? "RealMPI" : "DummyMPI")
+              << std::endl;*/
 }
 
-CommType AMPI_Comm::Type() { return m_Type; }
+CommType AMPI_Comm::Type() const { return m_Type; }
 
-AMPI_Comm AMPI_Comm::Duplicate()
+AMPI_Comm AMPI_Comm::Duplicate() const
 {
 #ifdef ADIOS2_HAVE_MPI
     if (m_Type == CommType::MPI)
     {
         if (comm == MPI_COMM_NULL || comm == MPI_COMM_SELF)
         {
-            return AMPI_Comm(MPI_COMM_SELF);
+            return AMPI_Comm(MPI_COMM_SELF, driver);
         }
         else
         {
             MPI_Comm dupcomm;
             MPI_Comm_dup(comm, &dupcomm);
-            return AMPI_Comm(dupcomm, true);
+            return AMPI_Comm(dupcomm, driver, true);
         }
     }
     else
 #endif
     {
-        return AMPI_Comm();
+        return AMPI_Comm(driver, false);
     }
 }
 
@@ -85,6 +99,7 @@ int AMPI_Comm::Free()
             {
                 retval = MPI_Comm_free(&comm);
                 m_FreeOnDestruct = false;
+                comm = MPI_COMM_NULL;
             }
         }
 #endif
@@ -92,7 +107,7 @@ int AMPI_Comm::Free()
     return retval;
 }
 
-int AMPI_Comm::Rank(int *rank)
+int AMPI_Comm::Rank(int *rank) const
 {
 #ifdef ADIOS2_HAVE_MPI
     if (m_Type == CommType::MPI)
@@ -107,7 +122,7 @@ int AMPI_Comm::Rank(int *rank)
     }
 }
 
-int AMPI_Comm::Size(int *size)
+int AMPI_Comm::Size(int *size) const
 {
 #ifdef ADIOS2_HAVE_MPI
     if (m_Type == CommType::MPI)
@@ -122,24 +137,24 @@ int AMPI_Comm::Size(int *size)
     }
 }
 
-int AMPI_Comm::Split(int color, int key, AMPI_Comm *newcomm)
+int AMPI_Comm::Split(int color, int key, AMPI_Comm *newcomm) const
 {
 #ifdef ADIOS2_HAVE_MPI
     if (m_Type == CommType::MPI)
     {
         MPI_Comm ncomm;
         int retval = MPI_Comm_split(comm, color, key, &ncomm);
-        *newcomm = AMPI_Comm(ncomm);
+        *newcomm = AMPI_Comm(ncomm, driver, true);
         return retval;
     }
     else
 #endif
     {
-        *newcomm = AMPI_Comm();
+        *newcomm = AMPI_Comm(driver);
         return MPI_SUCCESS;
     }
 }
 
-AMPI *AMPI_Comm::MPI() { return driver; }
+std::shared_ptr<AMPI> AMPI_Comm::MPI() const { return driver; }
 
 }

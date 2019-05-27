@@ -45,7 +45,7 @@ public:
      * @param acomm
      * @param debug true: extra checks
      */
-    BP4Deserializer(AMPI_Comm acomm, const bool debugMode);
+    BP4Deserializer(const AMPI_Comm &acomm, const bool debugMode);
 
     ~BP4Deserializer() = default;
 

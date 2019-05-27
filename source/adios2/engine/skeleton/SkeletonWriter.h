@@ -35,7 +35,7 @@ public:
      * @param debugMode
      */
     SkeletonWriter(IO &adios, const std::string &name, const Mode mode,
-                   AMPI_Comm acomm);
+                   const AMPI_Comm &acomm);
 
     ~SkeletonWriter() = default;
 

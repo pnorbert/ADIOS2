@@ -50,10 +50,10 @@ namespace adios2
 namespace core
 {
 
-ADIOS::ADIOS(const std::string configFile, AMPI_Comm comm, const bool debugMode,
-             const std::string hostLanguage)
+ADIOS::ADIOS(const std::string configFile, const AMPI_Comm &acomm,
+             const bool debugMode, const std::string hostLanguage)
 : m_ConfigFile(configFile), m_DebugMode(debugMode),
-  m_HostLanguage(hostLanguage), m_AMPIComm(comm.Duplicate())
+  m_HostLanguage(hostLanguage), m_AMPIComm(acomm)
 {
     if (!configFile.empty())
     {
@@ -93,7 +93,7 @@ IO &ADIOS::DeclareIO(const std::string name)
     }
 
     auto ioPair = m_IOs.emplace(
-        name, IO(*this, name, m_AMPIComm, false, m_HostLanguage, m_DebugMode));
+        name, IO(*this, name, false, m_HostLanguage, m_DebugMode));
     IO &io = ioPair.first->second;
     io.SetDeclared();
     return io;

@@ -29,7 +29,7 @@ class StagingMan
 {
 
 public:
-    StagingMan(const AMPI_Comm acomm, const Mode openMode, const int timeout,
+    StagingMan(const AMPI_Comm &acomm, const Mode openMode, const int timeout,
                const size_t maxBufferSize);
 
     ~StagingMan();
@@ -46,7 +46,7 @@ public:
     void SendReply(std::shared_ptr<std::vector<char>> reply);
 
 private:
-    AMPI_Comm m_AMpiComm;
+    const AMPI_Comm &m_AMPIComm;
     int m_Timeout;
     Mode m_OpenMode;
     int m_Verbosity = 0;

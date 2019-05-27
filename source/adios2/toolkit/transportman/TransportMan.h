@@ -44,7 +44,7 @@ public:
      * @param acomm
      * @param debugMode
      */
-    TransportMan(AMPI_Comm acomm, const bool debugMode);
+    TransportMan(const AMPI_Comm &acomm, const bool debugMode);
 
     virtual ~TransportMan() = default;
 
@@ -147,7 +147,7 @@ public:
     bool AllTransportsClosed() const noexcept;
 
 protected:
-    AMPI_Comm m_AMPIComm;
+    const AMPI_Comm &m_AMPIComm;
     const bool m_DebugMode = false;
 
     std::shared_ptr<Transport> OpenFileTransport(const std::string &fileName,

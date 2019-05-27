@@ -33,7 +33,7 @@ class SscReader : public Engine
 {
 public:
     SscReader(IO &adios, const std::string &name, const Mode mode,
-              AMPI_Comm acomm);
+              const AMPI_Comm &acomm);
 
     ~SscReader();
     StepStatus BeginStep(

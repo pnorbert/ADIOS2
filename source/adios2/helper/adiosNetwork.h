@@ -33,14 +33,14 @@ namespace helper
  */
 std::vector<std::string> AvailableIpAddresses() noexcept;
 
-void HandshakeWriter(AMPI_Comm acomm, size_t &appID,
+void HandshakeWriter(const AMPI_Comm &acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName,
                      const int basePort, const int channelsPerRank,
                      const int maxRanksPerNode = 100,
                      const int maxAppsPerNode = 10);
 
-void HandshakeReader(AMPI_Comm acomm, size_t &appID,
+void HandshakeReader(const AMPI_Comm &acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName);
 

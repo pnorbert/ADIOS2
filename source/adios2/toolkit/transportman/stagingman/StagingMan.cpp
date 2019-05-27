@@ -17,9 +17,9 @@ namespace adios2
 namespace transportman
 {
 
-StagingMan::StagingMan(const AMPI_Comm acomm, const Mode openMode,
+StagingMan::StagingMan(const AMPI_Comm &acomm, const Mode openMode,
                        const int timeout, const size_t maxBufferSize)
-: m_AMpiComm(acomm), m_Timeout(timeout), m_OpenMode(openMode),
+: m_AMPIComm(acomm), m_Timeout(timeout), m_OpenMode(openMode),
   m_Transport(timeout), m_MaxBufferSize(maxBufferSize)
 {
     m_Buffer.reserve(maxBufferSize);

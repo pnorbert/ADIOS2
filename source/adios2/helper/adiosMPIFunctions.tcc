@@ -28,7 +28,7 @@ namespace helper
 
 // BroadcastValue specializations
 template <>
-size_t BroadcastValue(const size_t &input, AMPI_Comm acomm,
+size_t BroadcastValue(const size_t &input, const AMPI_Comm &acomm,
                       const int rankSource)
 {
     int rank;
@@ -46,7 +46,7 @@ size_t BroadcastValue(const size_t &input, AMPI_Comm acomm,
 }
 
 template <>
-std::string BroadcastValue(const std::string &input, AMPI_Comm acomm,
+std::string BroadcastValue(const std::string &input, const AMPI_Comm &acomm,
                            const int rankSource)
 {
     int rank;
@@ -72,7 +72,7 @@ std::string BroadcastValue(const std::string &input, AMPI_Comm acomm,
 
 // ReduceValue specializations
 template <>
-unsigned int ReduceValues(const unsigned int source, AMPI_Comm acomm,
+unsigned int ReduceValues(const unsigned int source, const AMPI_Comm &acomm,
                           AMPI_Op operation, const int rankDestination)
 {
     unsigned int sourceLocal = source;
@@ -83,7 +83,7 @@ unsigned int ReduceValues(const unsigned int source, AMPI_Comm acomm,
 }
 
 template <>
-unsigned long int ReduceValues(const unsigned long int source, AMPI_Comm acomm,
+unsigned long int ReduceValues(const unsigned long int source, const AMPI_Comm &acomm,
                                AMPI_Op operation, const int rankDestination)
 {
     unsigned long int sourceLocal = source;
@@ -95,7 +95,7 @@ unsigned long int ReduceValues(const unsigned long int source, AMPI_Comm acomm,
 
 template <>
 unsigned long long int ReduceValues(const unsigned long long int source,
-                                    AMPI_Comm acomm, AMPI_Op operation,
+                                    const AMPI_Comm &acomm, AMPI_Op operation,
                                     const int rankDestination)
 {
     unsigned long long int sourceLocal = source;
@@ -107,7 +107,7 @@ unsigned long long int ReduceValues(const unsigned long long int source,
 
 // BroadcastVector specializations
 template <>
-void BroadcastVector(std::vector<char> &vector, AMPI_Comm acomm,
+void BroadcastVector(std::vector<char> &vector, const AMPI_Comm &acomm,
                      const int rankSource)
 {
     int size;
@@ -144,7 +144,8 @@ void BroadcastVector(std::vector<char> &vector, AMPI_Comm acomm,
 // GatherArrays specializations
 template <>
 void GatherArrays(const char *source, const size_t sourceCount,
-                  char *destination, AMPI_Comm acomm, const int rankDestination)
+                  char *destination, const AMPI_Comm &acomm,
+                  const int rankDestination)
 {
     int countsInt = static_cast<int>(sourceCount);
     int result = acomm.MPI()->Gather(const_cast<char *>(source), countsInt,
@@ -160,7 +161,7 @@ void GatherArrays(const char *source, const size_t sourceCount,
 
 template <>
 void GatherArrays(const size_t *source, const size_t sourceCount,
-                  size_t *destination, AMPI_Comm acomm,
+                  size_t *destination, const AMPI_Comm &acomm,
                   const int rankDestination)
 {
     int countsInt = static_cast<int>(sourceCount);
@@ -178,7 +179,7 @@ void GatherArrays(const size_t *source, const size_t sourceCount,
 // AllGatherArray specializations
 template <>
 void AllGatherArrays(const size_t *source, const size_t sourceCount,
-                     size_t *destination, AMPI_Comm acomm)
+                     size_t *destination, const AMPI_Comm &acomm)
 {
     int countsInt = static_cast<int>(sourceCount);
     int result = acomm.MPI()->Allgather(const_cast<size_t *>(source), countsInt,
@@ -196,7 +197,7 @@ void AllGatherArrays(const size_t *source, const size_t sourceCount,
 template <>
 void GathervArrays(const char *source, const size_t sourceCount,
                    const size_t *counts, const size_t countsSize,
-                   char *destination, AMPI_Comm acomm,
+                   char *destination, const AMPI_Comm &acomm,
                    const int rankDestination)
 {
     int result = 0;
@@ -227,7 +228,7 @@ void GathervArrays(const char *source, const size_t sourceCount,
 template <>
 void GathervArrays(const size_t *source, const size_t sourceCount,
                    const size_t *counts, const size_t countsSize,
-                   size_t *destination, AMPI_Comm acomm,
+                   size_t *destination, const AMPI_Comm &acomm,
                    const int rankDestination)
 {
     int result = 0;
@@ -256,7 +257,7 @@ void GathervArrays(const size_t *source, const size_t sourceCount,
 
 template <>
 std::vector<AMPI_Request> Isend64<char>(const char *buffer, const size_t count,
-                                        int dest, int tag, AMPI_Comm acomm,
+                                        int dest, int tag, const AMPI_Comm &acomm,
                                         const std::string &hint)
 {
     const size_t batches = count / DefaultMaxFileBatchSize;
@@ -302,7 +303,7 @@ std::vector<AMPI_Request> Isend64<char>(const char *buffer, const size_t count,
 
 template <>
 std::vector<AMPI_Request> Irecv64<char>(char *buffer, const size_t count,
-                                        int source, int tag, AMPI_Comm acomm,
+                                        int source, int tag, const AMPI_Comm &acomm,
                                         const std::string &hint)
 {
     const size_t batches = count / DefaultMaxFileBatchSize;

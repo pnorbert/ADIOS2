@@ -24,7 +24,7 @@ namespace engine
 {
 
 SstWriter::SstWriter(IO &io, const std::string &name, const Mode mode,
-                     AMPI_Comm acomm)
+                     const AMPI_Comm &acomm)
 : Engine("SstWriter", io, name, mode, acomm)
 {
     char *cstr = new char[name.length() + 1];

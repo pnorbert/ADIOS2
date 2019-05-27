@@ -19,9 +19,8 @@ namespace engine
 
 DataManCommon::DataManCommon(const std::string engineType, IO &io,
                              const std::string &name, const Mode mode,
-                             AMPI_Comm acomm)
-: Engine(engineType, io, name, mode, acomm),
-  m_FileTransport(acomm, m_DebugMode)
+                             const AMPI_Comm &acomm)
+: Engine(engineType, io, name, mode, acomm), m_FileTransport(acomm, m_DebugMode)
 {
 
     // initialize parameters

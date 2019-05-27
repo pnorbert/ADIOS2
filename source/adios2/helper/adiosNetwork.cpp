@@ -70,7 +70,7 @@ std::vector<std::string> AvailableIpAddresses() noexcept
     return ips;
 }
 
-void HandshakeWriter(AMPI_Comm acomm, size_t &appID,
+void HandshakeWriter(const AMPI_Comm &acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName,
                      const int basePort, const int channelsPerRank,
@@ -185,7 +185,7 @@ void HandshakeWriter(AMPI_Comm acomm, size_t &appID,
     }
 }
 
-void HandshakeReader(AMPI_Comm acomm, size_t &appID,
+void HandshakeReader(const AMPI_Comm &acomm, size_t &appID,
                      std::vector<std::string> &fullAddresses,
                      const std::string &name, const std::string &engineName)
 {

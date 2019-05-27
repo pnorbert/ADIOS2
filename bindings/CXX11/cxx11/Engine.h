@@ -16,6 +16,7 @@
 
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -395,8 +396,9 @@ public:
     BlocksInfo(const Variable<T> variable, const size_t step) const;
 
 private:
-    Engine(core::Engine *engine);
+    Engine(core::Engine *engine, AMPI_Comm comm);
     core::Engine *m_Engine = nullptr;
+    AMPI_Comm m_AMPIComm; // owns this object
 };
 
 #define declare_template_instantiation(T)                                      \

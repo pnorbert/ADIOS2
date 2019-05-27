@@ -64,10 +64,9 @@ namespace adios2
 namespace core
 {
 
-IO::IO(ADIOS &adios, const std::string name, AMPI_Comm acomm,
-       const bool inConfigFile, const std::string hostLanguage,
-       const bool debugMode)
-: m_ADIOS(adios), m_Name(name), m_AMPIComm(acomm), m_InConfigFile(inConfigFile),
+IO::IO(ADIOS &adios, const std::string name, const bool inConfigFile,
+       const std::string hostLanguage, const bool debugMode)
+: m_ADIOS(adios), m_Name(name), m_InConfigFile(inConfigFile),
   m_HostLanguage(hostLanguage), m_DebugMode(debugMode)
 {
 }
@@ -404,7 +403,8 @@ size_t IO::AddOperation(Operator &op, const Params &parameters) noexcept
     return m_Operations.size() - 1;
 }
 
-Engine &IO::Open(const std::string &name, const Mode mode, AMPI_Comm acomm_orig)
+Engine &IO::Open(const std::string &name, const Mode mode,
+                 const AMPI_Comm &acomm)
 {
     TAU_SCOPED_TIMER("IO::Open");
     auto itEngineFound = m_Engines.find(name);
@@ -436,7 +436,6 @@ Engine &IO::Open(const std::string &name, const Mode mode, AMPI_Comm acomm_orig)
         }
     }
 
-    AMPI_Comm acomm = acomm_orig.Duplicate();
     std::shared_ptr<Engine> engine;
     const bool isDefaultEngine = m_EngineType.empty() ? true : false;
     std::string engineTypeLC = m_EngineType;
@@ -633,7 +632,7 @@ Engine &IO::Open(const std::string &name, const Mode mode, AMPI_Comm acomm_orig)
 
 Engine &IO::Open(const std::string &name, const Mode mode)
 {
-    return Open(name, mode, m_AMPIComm);
+    return Open(name, mode, m_ADIOS.m_AMPIComm);
 }
 
 Engine &IO::GetEngine(const std::string &name)

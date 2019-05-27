@@ -22,7 +22,7 @@ namespace engine
 {
 
 BP4Reader::BP4Reader(IO &io, const std::string &name, const Mode mode,
-                     AMPI_Comm acomm)
+                     const AMPI_Comm &acomm)
 : Engine("BP4Reader", io, name, mode, acomm),
   m_BP4Deserializer(acomm, m_DebugMode), m_FileManager(acomm, m_DebugMode),
   m_SubFileManager(acomm, m_DebugMode),

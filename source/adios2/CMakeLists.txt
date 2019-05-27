@@ -113,6 +113,8 @@ if(UNIX)
   target_sources(adios2 PRIVATE toolkit/transport/file/FilePOSIX.cpp)
 endif()
 
+add_subdirectory(toolkit/comm)
+
 if(ADIOS2_HAVE_SysVShMem)
   target_sources(adios2 PRIVATE toolkit/transport/shm/ShmSystemV.cpp)
 endif()
@@ -231,7 +233,7 @@ set_target_properties(adios2 PROPERTIES
   SOVERSION ${ADIOS2_VERSION_MAJOR}
 )
 
-install(FILES ADIOSMacros.h ADIOSTypes.h ADIOSTypes.inl ADIOSMPICommOnly.h
+install(FILES ADIOSMacros.h ADIOSTypes.h ADIOSTypes.inl ADIOSMPI.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/adios2
 )
 

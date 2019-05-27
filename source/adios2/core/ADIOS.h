@@ -38,8 +38,8 @@ public:
     /** if true will do more checks, exceptions, warnings, expect slower code */
     const bool m_DebugMode = true;
 
-    /** Passed from parallel constructor, MPI_Comm is a pointer itself. */
-    AMPI_Comm m_AMPIComm;
+    /** Internally contains MPI_Comm passed from bindings */
+    const AMPI_Comm &m_AMPIComm;
 
     /** Changed by language bindings in constructor */
     const std::string m_HostLanguage = "C++";
@@ -54,8 +54,8 @@ public:
      * false: optional feature to turn off checks on user input data,
      * recommended in stable flows
      */
-    ADIOS(const std::string configFile, AMPI_Comm comm, const bool debugMode,
-          const std::string hostLanguage);
+    ADIOS(const std::string configFile, const AMPI_Comm &comm,
+          const bool debugMode, const std::string hostLanguage);
 
     /**
      * Delete copy constructor explicitly. Objects shouldn't be allowed to be

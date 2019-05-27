@@ -24,7 +24,7 @@ class FilePOSIX : public Transport
 {
 
 public:
-    FilePOSIX(AMPI_Comm acomm, const bool debugMode);
+    FilePOSIX(const AMPI_Comm &acomm, const bool debugMode);
 
     ~FilePOSIX();
 

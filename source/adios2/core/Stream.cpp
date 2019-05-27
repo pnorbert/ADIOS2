@@ -16,7 +16,7 @@ namespace adios2
 namespace core
 {
 
-Stream::Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
+Stream::Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
                const std::string engineType, const std::string hostLanguage)
 : m_Name(name),
   m_ADIOS(std::make_shared<ADIOS>("", acomm, DebugON, hostLanguage)),
@@ -28,13 +28,7 @@ Stream::Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
     }
 }
 
-Stream::Stream(const std::string &name, const Mode mode,
-               const std::string engineType, const std::string hostLanguage)
-: Stream(name, mode, AMPI_Comm(), engineType, hostLanguage)
-{
-}
-
-Stream::Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
+Stream::Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
                const std::string configFile, const std::string ioInConfigFile,
                const std::string hostLanguage)
 : m_Name(name),
@@ -46,14 +40,31 @@ Stream::Stream(const std::string &name, const Mode mode, AMPI_Comm acomm,
         CheckOpen();
     }
 }
+/*
+Stream::Stream(const std::string &name, const Mode mode,
+               const std::string engineType, const std::string hostLanguage)
+: m_Name(name), m_ADIOS(std::make_shared<ADIOS>("", DebugON, hostLanguage)),
+  m_IO(&m_ADIOS->DeclareIO(name)), m_Mode(mode), m_EngineType(engineType)
+{
+    if (mode == adios2::Mode::Read)
+    {
+        CheckOpen();
+    }
+}
 
 Stream::Stream(const std::string &name, const Mode mode,
                const std::string configFile, const std::string ioInConfigFile,
                const std::string hostLanguage)
-: Stream(name, mode, AMPI_Comm(), configFile, ioInConfigFile, hostLanguage)
+: m_Name(name),
+  m_ADIOS(std::make_shared<ADIOS>(configFile, DebugON, hostLanguage)),
+  m_IO(&m_ADIOS->DeclareIO(ioInConfigFile)), m_Mode(mode)
 {
+    if (mode == adios2::Mode::Read)
+    {
+        CheckOpen();
+    }
 }
-
+*/
 bool Stream::GetStep()
 {
     if (!m_FirstStep)

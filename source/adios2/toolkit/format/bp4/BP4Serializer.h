@@ -31,7 +31,7 @@ public:
      * @param acomm MPI communicator for BP1 Aggregator
      * @param debug true: extra checks
      */
-    BP4Serializer(AMPI_Comm acomm, const bool debugMode = false);
+    BP4Serializer(const AMPI_Comm &acomm, const bool debugMode = false);
 
     ~BP4Serializer() = default;
 
@@ -130,7 +130,7 @@ public:
      * @param inMetadataBuffer collective metadata from absolute rank = 0, else
      *                         from aggregators
      */
-    void AggregateCollectiveMetadata(AMPI_Comm acomm, BufferSTL &bufferSTL,
+    void AggregateCollectiveMetadata(const AMPI_Comm &acomm, BufferSTL &bufferSTL,
                                      const bool inMetadataBuffer);
 
     /**
@@ -360,7 +360,7 @@ private:
      * @param bufferSTL
      */
     void AggregateIndex(const SerialElementIndex &index, const size_t count,
-                        AMPI_Comm acomm, BufferSTL &bufferSTL);
+                        const AMPI_Comm &acomm, BufferSTL &bufferSTL);
 
     /**
      * Collective operation to aggregate and merge (sort) indices (variables and
@@ -376,7 +376,7 @@ private:
      */
     void AggregateMergeIndex(
         const std::unordered_map<std::string, SerialElementIndex> &indices,
-        AMPI_Comm acomm, BufferSTL &bufferSTL,
+        const AMPI_Comm &acomm, BufferSTL &bufferSTL,
         const bool isRankConstant = false);
 
     /**
@@ -387,7 +387,7 @@ private:
      */
     std::vector<char> SerializeIndices(
         const std::unordered_map<std::string, SerialElementIndex> &indices,
-        AMPI_Comm acomm) const noexcept;
+        const AMPI_Comm &acomm) const noexcept;
 
     /**
      * In rank=0, deserialize gathered indices
@@ -399,7 +399,7 @@ private:
      */
     std::unordered_map<std::string, std::vector<SerialElementIndex>>
     DeserializeIndicesPerRankThreads(const std::vector<char> &serializedIndices,
-                                     AMPI_Comm acomm,
+                                     const AMPI_Comm &acomm,
                                      const bool isRankConstant) const noexcept;
 
     /**
@@ -409,7 +409,7 @@ private:
     void MergeSerializeIndices(
         const std::unordered_map<std::string, std::vector<SerialElementIndex>>
             &nameRankIndices,
-        AMPI_Comm acomm, BufferSTL &bufferSTL);
+        const AMPI_Comm &acomm, BufferSTL &bufferSTL);
 
     /**
      * Only merge indices of each time step and write to
@@ -420,7 +420,7 @@ private:
     void MergeSerializeIndicesPerStep(
         const std::unordered_map<std::string, std::vector<SerialElementIndex>>
             &nameRankIndices,
-        AMPI_Comm acomm, BufferSTL &bufferSTL);
+        const AMPI_Comm &acomm, BufferSTL &bufferSTL);
 
     std::vector<char>
     SetCollectiveProfilingJSON(const std::string &rankLog) const;

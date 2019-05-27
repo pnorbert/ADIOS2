@@ -57,7 +57,7 @@ void CheckMPIReturn(const int value, const std::string hint)
     throw std::runtime_error("ERROR: ADIOS2 detected " + error + ", " + hint);
 }
 
-std::string BroadcastFile(const std::string &fileName, AMPI_Comm acomm,
+std::string BroadcastFile(const std::string &fileName, const AMPI_Comm &acomm,
                           const std::string hint, const int rankSource)
 {
     int rank;

@@ -25,8 +25,8 @@ namespace adios2
 namespace transportman
 {
 
-WANMan::WANMan(AMPI_Comm acomm, const bool debugMode)
-: m_AMpiComm(acomm), m_DebugMode(debugMode)
+WANMan::WANMan(const AMPI_Comm &acomm, const bool debugMode)
+: m_AMPIComm(acomm), m_DebugMode(debugMode)
 {
 }
 
@@ -97,8 +97,8 @@ void WANMan::OpenTransports(const std::vector<Params> &paramsVector,
 
         // Calculate port number
         int mpiRank, mpiSize;
-        m_AMpiComm.Rank(&mpiRank);
-        m_AMpiComm.Size(&mpiSize);
+        m_AMPIComm.Rank(&mpiRank);
+        m_AMPIComm.Size(&mpiSize);
         if (port.empty())
         {
             port = std::to_string(stoi(port) + i * mpiSize);

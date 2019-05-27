@@ -18,7 +18,7 @@ namespace adios2
 namespace transport
 {
 
-FileFStream::FileFStream(AMPI_Comm acomm, const bool debugMode)
+FileFStream::FileFStream(const AMPI_Comm &acomm, const bool debugMode)
 : Transport("File", "fstream", acomm, debugMode)
 {
 }

@@ -22,7 +22,6 @@ namespace adios2
 // using MPI_Fint = int;
 // using MPI_Op = int;
 
-
 const int AMPI_COMM_NULL = 0;
 const int AMPI_COMM_WORLD = 1;
 const int AMPI_COMM_SELF = 2;
@@ -57,6 +56,32 @@ enum AMPI_Datatype
     /* Should be last to denote how many types we have */
     AMPI_Datatype_size
 };
+
+const int AMPI_Sizeof_Datatype[AMPI_Datatype_size] = {
+    0,
+    sizeof(char),
+    sizeof(char),
+    sizeof(short int),
+    sizeof(int),
+    sizeof(long int),
+    sizeof(float),
+    sizeof(double),
+    sizeof(long double),
+    sizeof(unsigned char),
+    sizeof(signed char),
+    sizeof(unsigned short int),
+    sizeof(unsigned long int),
+    sizeof(unsigned int),
+    sizeof(float) + sizeof(int),
+    sizeof(double) + sizeof(int),
+    sizeof(long double) + sizeof(int),
+    sizeof(long int) + sizeof(int),
+    sizeof(short int) + sizeof(int),
+    2 * sizeof(int),
+    sizeof(long long int) + sizeof(int),
+    sizeof(long long int),
+    sizeof(unsigned long long int),
+    sizeof(size_t)};
 
 enum AMPI_Op
 {

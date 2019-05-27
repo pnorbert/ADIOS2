@@ -38,7 +38,7 @@ public:
      * @param method
      */
     HDF5WriterP(IO &io, const std::string &name, const Mode mode,
-                AMPI_Comm acomm);
+                const AMPI_Comm &acomm);
 
     ~HDF5WriterP();
 

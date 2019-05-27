@@ -25,7 +25,7 @@ class FileStdio : public Transport
 {
 
 public:
-    FileStdio(AMPI_Comm acomm, const bool debugMode);
+    FileStdio(const AMPI_Comm &acomm, const bool debugMode);
 
     ~FileStdio();
 

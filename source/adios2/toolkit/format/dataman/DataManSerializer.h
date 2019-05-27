@@ -84,7 +84,7 @@ class DataManSerializer
 {
 public:
     DataManSerializer(bool isRowMajor, const bool contiguousMajor,
-                      bool isLittleEndian, AMPI_Comm acomm);
+                      bool isLittleEndian, const AMPI_Comm &acomm);
 
     // clear and allocate new buffer for writer
     void New(size_t size);
@@ -147,7 +147,7 @@ public:
 
     const DmvVecPtrMap GetMetaData();
 
-    void PutAggregatedMetadata(VecPtr input, AMPI_Comm acomm);
+    void PutAggregatedMetadata(VecPtr input, const AMPI_Comm &acomm);
 
     int PutDeferredRequest(const std::string &variable, const size_t step,
                            const Dims &start, const Dims &count, void *data);
@@ -238,7 +238,7 @@ private:
     bool m_EnableStat = true;
     int m_MpiRank;
     int m_MpiSize;
-    AMPI_Comm m_AMpiComm;
+    const AMPI_Comm &m_AMPIComm;
 
     int m_Verbosity = 0;
 };

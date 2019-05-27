@@ -41,7 +41,7 @@ public:
      * @param debugMode
      */
     InSituMPIWriter(IO &adios, const std::string &name, const Mode openMode,
-                    AMPI_Comm acomm);
+                    const AMPI_Comm &acomm);
 
     ~InSituMPIWriter();
 

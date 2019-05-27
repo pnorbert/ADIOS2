@@ -55,7 +55,7 @@ public:
 
     virtual ~MPIAggregator();
 
-    virtual void Init(const size_t subStreams, AMPI_Comm parentComm);
+    // virtual void Init(const size_t subStreams, const AMPI_Comm &parentComm);
 
     virtual std::vector<std::vector<AMPI_Request>>
     IExchange(BufferSTL &bufferSTL, const int step) = 0;
@@ -82,7 +82,7 @@ public:
 protected:
     /** Init m_Comm splitting assigning ranks to subStreams (balanced except for
      * the last rank) */
-    void InitComm(const size_t subStreams, AMPI_Comm parentComm);
+    void InitComm(const size_t subStreams, const AMPI_Comm &parentComm);
 
     /** handshakes a single rank with the rest of the m_Comm ranks */
     void HandshakeRank(const int rank = 0);

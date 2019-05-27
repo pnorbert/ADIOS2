@@ -31,7 +31,7 @@ public:
      * @param acomm MPI communicator for BP1 Aggregator
      * @param debug true: extra checks
      */
-    BP3Serializer(AMPI_Comm acomm, const bool debugMode = false);
+    BP3Serializer(const AMPI_Comm &acomm, const bool debugMode = false);
 
     ~BP3Serializer() = default;
 
@@ -134,7 +134,7 @@ public:
      * @param inMetadataBuffer collective metadata from absolute rank = 0, else
      *                         from aggregators
      */
-    void AggregateCollectiveMetadata(AMPI_Comm comm, BufferSTL &bufferSTL,
+    void AggregateCollectiveMetadata(const AMPI_Comm &acomm, BufferSTL &bufferSTL,
                                      const bool inMetadataBuffer);
 
     /**
@@ -378,7 +378,7 @@ private:
      * @return contains indices positions in buffer
      */
     std::vector<size_t>
-    AggregateCollectiveMetadataIndices(AMPI_Comm comm, BufferSTL &bufferSTL);
+    AggregateCollectiveMetadataIndices(const AMPI_Comm &acomm, BufferSTL &bufferSTL);
 
     /**
      * Merge indices by time step (default) and write to m_HeapBuffer.m_Metadata
@@ -387,7 +387,7 @@ private:
     void MergeSerializeIndices(
         const std::unordered_map<std::string, std::vector<SerialElementIndex>>
             &nameRankIndices,
-        AMPI_Comm comm, BufferSTL &bufferSTL);
+        const AMPI_Comm &acomm, BufferSTL &bufferSTL);
 
     std::vector<char>
     SetCollectiveProfilingJSON(const std::string &rankLog) const;

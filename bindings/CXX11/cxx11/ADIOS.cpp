@@ -18,8 +18,8 @@ namespace adios2
 
 #ifdef ADIOS2_HAVE_MPI
 ADIOS::ADIOS(const std::string &configFile, MPI_Comm comm, const bool debugMode)
-: m_ADIOS(std::make_shared<core::ADIOS>(configFile, AMPI_Comm(comm), debugMode,
-                                        "C++"))
+: m_AMPIComm(AMPI_Comm(comm)),
+  m_ADIOS(std::make_shared<core::ADIOS>(configFile, m_AMPIComm, debugMode, "C++"))
 {
 }
 
@@ -29,8 +29,8 @@ ADIOS::ADIOS(MPI_Comm comm, const bool debugMode) : ADIOS("", comm, debugMode)
 #endif
 
 ADIOS::ADIOS(const std::string &configFile, const bool debugMode)
-: m_ADIOS(
-      std::make_shared<core::ADIOS>(configFile, AMPI_Comm(), debugMode, "C++"))
+: m_AMPIComm(AMPI_Comm()),
+  m_ADIOS(std::make_shared<core::ADIOS>(configFile, m_AMPIComm, debugMode, "C++"))
 {
 }
 

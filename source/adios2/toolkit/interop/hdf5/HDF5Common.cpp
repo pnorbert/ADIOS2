@@ -110,7 +110,7 @@ void HDF5Common::ParseParameters(core::IO &io)
     }
 }
 
-void HDF5Common::Init(const std::string &name, AMPI_Comm acomm, bool toWrite)
+void HDF5Common::Init(const std::string &name, const AMPI_Comm &acomm, bool toWrite)
 {
     m_WriteMode = toWrite;
     m_PropertyListId = H5Pcreate(H5P_FILE_ACCESS);

@@ -64,16 +64,19 @@ static void MPIConstantsInit()
 RealMPI::RealMPI() { MPIConstantsInit(); };
 RealMPI::~RealMPI(){};
 
-int RealMPI::RealMPI::Barrier(AMPI_Comm comm) { return MPI_Barrier(comm.comm); }
+int RealMPI::RealMPI::Barrier(const AMPI_Comm &comm)
+{
+    return MPI_Barrier(comm.comm);
+}
 int RealMPI::RealMPI::Bcast(void *buffer, int count, AMPI_Datatype datatype,
-                            int root, AMPI_Comm comm)
+                            int root, const AMPI_Comm &comm)
 {
     return MPI_Bcast(buffer, count, dataTypes[datatype], root, comm.comm);
 }
 
 int RealMPI::Gather(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                     void *recvbuf, int recvcount, AMPI_Datatype recvtype,
-                    int root, AMPI_Comm comm)
+                    int root, const AMPI_Comm &comm)
 {
     return MPI_Gather(sendbuf, sendcount, dataTypes[sendtype], recvbuf,
                       recvcount, dataTypes[recvtype], root, comm.comm);
@@ -81,7 +84,7 @@ int RealMPI::Gather(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
 
 int RealMPI::Gatherv(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                      void *recvbuf, const int *recvcounts, const int *displs,
-                     AMPI_Datatype recvtype, int root, AMPI_Comm comm)
+                     AMPI_Datatype recvtype, int root, const AMPI_Comm &comm)
 {
     return MPI_Gatherv(sendbuf, sendcount, dataTypes[sendtype], recvbuf,
                        recvcounts, displs, dataTypes[recvtype], root,
@@ -90,7 +93,7 @@ int RealMPI::Gatherv(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
 
 int RealMPI::Allgather(const void *sendbuf, int sendcount,
                        AMPI_Datatype sendtype, void *recvbuf, int recvcount,
-                       AMPI_Datatype recvtype, AMPI_Comm comm)
+                       AMPI_Datatype recvtype, const AMPI_Comm &comm)
 {
     return MPI_Allgather(sendbuf, sendcount, dataTypes[sendtype], recvbuf,
                          recvcount, dataTypes[recvtype], comm.comm);
@@ -98,7 +101,7 @@ int RealMPI::Allgather(const void *sendbuf, int sendcount,
 
 int RealMPI::Scatter(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                      void *recvbuf, int recvcount, AMPI_Datatype recvtype,
-                     int root, AMPI_Comm comm)
+                     int root, const AMPI_Comm &comm)
 {
     return MPI_Scatter(sendbuf, sendcount, dataTypes[sendtype], recvbuf,
                        recvcount, dataTypes[recvtype], root, comm.comm);
@@ -107,7 +110,7 @@ int RealMPI::Scatter(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
 int RealMPI::Scatterv(const void *sendbuf, const int *sendcounts,
                       const int *displs, AMPI_Datatype sendtype, void *recvbuf,
                       int recvcount, AMPI_Datatype recvtype, int root,
-                      AMPI_Comm comm)
+                      const AMPI_Comm &comm)
 {
     return MPI_Scatterv(sendbuf, sendcounts, displs, dataTypes[sendtype],
                         recvbuf, recvcount, dataTypes[recvtype], root,
@@ -115,15 +118,16 @@ int RealMPI::Scatterv(const void *sendbuf, const int *sendcounts,
 }
 
 int RealMPI::Recv(void *buf, int count, AMPI_Datatype datatype, int source,
-                  int tag, AMPI_Comm comm, AMPI_Status *status)
+                  int tag, const AMPI_Comm &comm, AMPI_Status *status)
 {
     MPI_Status *stat = (MPI_Status *)malloc(sizeof(MPI_Status));
+    // stat will be freed in AMPI_Status destructor
     status->Set(stat);
     return MPI_Recv(buf, count, dataTypes[datatype], source, tag, comm.comm,
                     stat);
 }
 int RealMPI::Irecv(void *buf, int count, AMPI_Datatype datatype, int source,
-                   int tag, AMPI_Comm comm, AMPI_Request *request)
+                   int tag, const AMPI_Comm &comm, AMPI_Request *request)
 {
     MPI_Request *req = (MPI_Request *)malloc(sizeof(MPI_Request));
     request->Set(req);
@@ -132,12 +136,12 @@ int RealMPI::Irecv(void *buf, int count, AMPI_Datatype datatype, int source,
 }
 
 int RealMPI::Send(const void *buf, int count, AMPI_Datatype datatype, int dest,
-                  int tag, AMPI_Comm comm)
+                  int tag, const AMPI_Comm &comm)
 {
     return MPI_Send(buf, count, dataTypes[datatype], dest, tag, comm.comm);
 }
 int RealMPI::Isend(const void *buf, int count, AMPI_Datatype datatype, int dest,
-                   int tag, AMPI_Comm comm, AMPI_Request *request)
+                   int tag, const AMPI_Comm &comm, AMPI_Request *request)
 {
     MPI_Request *req = (MPI_Request *)malloc(sizeof(MPI_Request));
     request->Set(req);
@@ -153,7 +157,7 @@ int RealMPI::Wait(AMPI_Request *request, AMPI_Status *status)
 }
 
 /*
-int RealMPI::File_open(AMPI_Comm comm, const char *filename, int amode,
+int RealMPI::File_open(const AMPI_Comm &comm, const char *filename, int amode,
                    AMPI_Info info, AMPI_File *fh){}
 int RealMPI::File_close(AMPI_File *fh){}
 int RealMPI::File_get_size(AMPI_File fh, AMPI_Offset *size){}
@@ -174,28 +178,23 @@ int RealMPI::Error_string(int errorcode, char *string, int *resultlen)
     return MPI_Error_string(errorcode, string, resultlen);
 }
 
-int RealMPI::Comm_split(AMPI_Comm comm, int color, int key, AMPI_Comm *comm_out)
+int RealMPI::Get_processor_name(char *name, int *resultlen)
 {
-    MPI_Comm newcomm;
-    int ret = MPI_Comm_split(comm.comm, color, key, &newcomm);
-    *comm_out = AMPI_Comm(newcomm);
-    return ret;
+    return MPI_Get_processor_name(name, resultlen);
 }
-
-int RealMPI::Get_processor_name(char *name, int *resultlen) {}
 
 double RealMPI::Wtime() { return MPI_Wtime(); }
 
 int RealMPI::Reduce(const void *sendbuf, void *recvbuf, int count,
                     AMPI_Datatype datatype, AMPI_Op op, int root,
-                    AMPI_Comm comm)
+                    const AMPI_Comm &comm)
 {
     return MPI_Reduce(sendbuf, recvbuf, count, dataTypes[datatype], ops[op],
                       root, comm.comm);
 }
 
 int RealMPI::Allreduce(const void *sendbuf, void *recvbuf, int count,
-                       AMPI_Datatype datatype, AMPI_Op op, AMPI_Comm comm)
+                       AMPI_Datatype datatype, AMPI_Op op, const AMPI_Comm &comm)
 {
     return MPI_Allreduce(sendbuf, recvbuf, count, dataTypes[datatype], ops[op],
                          comm.comm);

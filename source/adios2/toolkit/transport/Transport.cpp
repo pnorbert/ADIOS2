@@ -17,7 +17,7 @@ namespace adios2
 {
 
 Transport::Transport(const std::string type, const std::string library,
-                     AMPI_Comm acomm, const bool debugMode)
+                     const AMPI_Comm &acomm, const bool debugMode)
 : m_Type(type), m_Library(library), m_AMPIComm(acomm), m_DebugMode(debugMode)
 {
     m_AMPIComm.Rank(&m_RankMPI);

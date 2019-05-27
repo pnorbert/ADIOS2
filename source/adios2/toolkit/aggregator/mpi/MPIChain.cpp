@@ -20,7 +20,7 @@ namespace aggregator
 
 MPIChain::MPIChain() : MPIAggregator() {}
 
-void MPIChain::Init(const size_t subStreams, AMPI_Comm parentComm)
+void MPIChain::Init(const size_t subStreams, const AMPI_Comm &parentComm)
 {
     InitComm(subStreams, parentComm);
     HandshakeRank(0);

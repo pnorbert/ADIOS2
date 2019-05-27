@@ -39,7 +39,7 @@ public:
      * @param hostLanguage
      */
     InlineReader(IO &adios, const std::string &name, const Mode mode,
-                 AMPI_Comm acomm);
+                 const AMPI_Comm &acomm);
 
     ~InlineReader();
     StepStatus BeginStep(StepMode mode = StepMode::NextAvailable,

@@ -13,6 +13,7 @@
 
 #include <climits> //UXXX_MAX
 #include <cstdint> //SIZE_MAX
+#include <memory>  //std:shared_ptr
 
 #ifdef ADIOS2_HAVE_MPI
 #include <mpi.h>
@@ -43,25 +44,29 @@ class AMPI_Comm
 public:
 #ifdef ADIOS2_HAVE_MPI
     AMPI_Comm(MPI_Comm comm);
-    MPI_Comm comm;
+    MPI_Comm comm = MPI_COMM_NULL;
 #endif
     AMPI_Comm();
     ~AMPI_Comm();
-    CommType Type();
-    AMPI_Comm Duplicate(); /* aka MPI_Comm_dup */
-    int Free();            /* aka MPI_Comm_free */
-    int Rank(int *rank);   /* aka MPI_Comm_rank */
-    int Size(int *size);   /* aka MPI_Comm_size */
-    int Split(int color, int key, AMPI_Comm *newcomm);
-    AMPI *MPI(); /* Return the actual MPI driver for this comm */
+    int Free(); /* aka MPI_Comm_free. non-const function */
+
+    CommType Type() const;
+    AMPI_Comm Duplicate() const; /* aka MPI_Comm_dup */
+    int Rank(int *rank) const;   /* aka MPI_Comm_rank */
+    int Size(int *size) const;   /* aka MPI_Comm_size */
+    int Split(int color, int key, AMPI_Comm *newcomm) const;
+    /* Return the actual MPI driver for this comm */
+    std::shared_ptr<AMPI> MPI() const;
 
 private:
 #ifdef ADIOS2_HAVE_MPI
-    AMPI_Comm(MPI_Comm comm, bool shouldFree);
+    AMPI_Comm(MPI_Comm comm, std::shared_ptr<AMPI> driver,
+              bool shouldFree = false);
 #endif
+    AMPI_Comm(std::shared_ptr<AMPI> driver, bool shouldFree = false);
     CommType m_Type;
     bool m_FreeOnDestruct = false;
-    AMPI *driver = nullptr;
+    std::shared_ptr<AMPI> driver;
 };
 
 }

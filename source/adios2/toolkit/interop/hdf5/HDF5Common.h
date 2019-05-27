@@ -121,7 +121,7 @@ public:
     static const std::string PARAMETER_CHUNK_VARS;
 
     void ParseParameters(core::IO &io);
-    void Init(const std::string &name, AMPI_Comm acomm, bool toWrite);
+    void Init(const std::string &name, const AMPI_Comm &acomm, bool toWrite);
 
     template <class T>
     void Write(core::Variable<T> &variable, const T *values);

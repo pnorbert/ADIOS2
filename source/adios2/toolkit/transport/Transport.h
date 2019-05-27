@@ -33,7 +33,7 @@ public:
     std::string m_Name; ///< from Open, unique identifier (e.g. filename)
     Mode m_OpenMode = Mode::Undefined; ///< at Open from ADIOSTypes.h
     bool m_IsOpen = false; ///< true: open for communication, false: unreachable
-    AMPI_Comm m_AMPIComm;  ///< current MPI communicator
+    const AMPI_Comm &m_AMPIComm;  ///< current MPI communicator
     int m_RankMPI = 0;     ///< from MPI_Comm_Rank
     int m_SizeMPI = 1;     ///< from MPI_Comm_Size
     profiling::IOChrono m_Profiler; ///< profiles Open, Write/Read, Close
@@ -53,7 +53,7 @@ public:
      * @param debugMode passed to m_DebugMode
      */
     Transport(const std::string type, const std::string library,
-              AMPI_Comm acomm, const bool debugMode);
+              const AMPI_Comm &acomm, const bool debugMode);
 
     virtual ~Transport() = default;
 

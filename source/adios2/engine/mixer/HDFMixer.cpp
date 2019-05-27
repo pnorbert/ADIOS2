@@ -24,11 +24,10 @@ namespace engine
 {
 
 HDFMixer::HDFMixer(IO &io, const std::string &name, const Mode openMode,
-                   MPI_Comm mpiComm)
-: Engine("HDFMixer", io, name, openMode, mpiComm),
-  m_HDFVDSWriter(mpiComm, m_DebugMode),
-  m_HDFSerialWriter(MPI_COMM_SELF, m_DebugMode),
-  m_TransportsManager(mpiComm, m_DebugMode)
+                   const AMPI_Comm &acomm)
+: Engine("HDFMixer", io, name, openMode, acomm),
+  m_HDFVDSWriter(acomm, m_DebugMode), m_HDFSerialWriter(acomm, m_DebugMode),
+  m_TransportsManager(acomm, m_DebugMode)
 {
     m_EndMessage = " in call to IO Open HDFMixer " + m_Name + "\n";
     Init();
@@ -103,7 +102,7 @@ void HDFMixer::InitTransports()
 #else
 
     int rank;
-    MPI_Comm_rank(m_AMPIComm, &rank);
+    m_AMPIComm.Rank(&rank);
     m_HDFSerialWriter.Init(m_Name, rank);
     m_HDFVDSWriter.Init(m_Name);
 /*

@@ -23,13 +23,14 @@ namespace format
 
 DataManSerializer::DataManSerializer(bool isRowMajor,
                                      const bool contiguousMajor,
-                                     bool isLittleEndian, AMPI_Comm acomm)
+                                     bool isLittleEndian,
+                                     const AMPI_Comm &acomm)
 : m_IsRowMajor(isRowMajor), m_IsLittleEndian(isLittleEndian),
-  m_ContiguousMajor(contiguousMajor), m_AMpiComm(acomm),
+  m_ContiguousMajor(contiguousMajor), m_AMPIComm(acomm),
   m_DeferredRequestsToSend(std::make_shared<DeferredRequestMap>())
 {
-    m_AMpiComm.Size(&m_MpiSize);
-    m_AMpiComm.Rank(&m_MpiRank);
+    m_AMPIComm.Size(&m_MpiSize);
+    m_AMPIComm.Rank(&m_MpiRank);
     New(1024);
 }
 
@@ -74,8 +75,8 @@ void DataManSerializer::AggregateMetadata()
     auto localJsonPack = SerializeJson(m_MetadataJson);
     unsigned int size = localJsonPack->size();
     unsigned int maxSize;
-    m_AMpiComm.MPI()->Allreduce(&size, &maxSize, 1, AMPI_UNSIGNED, AMPI_MAX,
-                                m_AMpiComm);
+    m_AMPIComm.MPI()->Allreduce(&size, &maxSize, 1, AMPI_UNSIGNED, AMPI_MAX,
+                                m_AMPIComm);
     maxSize += sizeof(uint64_t);
     localJsonPack->resize(maxSize, '\0');
     *(reinterpret_cast<uint64_t *>(localJsonPack->data() +
@@ -83,9 +84,9 @@ void DataManSerializer::AggregateMetadata()
       1) = size;
 
     std::vector<char> globalJsonStr(m_MpiSize * maxSize);
-    m_AMpiComm.MPI()->Allgather(localJsonPack->data(), maxSize, AMPI_CHAR,
+    m_AMPIComm.MPI()->Allgather(localJsonPack->data(), maxSize, AMPI_CHAR,
                                 globalJsonStr.data(), maxSize, AMPI_CHAR,
-                                m_AMpiComm);
+                                m_AMPIComm);
 
     nlohmann::json aggMetadata;
 
@@ -263,7 +264,8 @@ VecPtr DataManSerializer::GetAggregatedMetadataPack(const int64_t stepRequested,
     return ret;
 }
 
-void DataManSerializer::PutAggregatedMetadata(VecPtr input, AMPI_Comm acomm)
+void DataManSerializer::PutAggregatedMetadata(VecPtr input,
+                                              const AMPI_Comm &acomm)
 {
     TAU_SCOPED_TIMER_FUNC();
     if (input == nullptr)
@@ -1121,7 +1123,7 @@ void DataManSerializer::Log(const int level, const std::string &message,
 {
     TAU_SCOPED_TIMER_FUNC();
     int rank;
-    m_AMpiComm.Rank(&rank);
+    m_AMPIComm.Rank(&rank);
 
     if (m_Verbosity >= level)
     {

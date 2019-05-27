@@ -44,7 +44,7 @@ const std::map<int, std::string> BP3Base::m_TransformTypesToNames = {
     //    {transform_blosc, "blosc"},
 };
 
-BP3Base::BP3Base(AMPI_Comm acomm, const bool debugMode)
+BP3Base::BP3Base(const AMPI_Comm &acomm, const bool debugMode)
 : m_AMPIComm(acomm), m_DebugMode(debugMode)
 {
     m_AMPIComm.Rank(&m_RankMPI);

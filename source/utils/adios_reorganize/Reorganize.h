@@ -12,9 +12,13 @@
 #define UTILS_REORGANIZE_REORGANIZE_H_
 
 #include "adios2.h"
-#include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/core/IO.h" // DataMap
+#include "adios2/toolkit/comm/AMPIComm.h"
 #include "utils/Utils.h"
+
+#ifdef ADIOS2_HAVE_MPI
+#include <mpi.h>
+#endif
 
 namespace adios2
 {
@@ -85,7 +89,9 @@ private:
     // Global variables
     int rank = 0;
     int numproc = 1;
+#ifdef ADIOS2_HAVE_MPI
     MPI_Comm comm;
+#endif
 
     // Read/write method parameters
     Params rmethodparams;

@@ -26,7 +26,7 @@ public:
 
     ~MPIChain() = default;
 
-    void Init(const size_t subStreams, AMPI_Comm parentComm) final;
+    void Init(const size_t subStreams, const AMPI_Comm &parentComm);
 
     std::vector<std::vector<AMPI_Request>> IExchange(BufferSTL &bufferSTL,
                                                      const int step) final;

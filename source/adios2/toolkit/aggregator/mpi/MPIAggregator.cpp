@@ -19,17 +19,10 @@ namespace aggregator
 
 MPIAggregator::MPIAggregator() : m_Comm(AMPI_Comm()) {}
 
-MPIAggregator::~MPIAggregator()
-{
-    if (m_IsActive)
-    {
-        helper::CheckMPIReturn(m_Comm.Free(),
-                               "freeing aggregators comm in MPIAggregator "
-                               "destructor, not recommended");
-    }
-}
+MPIAggregator::~MPIAggregator() {}
 
-void MPIAggregator::Init(const size_t subStreams, AMPI_Comm parentComm) {}
+// void MPIAggregator::Init(const size_t subStreams, const AMPI_Comm
+// &parentComm) {}
 
 void MPIAggregator::SwapBuffers(const int step) noexcept {}
 
@@ -51,7 +44,8 @@ void MPIAggregator::Close()
 }
 
 // PROTECTED
-void MPIAggregator::InitComm(const size_t subStreams, AMPI_Comm parentComm)
+void MPIAggregator::InitComm(const size_t subStreams,
+                             const AMPI_Comm &parentComm)
 {
     int parentRank;
     int parentSize;

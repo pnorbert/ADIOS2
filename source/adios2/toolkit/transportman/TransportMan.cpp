@@ -29,7 +29,7 @@ namespace adios2
 namespace transportman
 {
 
-TransportMan::TransportMan(AMPI_Comm acomm, const bool debugMode)
+TransportMan::TransportMan(const AMPI_Comm &acomm, const bool debugMode)
 : m_AMPIComm(acomm), m_DebugMode(debugMode)
 {
 }

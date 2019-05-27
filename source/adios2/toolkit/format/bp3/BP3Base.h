@@ -126,7 +126,7 @@ public:
         bool HasSubFiles = false;
     };
 
-    AMPI_Comm m_AMPIComm; ///< MPI communicator from Engine
+    const AMPI_Comm &m_AMPIComm; ///< MPI communicator from Engine
     int m_RankMPI = 0;    ///< current MPI rank process
     int m_SizeMPI = 1;    ///< current MPI processes size
     int m_Processes = 1;  ///< number of aggregated MPI processes
@@ -199,7 +199,7 @@ public:
      * @param acomm for m_BP1Aggregator
      * @param debugMode true: exceptions checks
      */
-    BP3Base(AMPI_Comm acomm, const bool debugMode);
+    BP3Base(const AMPI_Comm &acomm, const bool debugMode);
 
     virtual ~BP3Base();
 

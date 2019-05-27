@@ -35,7 +35,7 @@ public:
      * @param debugMode
      */
     InlineWriter(IO &adios, const std::string &name, const Mode mode,
-                 AMPI_Comm acomm);
+                 const AMPI_Comm &acomm);
 
     ~InlineWriter() = default;
 
