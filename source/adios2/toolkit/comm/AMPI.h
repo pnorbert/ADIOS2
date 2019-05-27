@@ -6,6 +6,7 @@
 #ifndef ADIOS2_AMPI_H_
 #define ADIOS2_AMPI_H_
 
+#include "AMPIDefs.h"
 #include "AMPIRequest.h"
 #include "AMPIStatus.h"
 #include "AMPITypes.h"
@@ -27,9 +28,9 @@ public:
     AMPI();
     virtual ~AMPI();
 
-    virtual int Barrier(AMPI_Comm comm);
-    int Bcast(void *buffer, int count, AMPI_Datatype datatype, int root,
-              AMPI_Comm comm);
+    virtual int Barrier(AMPI_Comm comm) = 0;
+    virtual int Bcast(void *buffer, int count, AMPI_Datatype datatype, int root,
+              AMPI_Comm comm) = 0;
 
     /*
     virtual int Comm_dup(AMPI_Comm comm, AMPI_Comm *newcomm);
@@ -40,58 +41,58 @@ public:
     /*
     AMPI_Comm AMPI_Comm_f2c(AMPI_Fint comm);
     */
-    int Gather(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
+    virtual int Gather(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                void *recvbuf, int recvcount, AMPI_Datatype recvtype, int root,
-               AMPI_Comm comm);
-    int Gatherv(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
+               AMPI_Comm comm) = 0;
+    virtual int Gatherv(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                 void *recvbuf, const int *recvcounts, const int *displs,
-                AMPI_Datatype recvtype, int root, AMPI_Comm comm);
-    int Allgather(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
+                AMPI_Datatype recvtype, int root, AMPI_Comm comm) = 0;
+    virtual int Allgather(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                   void *recvbuf, int recvcount, AMPI_Datatype recvtype,
-                  AMPI_Comm comm);
+                  AMPI_Comm comm) = 0;
 
-    int Scatter(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
+    virtual int Scatter(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                 void *recvbuf, int recvcount, AMPI_Datatype recvtype, int root,
-                AMPI_Comm comm);
-    int Scatterv(const void *sendbuf, const int *sendcounts, const int *displs,
+                AMPI_Comm comm) = 0;
+    virtual int Scatterv(const void *sendbuf, const int *sendcounts, const int *displs,
                  AMPI_Datatype sendtype, void *recvbuf, int recvcount,
-                 AMPI_Datatype recvtype, int root, AMPI_Comm comm);
+                 AMPI_Datatype recvtype, int root, AMPI_Comm comm) = 0;
 
-    int Recv(void *buf, int count, AMPI_Datatype datatype, int source, int tag,
-             AMPI_Comm comm, AMPI_Status *status);
-    int Irecv(void *buf, int count, AMPI_Datatype datatype, int source, int tag,
-              AMPI_Comm comm, AMPI_Request *request);
-    int Send(const void *buf, int count, AMPI_Datatype datatype, int dest,
-             int tag, AMPI_Comm comm);
-    int Isend(const void *buf, int count, AMPI_Datatype datatype, int dest,
-              int tag, AMPI_Comm comm, AMPI_Request *request);
+    virtual int Recv(void *buf, int count, AMPI_Datatype datatype, int source, int tag,
+             AMPI_Comm comm, AMPI_Status *status) = 0;
+    virtual int Irecv(void *buf, int count, AMPI_Datatype datatype, int source, int tag,
+              AMPI_Comm comm, AMPI_Request *request) = 0;
+    virtual int Send(const void *buf, int count, AMPI_Datatype datatype, int dest,
+             int tag, AMPI_Comm comm) = 0;
+    virtual int Isend(const void *buf, int count, AMPI_Datatype datatype, int dest,
+              int tag, AMPI_Comm comm, AMPI_Request *request) = 0;
 
-    int Wait(AMPI_Request *request, AMPI_Status *status);
+    virtual int Wait(AMPI_Request *request, AMPI_Status *status) = 0;
 
     /*
-    int File_open(AMPI_Comm comm, const char *filename, int amode,
-                       AMPI_Info info, AMPI_File *fh);
-    int File_close(AMPI_File *fh);
-    int File_get_size(AMPI_File fh, AMPI_Offset *size);
-    int File_read(AMPI_File fh, void *buf, int count,
-                       AMPI_Datatype datatype, AMPI_Status *status);
-    int File_seek(AMPI_File fh, AMPI_Offset offset, int whence);
+    virtual int File_open(AMPI_Comm comm, const char *filename, int amode,
+                       AMPI_Info info, AMPI_File *fh) = 0;
+    virtual int File_close(AMPI_File *fh) = 0;
+    virtual int File_get_size(AMPI_File fh, AMPI_Offset *size) = 0;
+    virtual int File_read(AMPI_File fh, void *buf, int count,
+                       AMPI_Datatype datatype, AMPI_Status *status) = 0;
+    virtual int File_seek(AMPI_File fh, AMPI_Offset offset, int whence) = 0;
     */
 
-    int Get_count(const AMPI_Status *status, AMPI_Datatype datatype,
-                  int *count);
-    int Error_string(int errorcode, char *string, int *resultlen);
-    int Comm_split(AMPI_Comm comm, int color, int key, AMPI_Comm *comm_out);
+    virtual int Get_count(const AMPI_Status *status, AMPI_Datatype datatype,
+                  int *count) = 0;
+    virtual int Error_string(int errorcode, char *string, int *resultlen) = 0;
+    virtual int Comm_split(AMPI_Comm comm, int color, int key, AMPI_Comm *comm_out) = 0;
 
-    int Get_processor_name(char *name, int *resultlen);
+    virtual int Get_processor_name(char *name, int *resultlen) = 0;
 
-    double Wtime();
+    virtual double Wtime() = 0;
 
-    int Reduce(const void *sendbuf, void *recvbuf, int count,
-               AMPI_Datatype datatype, AMPI_Op op, int root, AMPI_Comm comm);
+    virtual int Reduce(const void *sendbuf, void *recvbuf, int count,
+               AMPI_Datatype datatype, AMPI_Op op, int root, AMPI_Comm comm) = 0;
 
-    int Allreduce(const void *sendbuf, void *recvbuf, int count,
-                  AMPI_Datatype datatype, AMPI_Op op, AMPI_Comm comm);
+    virtual int Allreduce(const void *sendbuf, void *recvbuf, int count,
+                  AMPI_Datatype datatype, AMPI_Op op, AMPI_Comm comm) = 0;
 };
 
 }

@@ -64,7 +64,7 @@ public:
      * @exception std::invalid_argument in debugMode = true if user input is
      * incorrect
      */
-    ADIOS(const std::string &configFile = "", MPI_Comm comm = MPI_COMM_SELF,
+    ADIOS(const std::string &configFile, MPI_Comm comm,
           const bool debugMode = true);
 #endif
 

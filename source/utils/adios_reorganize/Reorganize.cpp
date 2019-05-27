@@ -24,7 +24,7 @@
 #include <iostream>
 #include <string>
 
-#include "adios2/ADIOSMPI.h"
+#include "adios2/toolkit/comm/AMPIComm.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/core/ADIOS.h"
 #include "adios2/core/Engine.h"
@@ -119,9 +119,9 @@ void Reorganize::Run()
     print0("Write method parameters = ", wmethodparam_str);
 
 #ifdef ADIOS2_HAVE_MPI
-    core::ADIOS adios(comm, true, "C++");
+    core::ADIOS adios("", AMPI_Comm(comm), true, "C++");
 #else
-    core::ADIOS adios(true, "C++");
+    core::ADIOS adios("", AMPI_Comm(), true, "C++");
 #endif
     core::IO &io = adios.DeclareIO("group");
 

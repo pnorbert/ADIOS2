@@ -7,7 +7,7 @@
 #define ADIOS2_AMPICOMM_H_
 
 #include "AMPI.h"
-#include "AMPIStatus.h"
+#include "AMPIDefs.h"
 #include "AMPITypes.h"
 #include "adios2/ADIOSConfig.h"
 
@@ -53,7 +53,7 @@ public:
     int Rank(int *rank);   /* aka MPI_Comm_rank */
     int Size(int *size);   /* aka MPI_Comm_size */
     int Split(int color, int key, AMPI_Comm *newcomm);
-    AMPI &Driver(); /* Return the actual MPI driver for this comm */
+    AMPI *MPI(); /* Return the actual MPI driver for this comm */
 
 private:
 #ifdef ADIOS2_HAVE_MPI
@@ -61,7 +61,7 @@ private:
 #endif
     CommType m_Type;
     bool m_FreeOnDestruct = false;
-    AMPI driver;
+    AMPI *driver = nullptr;
 };
 
 }

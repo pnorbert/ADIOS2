@@ -232,7 +232,7 @@ void SscWriter::ReplyThread(const std::string &address)
 
 void SscWriter::DoClose(const int transportIndex)
 {
-    m_AMPIComm.Driver().Barrier(m_AMPIComm);
+    m_AMPIComm.MPI()->Barrier(m_AMPIComm);
     m_Listening = false;
     for (auto &i : m_ReplyThreads)
     {

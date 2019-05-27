@@ -18,16 +18,16 @@ namespace adios2
 #ifdef ADIOS2_HAVE_MPI
 
 AMPI_Comm::AMPI_Comm(MPI_Comm comm)
-: comm(comm), m_Type(CommType::MPI), driver(RealMPI()){};
+: comm(comm), m_Type(CommType::MPI), driver(new RealMPI()){};
 AMPI_Comm::AMPI_Comm()
-: comm(MPI_COMM_NULL), m_Type(CommType::Dummy), driver(RealMPI()){};
+: comm(MPI_COMM_NULL), m_Type(CommType::Dummy), driver(new RealMPI()){};
 AMPI_Comm::AMPI_Comm(MPI_Comm comm, bool flag)
 : comm(comm), m_FreeOnDestruct(flag), m_Type(CommType::MPI),
-  driver(RealMPI()){};
+  driver(new RealMPI()){};
 
 #else
 
-AMPI_Comm::AMPI_Comm() : m_Type(CommType::Dummy), driver(DummyMPI()){};
+AMPI_Comm::AMPI_Comm() : m_Type(CommType::Dummy), driver(new DummyMPI()){};
 
 #endif
 
@@ -45,6 +45,7 @@ AMPI_Comm::~AMPI_Comm()
         }
 #endif
     }
+    delete (driver);
 }
 
 CommType AMPI_Comm::Type() { return m_Type; }
@@ -138,5 +139,7 @@ int AMPI_Comm::Split(int color, int key, AMPI_Comm *newcomm)
         return MPI_SUCCESS;
     }
 }
+
+AMPI *AMPI_Comm::MPI() { return driver; }
 
 }

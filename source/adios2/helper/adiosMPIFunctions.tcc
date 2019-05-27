@@ -40,7 +40,7 @@ size_t BroadcastValue(const size_t &input, AMPI_Comm acomm,
         output = input;
     }
 
-    acomm.Driver().Bcast(&output, 1, AMPI_SIZE_T, rankSource, acomm);
+    acomm.MPI()->Bcast(&output, 1, AMPI_SIZE_T, rankSource, acomm);
 
     return output;
 }
@@ -64,9 +64,8 @@ std::string BroadcastValue(const std::string &input, AMPI_Comm acomm,
         output.resize(length);
     }
 
-    acomm.Driver().Bcast(const_cast<char *>(output.data()),
-                         static_cast<int>(length), AMPI_CHAR, rankSource,
-                         acomm);
+    acomm.MPI()->Bcast(const_cast<char *>(output.data()),
+                       static_cast<int>(length), AMPI_CHAR, rankSource, acomm);
 
     return output;
 }
@@ -78,8 +77,8 @@ unsigned int ReduceValues(const unsigned int source, AMPI_Comm acomm,
 {
     unsigned int sourceLocal = source;
     unsigned int reduceValue = 0;
-    acomm.Driver().Reduce(&sourceLocal, &reduceValue, 1, AMPI_UNSIGNED,
-                          operation, rankDestination, acomm);
+    acomm.MPI()->Reduce(&sourceLocal, &reduceValue, 1, AMPI_UNSIGNED, operation,
+                        rankDestination, acomm);
     return reduceValue;
 }
 
@@ -89,8 +88,8 @@ unsigned long int ReduceValues(const unsigned long int source, AMPI_Comm acomm,
 {
     unsigned long int sourceLocal = source;
     unsigned long int reduceValue = 0;
-    acomm.Driver().Reduce(&sourceLocal, &reduceValue, 1, AMPI_UNSIGNED_LONG,
-                          operation, rankDestination, acomm);
+    acomm.MPI()->Reduce(&sourceLocal, &reduceValue, 1, AMPI_UNSIGNED_LONG,
+                        operation, rankDestination, acomm);
     return reduceValue;
 }
 
@@ -101,9 +100,8 @@ unsigned long long int ReduceValues(const unsigned long long int source,
 {
     unsigned long long int sourceLocal = source;
     unsigned long long int reduceValue = 0;
-    acomm.Driver().Reduce(&sourceLocal, &reduceValue, 1,
-                          AMPI_UNSIGNED_LONG_LONG, operation, rankDestination,
-                          acomm);
+    acomm.MPI()->Reduce(&sourceLocal, &reduceValue, 1, AMPI_UNSIGNED_LONG_LONG,
+                        operation, rankDestination, acomm);
     return reduceValue;
 }
 
@@ -135,8 +133,8 @@ void BroadcastVector(std::vector<char> &vector, AMPI_Comm acomm,
     char *buffer = vector.data();
     while (inputSize > 0)
     {
-        acomm.Driver().Bcast(buffer, static_cast<int>(blockSize), AMPI_CHAR,
-                             rankSource, acomm);
+        acomm.MPI()->Bcast(buffer, static_cast<int>(blockSize), AMPI_CHAR,
+                           rankSource, acomm);
         buffer += blockSize;
         inputSize -= blockSize;
         blockSize = (inputSize > MAXBCASTSIZE ? MAXBCASTSIZE : inputSize);
@@ -149,9 +147,9 @@ void GatherArrays(const char *source, const size_t sourceCount,
                   char *destination, AMPI_Comm acomm, const int rankDestination)
 {
     int countsInt = static_cast<int>(sourceCount);
-    int result = acomm.Driver().Gather(const_cast<char *>(source), countsInt,
-                                       AMPI_CHAR, destination, countsInt,
-                                       AMPI_CHAR, rankDestination, acomm);
+    int result = acomm.MPI()->Gather(const_cast<char *>(source), countsInt,
+                                     AMPI_CHAR, destination, countsInt,
+                                     AMPI_CHAR, rankDestination, acomm);
 
     if (result != MPI_SUCCESS)
     {
@@ -166,9 +164,9 @@ void GatherArrays(const size_t *source, const size_t sourceCount,
                   const int rankDestination)
 {
     int countsInt = static_cast<int>(sourceCount);
-    int result = acomm.Driver().Gather(const_cast<size_t *>(source), countsInt,
-                                       AMPI_SIZE_T, destination, countsInt,
-                                       AMPI_SIZE_T, rankDestination, acomm);
+    int result = acomm.MPI()->Gather(const_cast<size_t *>(source), countsInt,
+                                     AMPI_SIZE_T, destination, countsInt,
+                                     AMPI_SIZE_T, rankDestination, acomm);
 
     if (result != MPI_SUCCESS)
     {
@@ -183,9 +181,9 @@ void AllGatherArrays(const size_t *source, const size_t sourceCount,
                      size_t *destination, AMPI_Comm acomm)
 {
     int countsInt = static_cast<int>(sourceCount);
-    int result = acomm.Driver().Allgather(const_cast<size_t *>(source),
-                                          countsInt, AMPI_SIZE_T, destination,
-                                          countsInt, AMPI_SIZE_T, acomm);
+    int result = acomm.MPI()->Allgather(const_cast<size_t *>(source), countsInt,
+                                        AMPI_SIZE_T, destination, countsInt,
+                                        AMPI_SIZE_T, acomm);
 
     if (result != MPI_SUCCESS)
     {
@@ -214,10 +212,10 @@ void GathervArrays(const char *source, const size_t sourceCount,
     }
 
     int sourceCountInt = static_cast<int>(sourceCount);
-    result = acomm.Driver().Gatherv(const_cast<char *>(source), sourceCountInt,
-                                    AMPI_CHAR, destination, countsInt.data(),
-                                    displacementsInt.data(), AMPI_CHAR,
-                                    rankDestination, acomm);
+    result = acomm.MPI()->Gatherv(const_cast<char *>(source), sourceCountInt,
+                                  AMPI_CHAR, destination, countsInt.data(),
+                                  displacementsInt.data(), AMPI_CHAR,
+                                  rankDestination, acomm);
 
     if (result != MPI_SUCCESS)
     {
@@ -244,10 +242,10 @@ void GathervArrays(const size_t *source, const size_t sourceCount,
 
     int sourceCountInt = static_cast<int>(sourceCount);
 
-    result = acomm.Driver().Gatherv(const_cast<size_t *>(source),
-                                    sourceCountInt, AMPI_SIZE_T, destination,
-                                    countsInt.data(), displacementsInt.data(),
-                                    AMPI_SIZE_T, rankDestination, acomm);
+    result = acomm.MPI()->Gatherv(const_cast<size_t *>(source), sourceCountInt,
+                                  AMPI_SIZE_T, destination, countsInt.data(),
+                                  displacementsInt.data(), AMPI_SIZE_T,
+                                  rankDestination, acomm);
 
     if (result != MPI_SUCCESS)
     {
@@ -271,9 +269,9 @@ std::vector<AMPI_Request> Isend64<char>(const char *buffer, const size_t count,
         {
             int batchSize = static_cast<int>(DefaultMaxFileBatchSize);
             CheckMPIReturn(
-                acomm.Driver().Isend(const_cast<char *>(buffer + position),
-                                     batchSize, AMPI_CHAR, dest, tag, acomm,
-                                     &requests[b]),
+                acomm.MPI()->Isend(const_cast<char *>(buffer + position),
+                                   batchSize, AMPI_CHAR, dest, tag, acomm,
+                                   &requests[b]),
                 "in call to Isend64 batch " + std::to_string(b) + "/" +
                     std::to_string(batches) + " " + hint + "\n");
 
@@ -284,18 +282,18 @@ std::vector<AMPI_Request> Isend64<char>(const char *buffer, const size_t count,
         {
             int batchSize = static_cast<int>(remainder);
             CheckMPIReturn(
-                acomm.Driver().Isend(const_cast<char *>(buffer + position),
-                                     batchSize, AMPI_CHAR, dest, tag, acomm,
-                                     &requests[batches - 1]),
+                acomm.MPI()->Isend(const_cast<char *>(buffer + position),
+                                   batchSize, AMPI_CHAR, dest, tag, acomm,
+                                   &requests[batches - 1]),
                 "in call to Isend64 last batch " + hint + "\n");
         }
     }
     else
     {
         int batchSize = static_cast<int>(count);
-        CheckMPIReturn(acomm.Driver().Isend(const_cast<char *>(buffer),
-                                            batchSize, AMPI_CHAR, dest, tag,
-                                            acomm, &requests[0]),
+        CheckMPIReturn(acomm.MPI()->Isend(const_cast<char *>(buffer), batchSize,
+                                          AMPI_CHAR, dest, tag, acomm,
+                                          &requests[0]),
                        " in call to Isend64 with single batch " + hint + "\n");
     }
 
@@ -324,8 +322,8 @@ std::vector<AMPI_Request> Irecv64<char>(char *buffer, const size_t count,
         {
             int batchSize = static_cast<int>(DefaultMaxFileBatchSize);
             CheckMPIReturn(
-                acomm.Driver().Irecv(buffer + position, batchSize, AMPI_CHAR,
-                                     source, tag, acomm, &requests[b]),
+                acomm.MPI()->Irecv(buffer + position, batchSize, AMPI_CHAR,
+                                   source, tag, acomm, &requests[b]),
                 "in call to Irecv64 batch " + std::to_string(b) + "/" +
                     std::to_string(batches) + " " + hint + "\n");
 
@@ -335,17 +333,17 @@ std::vector<AMPI_Request> Irecv64<char>(char *buffer, const size_t count,
         if (remainder > 0)
         {
             int batchSize = static_cast<int>(remainder);
-            CheckMPIReturn(acomm.Driver().Irecv(buffer + position, batchSize,
-                                                AMPI_CHAR, source, tag, acomm,
-                                                &requests[batches - 1]),
+            CheckMPIReturn(acomm.MPI()->Irecv(buffer + position, batchSize,
+                                              AMPI_CHAR, source, tag, acomm,
+                                              &requests[batches - 1]),
                            "in call to Irecv64 last batch " + hint + "\n");
         }
     }
     else
     {
         int batchSize = static_cast<int>(count);
-        CheckMPIReturn(acomm.Driver().Irecv(buffer, batchSize, AMPI_CHAR,
-                                            source, tag, acomm, &requests[0]),
+        CheckMPIReturn(acomm.MPI()->Irecv(buffer, batchSize, AMPI_CHAR, source,
+                                          tag, acomm, &requests[0]),
                        " in call to Isend64 with single batch " + hint + "\n");
     }
     return requests;

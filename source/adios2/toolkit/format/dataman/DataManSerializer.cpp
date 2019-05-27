@@ -74,8 +74,8 @@ void DataManSerializer::AggregateMetadata()
     auto localJsonPack = SerializeJson(m_MetadataJson);
     unsigned int size = localJsonPack->size();
     unsigned int maxSize;
-    m_AMpiComm.Driver().Allreduce(&size, &maxSize, 1, AMPI_UNSIGNED, AMPI_MAX,
-                                  m_AMpiComm);
+    m_AMpiComm.MPI()->Allreduce(&size, &maxSize, 1, AMPI_UNSIGNED, AMPI_MAX,
+                                m_AMpiComm);
     maxSize += sizeof(uint64_t);
     localJsonPack->resize(maxSize, '\0');
     *(reinterpret_cast<uint64_t *>(localJsonPack->data() +
@@ -83,9 +83,9 @@ void DataManSerializer::AggregateMetadata()
       1) = size;
 
     std::vector<char> globalJsonStr(m_MpiSize * maxSize);
-    m_AMpiComm.Driver().Allgather(localJsonPack->data(), maxSize, AMPI_CHAR,
-                                  globalJsonStr.data(), maxSize, AMPI_CHAR,
-                                  m_AMpiComm);
+    m_AMpiComm.MPI()->Allgather(localJsonPack->data(), maxSize, AMPI_CHAR,
+                                globalJsonStr.data(), maxSize, AMPI_CHAR,
+                                m_AMpiComm);
 
     nlohmann::json aggMetadata;
 

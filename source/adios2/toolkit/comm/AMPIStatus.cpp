@@ -22,7 +22,7 @@ AMPI_Status::~AMPI_Status()
         free(m_Status);
     }
 };
-const void *AMPI_Status::Get() { return m_Status; };
+const void *AMPI_Status::Get() const { return m_Status; };
 void AMPI_Status::Set(void *ptr) { m_Status = ptr; };
 
 } // end namespace adios2

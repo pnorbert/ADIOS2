@@ -60,6 +60,7 @@ add_library(adios2
   toolkit/comm/AMPIComm.cpp
   toolkit/comm/AMPIStatus.cpp
   toolkit/comm/AMPIRequest.cpp
+  toolkit/comm/AMPI.cpp
   toolkit/comm/DummyMPI.cpp
   
   toolkit/format/BufferSTL.cpp

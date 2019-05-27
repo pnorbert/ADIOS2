@@ -18,7 +18,7 @@ class AMPI_Status
 public:
     AMPI_Status();
     virtual ~AMPI_Status();
-    const void *Get();
+    const void *Get() const;
     void Set(void *ptr);
 
 private:

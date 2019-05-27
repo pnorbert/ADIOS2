@@ -3,27 +3,31 @@
  * accompanying file Copyright.txt for details.
  */
 
-#ifndef ADIOS2_RealMPI_H_
-#define ADIOS2_RealMPI_H_
 
-#include "AMPIComm.h"
-#include "adios2/ADIOSConfig.h"
+#include "AMPI.h"
+
 
 namespace adios2
 {
-/** @brief Point of entry class for an application.
- *         Serves as factory of IO class objects and Transforms */
+    AMPI::AMPI(){};
+    AMPI::~AMPI(){};
 
-class RealMPI : public AMPI
-{
-public:
-    RealMPI();
-    ~RealMPI();
-
+    /*
     int Barrier(AMPI_Comm comm);
     int Bcast(void *buffer, int count, AMPI_Datatype datatype, int root,
               AMPI_Comm comm);
+     */
 
+    /*
+    virtual int Comm_dup(AMPI_Comm comm, AMPI_Comm *newcomm);
+    virtual int Comm_rank(AMPI_Comm comm, int *rank);
+    virtual int Comm_size(AMPI_Comm comm, int *size);
+    virtual int Comm_free(AMPI_Comm *comm);
+    */
+    /*
+    AMPI_Comm AMPI_Comm_f2c(AMPI_Fint comm);
+    */
+    /*
     int Gather(const void *sendbuf, int sendcount, AMPI_Datatype sendtype,
                void *recvbuf, int recvcount, AMPI_Datatype recvtype, int root,
                AMPI_Comm comm);
@@ -51,6 +55,7 @@ public:
               int tag, AMPI_Comm comm, AMPI_Request *request);
 
     int Wait(AMPI_Request *request, AMPI_Status *status);
+    */
 
     /*
     int File_open(AMPI_Comm comm, const char *filename, int amode,
@@ -62,6 +67,7 @@ public:
     int File_seek(AMPI_File fh, AMPI_Offset offset, int whence);
     */
 
+    /*
     int Get_count(const AMPI_Status *status, AMPI_Datatype datatype,
                   int *count);
     int Error_string(int errorcode, char *string, int *resultlen);
@@ -76,8 +82,6 @@ public:
 
     int Allreduce(const void *sendbuf, void *recvbuf, int count,
                   AMPI_Datatype datatype, AMPI_Op op, AMPI_Comm comm);
-};
-
+    */
 }
 
-#endif /* ADIOS2_RealMPI_H_ */
