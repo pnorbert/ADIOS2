@@ -1181,7 +1181,7 @@ int doList(const char *path)
     if (hidden_attrs)
         strcat(init_params, ";show_hidden_attrs");
 
-    core::ADIOS adios("", AMPI_Comm(), true, "C++");
+    core::ADIOS adios("", true, "C++");
     core::IO &io = adios.DeclareIO("bpls");
     core::Engine *fp = nullptr;
     std::vector<std::string> engineList = getEnginesList(path);

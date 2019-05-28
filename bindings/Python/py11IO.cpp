@@ -252,8 +252,7 @@ Engine IO::Open(const std::string &name, const int mode, MPI4PY_Comm comm)
     helper::CheckForNullptr(m_IO,
                             "for engine " + name + ", in call to IO::Open");
 
-    return Engine(
-        &m_IO->Open(name, static_cast<adios2::Mode>(mode), AMPI_Comm(comm)));
+    return Engine(&m_IO->Open(name, static_cast<adios2::Mode>(mode), comm));
 }
 #endif
 

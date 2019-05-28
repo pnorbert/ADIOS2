@@ -24,7 +24,7 @@ namespace core
 namespace engine
 {
 
-HDFVDSWriter::HDFVDSWriter(const AMPI_Comm &acomm, bool debugMode)
+HDFVDSWriter::HDFVDSWriter(AMPI_Comm &acomm, bool debugMode)
 : m_AMPISubfileComm(acomm), m_VDSFile(debugMode), m_Rank(-1)
 {
     m_AMPISubfileComm.Size(&m_NumSubFiles);
@@ -224,7 +224,7 @@ void HDFVDSWriter::Close(const int transportIndex)
 //
 // class HDFSerialWriter
 //
-HDFSerialWriter::HDFSerialWriter(const AMPI_Comm &acomm, const bool debugMode = false)
+HDFSerialWriter::HDFSerialWriter(AMPI_Comm &acomm, const bool debugMode = false)
 : m_AMPILocalComm(acomm), m_DebugMode(debugMode), m_H5File(debugMode)
 {
 }

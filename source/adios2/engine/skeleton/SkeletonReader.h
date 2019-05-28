@@ -39,7 +39,7 @@ public:
      * @param hostLanguage
      */
     SkeletonReader(IO &adios, const std::string &name, const Mode mode,
-                   const AMPI_Comm &acomm);
+                    AMPI_Comm &acomm);
 
     ~SkeletonReader();
     StepStatus BeginStep(StepMode mode = StepMode::NextAvailable,

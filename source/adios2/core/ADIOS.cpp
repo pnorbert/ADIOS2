@@ -50,10 +50,27 @@ namespace adios2
 namespace core
 {
 
-ADIOS::ADIOS(const std::string configFile, const AMPI_Comm &acomm,
+#ifdef ADIOS2_HAVE_MPI
+ADIOS::ADIOS(const std::string configFile, const MPI_Comm comm,
              const bool debugMode, const std::string hostLanguage)
 : m_ConfigFile(configFile), m_DebugMode(debugMode),
-  m_HostLanguage(hostLanguage), m_AMPIComm(acomm)
+  m_HostLanguage(hostLanguage), m_AMPIComm(comm)
+{
+    if (!configFile.empty())
+    {
+        if (configFile.substr(configFile.size() - 3) == "xml")
+        {
+            XMLInit(configFile);
+        }
+        // TODO expand for other formats
+    }
+}
+#endif
+
+ADIOS::ADIOS(const std::string configFile, const bool debugMode,
+             const std::string hostLanguage)
+: m_ConfigFile(configFile), m_DebugMode(debugMode),
+  m_HostLanguage(hostLanguage), m_AMPIComm()
 {
     if (!configFile.empty())
     {

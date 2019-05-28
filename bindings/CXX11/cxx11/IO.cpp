@@ -12,7 +12,8 @@
 #include "IO.tcc"
 
 #include "adios2/core/IO.h"
-#include "adios2/toolkit/comm/AMPIComm.h"
+
+#include <iostream>
 
 namespace adios2
 {
@@ -91,9 +92,9 @@ Engine IO::Open(const std::string &name, const Mode mode, MPI_Comm comm)
 {
     helper::CheckForNullptr(m_IO,
                             "for engine " + name + ", in call to IO::Open");
-    Engine engine(comm);
-    engine.m_Engine = &m_IO->Open(name, mode, *engine.m_AMPIComm);
-    return engine;
+
+    core::Engine *e = &m_IO->Open(name, mode, comm);
+    return Engine(e);
 }
 #endif
 
@@ -101,9 +102,9 @@ Engine IO::Open(const std::string &name, const Mode mode)
 {
     helper::CheckForNullptr(m_IO,
                             "for engine " + name + ", in call to IO::Open");
-    Engine engine;
-    engine.m_Engine = &m_IO->Open(name, mode, *engine.m_AMPIComm);
-    return engine;
+
+    core::Engine *e = &m_IO->Open(name, mode);
+    return Engine(e);
 }
 
 void IO::FlushAll()

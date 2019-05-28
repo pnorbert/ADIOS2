@@ -11,15 +11,18 @@
 #include "Stream.h"
 #include "Stream.tcc"
 
+#include "adios2/ADIOSMPI.h"
+
 namespace adios2
 {
 namespace core
 {
 
-Stream::Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
+#ifdef ADIOS2_HAVE_MPI
+Stream::Stream(const std::string &name, const Mode mode, MPI_Comm comm,
                const std::string engineType, const std::string hostLanguage)
 : m_Name(name),
-  m_ADIOS(std::make_shared<ADIOS>("", acomm, DebugON, hostLanguage)),
+  m_ADIOS(std::make_shared<ADIOS>("", comm, DebugON, hostLanguage)),
   m_IO(&m_ADIOS->DeclareIO(name)), m_Mode(mode), m_EngineType(engineType)
 {
     if (mode == adios2::Mode::Read)
@@ -28,11 +31,11 @@ Stream::Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
     }
 }
 
-Stream::Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
+Stream::Stream(const std::string &name, const Mode mode, MPI_Comm comm,
                const std::string configFile, const std::string ioInConfigFile,
                const std::string hostLanguage)
 : m_Name(name),
-  m_ADIOS(std::make_shared<ADIOS>(configFile, acomm, DebugON, hostLanguage)),
+  m_ADIOS(std::make_shared<ADIOS>(configFile, comm, DebugON, hostLanguage)),
   m_IO(&m_ADIOS->DeclareIO(ioInConfigFile)), m_Mode(mode)
 {
     if (mode == adios2::Mode::Read)
@@ -40,7 +43,8 @@ Stream::Stream(const std::string &name, const Mode mode, const AMPI_Comm &acomm,
         CheckOpen();
     }
 }
-/*
+#endif
+
 Stream::Stream(const std::string &name, const Mode mode,
                const std::string engineType, const std::string hostLanguage)
 : m_Name(name), m_ADIOS(std::make_shared<ADIOS>("", DebugON, hostLanguage)),
@@ -64,7 +68,7 @@ Stream::Stream(const std::string &name, const Mode mode,
         CheckOpen();
     }
 }
-*/
+
 bool Stream::GetStep()
 {
     if (!m_FirstStep)

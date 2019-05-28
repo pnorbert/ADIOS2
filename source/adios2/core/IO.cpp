@@ -403,8 +403,8 @@ size_t IO::AddOperation(Operator &op, const Params &parameters) noexcept
     return m_Operations.size() - 1;
 }
 
-Engine &IO::Open(const std::string &name, const Mode mode,
-                 const AMPI_Comm &acomm)
+// private function, called from public Open functions
+Engine &IO::Open(const std::string &name, const Mode mode, AMPI_Comm &acomm)
 {
     TAU_SCOPED_TIMER("IO::Open");
     auto itEngineFound = m_Engines.find(name);
@@ -630,10 +630,29 @@ Engine &IO::Open(const std::string &name, const Mode mode,
     return *itEngine.first->second.get();
 }
 
+#ifdef ADIOS2_HAVE_MPI
+Engine &IO::Open(const std::string &name, const Mode mode, MPI_Comm comm)
+{
+    // engine will grab ownership of AMPI_Comm object
+    AMPI_Comm acomm(comm);
+    return Open(name, mode, acomm);
+}
+
 Engine &IO::Open(const std::string &name, const Mode mode)
 {
-    return Open(name, mode, m_ADIOS.m_AMPIComm);
+    // engine will grab ownership of AMPI_Comm object
+    AMPI_Comm acomm(m_ADIOS.m_AMPIComm.comm);
+    return Open(name, mode, acomm);
 }
+
+#else
+
+Engine &IO::Open(const std::string &name, const Mode mode)
+{
+    // engine will grab ownership of AMPI_Comm object
+    return Open(name, mode, AMPI_Comm());
+}
+#endif
 
 Engine &IO::GetEngine(const std::string &name)
 {

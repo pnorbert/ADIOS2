@@ -27,14 +27,6 @@ Engine::operator bool() const noexcept
     return *m_Engine ? true : false;
 }
 
-Engine::~Engine()
-{
-    if (m_AMPIComm)
-    {
-        delete (m_AMPIComm);
-    }
-}
-
 std::string Engine::Name() const
 {
     helper::CheckForNullptr(m_Engine, "in call to Engine::Name");
@@ -128,18 +120,7 @@ void Engine::Close(const int transportIndex)
     m_Engine->Close(transportIndex);
 }
 
-#ifdef ADIOS2_HAVE_MPI
-Engine::Engine(MPI_Comm comm)
-{
-    m_AMPIComm = new AMPI_Comm(comm);
-    int rank;
-    m_AMPIComm->Rank(&rank);
-    std::cout << "Engine.cx11 acomm: " << static_cast<void *>(m_AMPIComm)
-              << " rank = " << rank
-              << " comm: " << static_cast<void *>(m_AMPIComm->comm)
-              << std::endl;
-};
-#endif
+Engine::Engine(core::Engine *engine) { m_Engine = engine; };
 
 #define declare_template_instantiation(T)                                      \
                                                                                \

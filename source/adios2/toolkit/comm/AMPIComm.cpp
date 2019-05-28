@@ -20,28 +20,74 @@ namespace adios2
 #ifdef ADIOS2_HAVE_MPI
 
 AMPI_Comm::AMPI_Comm(MPI_Comm comm)
-: m_Type(CommType::MPI), driver(std::make_shared<RealMPI>())
+: m_Type(CommType::MPI), m_FreeOnDestruct(true),
+  driver(std::make_shared<RealMPI>())
 {
-    // std::cout << "AMPI_Comm(comm) called" << std::endl;
     MPI_Comm_dup(comm, &this->comm);
+
+    int rank;
+    this->Rank(&rank);
+    std::cout << "AMPI_Comm(" << static_cast<void *>(comm)
+              << ") --> acomm: " << static_cast<void *>(this)
+              << " rank = " << rank
+              << " comm: " << static_cast<void *>(this->comm) << std::endl;
 };
 
 AMPI_Comm::AMPI_Comm(MPI_Comm comm, std::shared_ptr<AMPI> driver, bool flag)
-: comm(comm), m_Type(CommType::MPI), m_FreeOnDestruct(flag),
-  driver(driver){
-      // std::cout << "AMPI_Comm(comm, flag, driver) called" << std::endl;
-  };
+: comm(comm), m_Type(CommType::MPI), m_FreeOnDestruct(flag), driver(driver)
+{
+    int rank;
+    this->Rank(&rank);
+    std::cout << "AMPI_Comm(" << static_cast<void *>(comm)
+              << ") --> acomm: " << static_cast<void *>(this)
+              << " rank = " << rank
+              << " comm: " << static_cast<void *>(this->comm) << std::endl;
+};
 
 #endif
 
+#if 0
+AMPI_Comm::AMPI_Comm(const AMPI_Comm &acomm)
+: m_Type(acomm.Type()), m_FreeOnDestruct(false), driver(acomm.MPI())
+#ifdef ADIOS2_HAVE_MPI
+  ,
+  comm(acomm.comm)
+#endif
+{
+
+    int rank;
+    this->Rank(&rank);
+    std::cout << "AMPI_Comm(acomm" << static_cast<const void *>(&acomm)
+              << ") --> new acomm: " << static_cast<void *>(this)
+              << " rank = " << rank
+#ifdef ADIOS2_HAVE_MPI
+              << " comm: " << static_cast<void *>(this->comm)
+#endif
+              << std::endl;
+};
+#endif
+
 AMPI_Comm::AMPI_Comm()
-: m_Type(CommType::Dummy),
-  driver(std::make_shared<DummyMPI>()){
-      // std::cout << "AMPI_Comm() called" << std::endl;
-  };
+: comm(MPI_COMM_NULL), m_Type(CommType::Dummy), m_FreeOnDestruct(false),
+  driver(std::make_shared<DummyMPI>())
+{
+    int rank;
+    this->Rank(&rank);
+    std::cout << "AMPI_Comm() --> acomm: " << static_cast<void *>(this)
+              << " rank = " << rank
+              << " comm: " << static_cast<void *>(this->comm) << std::endl;
+};
 
 AMPI_Comm::AMPI_Comm(std::shared_ptr<AMPI> driver, bool flag)
-: m_Type(CommType::Dummy), m_FreeOnDestruct(flag), driver(driver){};
+: comm(MPI_COMM_NULL), m_Type(CommType::Dummy), m_FreeOnDestruct(flag),
+  driver(driver)
+{
+    int rank;
+    this->Rank(&rank);
+    std::cout << "AMPI_Comm() --> acomm: " << static_cast<void *>(this)
+              << " rank = " << rank
+              << " comm: " << static_cast<void *>(this->comm) << std::endl;
+};
 
 AMPI_Comm::~AMPI_Comm()
 {
@@ -57,9 +103,12 @@ AMPI_Comm::~AMPI_Comm()
         }
 #endif
     }
-    /*std::cout << "AMPI_Comm destructor called. Remove driver "
+    std::cout << "AMPI_Comm destructor called. acomm: "
+              << static_cast<void *>(this)
+              << " comm: " << static_cast<void *>(this->comm)
+              << "  Remove driver "
               << (m_Type == CommType::MPI ? "RealMPI" : "DummyMPI")
-              << std::endl;*/
+              << std::endl;
 }
 
 CommType AMPI_Comm::Type() const { return m_Type; }
@@ -112,6 +161,9 @@ int AMPI_Comm::Rank(int *rank) const
 #ifdef ADIOS2_HAVE_MPI
     if (m_Type == CommType::MPI)
     {
+        std::cout << "AMPI_Comm().Rank --> acomm: "
+                  << static_cast<const void *>(this)
+                  << " comm: " << static_cast<void *>(this->comm) << std::endl;
         return MPI_Comm_rank(comm, rank);
     }
     else
@@ -156,5 +208,4 @@ int AMPI_Comm::Split(int color, int key, AMPI_Comm *newcomm) const
 }
 
 std::shared_ptr<AMPI> AMPI_Comm::MPI() const { return driver; }
-
 }

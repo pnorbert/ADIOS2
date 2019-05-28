@@ -10,8 +10,6 @@
 
 #include "py11ADIOS.h"
 
-#include "adios2/toolkit/comm/AMPIComm.h"
-
 namespace adios2
 {
 namespace py11
@@ -20,8 +18,8 @@ namespace py11
 #ifdef ADIOS2_HAVE_MPI
 ADIOS::ADIOS(const std::string &configFile, MPI4PY_Comm mpiComm,
              const bool debugMode)
-: m_ADIOS(std::make_shared<adios2::core::ADIOS>(configFile, AMPI_Comm(mpiComm),
-                                                debugMode, "Python"))
+: m_ADIOS(std::make_shared<adios2::core::ADIOS>(configFile, mpiComm, debugMode,
+                                                "Python"))
 {
 }
 
@@ -31,8 +29,8 @@ ADIOS::ADIOS(MPI4PY_Comm mpiComm, const bool debugMode)
 }
 #endif
 ADIOS::ADIOS(const std::string &configFile, const bool debugMode)
-: m_ADIOS(std::make_shared<adios2::core::ADIOS>(configFile, AMPI_Comm(),
-                                                debugMode, "Python"))
+: m_ADIOS(
+      std::make_shared<adios2::core::ADIOS>(configFile, debugMode, "Python"))
 {
 }
 

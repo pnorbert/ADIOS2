@@ -25,7 +25,7 @@ class NullEngine : public Engine
 {
 public:
     NullEngine(IO &adios, const std::string &name, const Mode mode,
-               const AMPI_Comm &acomm);
+               AMPI_Comm &acomm);
 
     ~NullEngine() = default;
 

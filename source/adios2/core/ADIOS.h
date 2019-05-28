@@ -39,11 +39,12 @@ public:
     const bool m_DebugMode = true;
 
     /** Internally contains MPI_Comm passed from bindings */
-    const AMPI_Comm &m_AMPIComm;
+    const AMPI_Comm m_AMPIComm;
 
     /** Changed by language bindings in constructor */
     const std::string m_HostLanguage = "C++";
 
+#ifdef ADIOS2_HAVE_MPI
     /**
      * @brief Constructor for MPI applications WITH a XML config file
      * @param configFile XML format (maybe support different formats in the
@@ -54,8 +55,20 @@ public:
      * false: optional feature to turn off checks on user input data,
      * recommended in stable flows
      */
-    ADIOS(const std::string configFile, const AMPI_Comm &comm,
-          const bool debugMode, const std::string hostLanguage);
+    ADIOS(const std::string configFile, MPI_Comm comm, const bool debugMode,
+          const std::string hostLanguage);
+#endif
+
+    /**
+     * @brief Constructor for serial applications WITH a XML config file
+     * @param configFile XML format (maybe support different formats in the
+     * future (json)?)
+     *      * @param debugMode true (default): extra exception checks
+     * (recommended), false: optional feature to turn off checks on user input
+     * data, recommended in stable flows
+     */
+    ADIOS(const std::string configFile, const bool debugMode,
+          const std::string hostLanguage);
 
     /**
      * Delete copy constructor explicitly. Objects shouldn't be allowed to be

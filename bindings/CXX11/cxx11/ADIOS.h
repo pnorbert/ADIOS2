@@ -24,7 +24,6 @@
 
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
-#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -198,9 +197,6 @@ public:
     void RemoveAllIOs() noexcept;
 
 private:
-    // This ADIOS wrapper object owns the AMPI_Comm object
-    // It must be declared before m_ADIOS, for the fixed initializer list order
-    AMPI_Comm m_AMPIComm;
     std::shared_ptr<core::ADIOS> m_ADIOS;
 
     void CheckPointer(const std::string hint);

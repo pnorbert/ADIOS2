@@ -26,7 +26,7 @@ namespace engine
 {
 
 BP4Writer::BP4Writer(IO &io, const std::string &name, const Mode mode,
-                     const AMPI_Comm &acomm)
+                     AMPI_Comm &acomm)
 : Engine("BP4Writer", io, name, mode, acomm),
   m_BP4Serializer(acomm, m_DebugMode), m_FileDataManager(acomm, m_DebugMode),
   m_FileMetadataManager(acomm, m_DebugMode),

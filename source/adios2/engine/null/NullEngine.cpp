@@ -18,7 +18,7 @@ namespace engine
 {
 
 NullEngine::NullEngine(IO &io, const std::string &name, const Mode mode,
-                       const AMPI_Comm &acomm)
+                       AMPI_Comm &acomm)
 : Engine("NULL", io, name, mode, acomm)
 {
 }

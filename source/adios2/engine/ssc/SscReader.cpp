@@ -26,7 +26,7 @@ namespace engine
 {
 
 SscReader::SscReader(IO &io, const std::string &name, const Mode mode,
-                     const AMPI_Comm &acomm)
+                     AMPI_Comm &acomm)
 : Engine("SscReader", io, name, mode, acomm),
   m_DataManSerializer(helper::IsRowMajor(io.m_HostLanguage), true,
                       helper::IsLittleEndian(), acomm),

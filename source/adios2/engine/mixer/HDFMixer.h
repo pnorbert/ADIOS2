@@ -50,7 +50,7 @@ public:
      * @param mpiComm MPI communicator
      */
     HDFMixer(IO &io, const std::string &name, const Mode openMode,
-             const AMPI_Comm &acomm);
+              AMPI_Comm &acomm);
 
     ~HDFMixer();
 

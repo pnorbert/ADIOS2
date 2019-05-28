@@ -12,7 +12,6 @@
 
 #include "adios2/core/ADIOS.h"
 #include "adios2/helper/adiosFunctions.h"
-#include "adios2/toolkit/comm/AMPIComm.h"
 
 #ifdef ADIOS2_HAVE_MPI
 #include <mpi.h>
@@ -38,9 +37,8 @@ adios2_adios *adios2_init_config_glue(const char *config_file, MPI_Comm comm,
             "for config_file, in call to adios2_init or adios2_init_config");
         const bool debugBool =
             (debug_mode == adios2_debug_mode_on) ? true : false;
-        adios2::AMPI_Comm acomm(comm);
         adios = reinterpret_cast<adios2_adios *>(new adios2::core::ADIOS(
-            config_file, acomm, debugBool, host_language));
+            config_file, comm, debugBool, host_language));
     }
     catch (...)
     {
@@ -74,9 +72,8 @@ adios2_adios *adios2_init_config_glue(const char *config_file,
             "for config_file, in call to adios2_init or adios2_init_config");
         const bool debugBool =
             (debug_mode == adios2_debug_mode_on) ? true : false;
-        adios2::AMPI_Comm acomm;
-        adios = reinterpret_cast<adios2_adios *>(new adios2::core::ADIOS(
-            config_file, acomm, debugBool, host_language));
+        adios = reinterpret_cast<adios2_adios *>(
+            new adios2::core::ADIOS(config_file, debugBool, host_language));
     }
     catch (...)
     {

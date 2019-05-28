@@ -24,7 +24,7 @@ namespace engine
 {
 
 SkeletonWriter::SkeletonWriter(IO &io, const std::string &name, const Mode mode,
-                               const AMPI_Comm &acomm)
+                               AMPI_Comm &acomm)
 : Engine("SkeletonWriter", io, name, mode, acomm)
 {
     m_EndMessage = " in call to SkeletonWriter " + m_Name + " Open\n";

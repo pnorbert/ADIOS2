@@ -26,7 +26,7 @@ namespace engine
 {
 
 BP3Writer::BP3Writer(IO &io, const std::string &name, const Mode mode,
-                     const AMPI_Comm &acomm)
+                     AMPI_Comm &acomm)
 : Engine("BP3", io, name, mode, acomm), m_BP3Serializer(acomm, m_DebugMode),
   m_FileDataManager(acomm, m_DebugMode),
   m_FileMetadataManager(acomm, m_DebugMode)
@@ -285,6 +285,12 @@ void BP3Writer::WriteProfilingJSONFile()
 void BP3Writer::WriteCollectiveMetadataFile(const bool isFinal)
 {
     TAU_SCOPED_TIMER("BP3Writer::WriteCollectiveMetadataFile");
+    int rank;
+    m_AMPIComm.Rank(&rank);
+    std::cout << "Engine.bp3writer comm: "
+              << static_cast<const void *>(&m_AMPIComm) << " rank = " << rank
+              << std::endl;
+
     m_BP3Serializer.AggregateCollectiveMetadata(
         m_AMPIComm, m_BP3Serializer.m_Metadata, true);
 

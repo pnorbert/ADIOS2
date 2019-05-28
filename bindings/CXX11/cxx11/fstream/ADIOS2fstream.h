@@ -21,7 +21,6 @@
 
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
-#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -504,7 +503,6 @@ protected:
 
 private:
     fstream(fstream &stream) = default;
-    AMPI_Comm m_Acomm;
 
     void CheckOpen(const std::string &name) const;
 };

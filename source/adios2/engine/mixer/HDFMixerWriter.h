@@ -49,7 +49,7 @@ namespace engine
 class HDFVDSWriter
 {
 public:
-    HDFVDSWriter(const AMPI_Comm &acomm, bool debugMode);
+    HDFVDSWriter(AMPI_Comm &acomm, bool debugMode);
     void Init(const std::string &name);
     void AddVar(const VariableBase &var, hid_t h5Type);
     void
@@ -66,13 +66,13 @@ private:
 
     int m_NumSubFiles;
     std::string m_FileName;
-    const AMPI_Comm &m_AMPISubfileComm; // only rank 0 in this comm can build VDS;
+    AMPI_Comm m_AMPISubfileComm; // only rank 0 in this comm can build VDS;
 };
 
 class HDFSerialWriter
 {
 public:
-    HDFSerialWriter(const AMPI_Comm &acomm, bool debugMode);
+    HDFSerialWriter(AMPI_Comm &acomm, bool debugMode);
     void
     Advance(const float timeoutSeconds = std::numeric_limits<float>::max());
     void Close(const int transportIndex = -1);
@@ -89,7 +89,7 @@ public:
     std::string m_FileName;
 
 private:
-    const AMPI_Comm &m_AMPILocalComm; // all ranks in this comm write to the same file
+    AMPI_Comm m_AMPILocalComm; // all ranks in this comm write to the same file
     const bool m_DebugMode = false;
     int m_Rank;
 };

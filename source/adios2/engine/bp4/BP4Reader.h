@@ -35,7 +35,7 @@ public:
      * @param acomm
      */
     BP4Reader(IO &io, const std::string &name, const Mode mode,
-              const AMPI_Comm &acomm);
+               AMPI_Comm &acomm);
 
     virtual ~BP4Reader() = default;
 

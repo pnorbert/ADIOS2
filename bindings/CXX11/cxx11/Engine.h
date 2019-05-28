@@ -16,7 +16,6 @@
 
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
-#include "adios2/toolkit/comm/AMPIComm.h"
 
 namespace adios2
 {
@@ -44,7 +43,7 @@ public:
     Engine() = default;
 
     /** Using RAII STL containers only */
-    ~Engine();
+    ~Engine() = default;
 
     /** true: valid engine, false: invalid, not created with IO::Open or post
      * IO::Close*/
@@ -396,11 +395,8 @@ public:
     BlocksInfo(const Variable<T> variable, const size_t step) const;
 
 private:
-    AMPI_Comm *m_AMPIComm = nullptr; // owns this object
-#ifdef ADIOS2_HAVE_MPI
-    Engine(MPI_Comm comm);
-#endif
     core::Engine *m_Engine = nullptr;
+    Engine(core::Engine *engine);
 };
 
 #define declare_template_instantiation(T)                                      \

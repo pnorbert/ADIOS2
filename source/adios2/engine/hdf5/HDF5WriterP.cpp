@@ -21,7 +21,7 @@ namespace engine
 {
 
 HDF5WriterP::HDF5WriterP(IO &io, const std::string &name, const Mode mode,
-                         const AMPI_Comm &acomm)
+                         AMPI_Comm &acomm)
 : Engine("HDF5Writer", io, name, mode, acomm), m_H5File(io.m_DebugMode)
 {
     m_IO.m_ReadStreaming = false;

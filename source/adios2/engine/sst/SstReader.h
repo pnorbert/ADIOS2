@@ -40,7 +40,7 @@ public:
      * @param nthreads
      */
     SstReader(IO &io, const std::string &name, const Mode mode,
-              const AMPI_Comm &acomm);
+               AMPI_Comm &acomm);
 
     virtual ~SstReader();
 

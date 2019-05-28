@@ -43,11 +43,24 @@ class AMPI_Comm
 {
 public:
 #ifdef ADIOS2_HAVE_MPI
-    AMPI_Comm(MPI_Comm comm);
+    AMPI_Comm(MPI_Comm comm); // always duplicates comm
     MPI_Comm comm = MPI_COMM_NULL;
 #endif
     AMPI_Comm();
     ~AMPI_Comm();
+    AMPI_Comm(const AMPI_Comm &acomm) = delete; // copy constructor
+    AMPI_Comm(AMPI_Comm &&acomm) = default;     // move constructor
+    /**
+     * copy assignment is forbidden
+     */
+    AMPI_Comm &operator=(const AMPI_Comm &) = delete;
+
+    /**
+     * move assignment is allowed, though, to be consistent with move
+     * constructor
+     */
+    AMPI_Comm &operator=(AMPI_Comm &&) = default;
+
     int Free(); /* aka MPI_Comm_free. non-const function */
 
     CommType Type() const;

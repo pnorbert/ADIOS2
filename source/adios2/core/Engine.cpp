@@ -21,9 +21,9 @@ namespace core
 {
 
 Engine::Engine(const std::string engineType, IO &io, const std::string &name,
-               const Mode openMode, const AMPI_Comm &acomm)
+               const Mode openMode, AMPI_Comm &comm)
 : m_EngineType(engineType), m_IO(io), m_Name(name), m_OpenMode(openMode),
-  m_AMPIComm(acomm), m_DebugMode(io.m_DebugMode)
+  m_AMPIComm(std::move(comm)), m_DebugMode(io.m_DebugMode)
 {
 }
 

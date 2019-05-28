@@ -343,6 +343,7 @@ public:
     size_t AddOperation(Operator &op,
                         const Params &parameters = Params()) noexcept;
 
+#ifdef ADIOS2_HAVE_MPI
     /**
      * @brief Creates a polymorphic object that derives the Engine class,
      * based on the SetEngine function or config file input
@@ -354,8 +355,8 @@ public:
      * @exception std::invalid_argument if Engine with unique name is already
      * created with another Open, in debug mode only
      */
-    Engine &Open(const std::string &name, const Mode mode,
-                 const AMPI_Comm &acomm);
+    Engine &Open(const std::string &name, const Mode mode, MPI_Comm comm);
+#endif
 
     /**
      * Overloaded version that reuses the MPI_Comm object passed
@@ -461,6 +462,8 @@ private:
     std::map<unsigned int, Attribute<T>> &GetAttributeMap() noexcept;
 
     std::map<std::string, std::shared_ptr<Engine>> m_Engines;
+
+    Engine &Open(const std::string &name, const Mode mode, AMPI_Comm &comm);
 
     /**
      * Gets map index for Variables or Attributes

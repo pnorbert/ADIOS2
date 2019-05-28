@@ -27,7 +27,7 @@ namespace engine
 {
 
 SstReader::SstReader(IO &io, const std::string &name, const Mode mode,
-                     const AMPI_Comm &acomm)
+                     AMPI_Comm &acomm)
 : Engine("SstReader", io, name, mode, acomm)
 {
     char *cstr = new char[name.length() + 1];

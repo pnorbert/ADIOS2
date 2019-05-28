@@ -66,7 +66,7 @@ public:
      * @param comm  new communicator passed at Open or from ADIOS class
      */
     Engine(const std::string engineType, IO &io, const std::string &name,
-           const Mode mode, const AMPI_Comm &comm);
+           const Mode mode, AMPI_Comm &comm);
 
     virtual ~Engine();
 
@@ -429,7 +429,7 @@ public:
 protected:
     /** from ADIOS class passed to Engine created with Open
      *  if no new communicator is passed */
-    const AMPI_Comm &m_AMPIComm;
+    AMPI_Comm m_AMPIComm;
 
     /** true: additional exceptions */
     const bool m_DebugMode = false;

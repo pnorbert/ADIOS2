@@ -24,7 +24,7 @@ namespace engine
 {
 
 DataManWriter::DataManWriter(IO &io, const std::string &name, const Mode mode,
-                             const AMPI_Comm &acomm)
+                             AMPI_Comm &acomm)
 : DataManCommon("DataManWriter", io, name, mode, acomm)
 {
     m_EndMessage = ", in call to Open DataManWriter\n";
