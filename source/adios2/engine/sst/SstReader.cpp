@@ -35,7 +35,7 @@ SstReader::SstReader(IO &io, const std::string &name, const Mode mode,
 
     Init();
 
-    m_Input = SstReaderOpen(cstr, &Params, acomm.comm);
+    m_Input = SstReaderOpen(cstr, &Params, m_AMPIComm.comm);
     if (!m_Input)
     {
         throw std::invalid_argument("ERROR: SstReader did not find active "

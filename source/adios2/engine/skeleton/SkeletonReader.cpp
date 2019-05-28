@@ -27,7 +27,7 @@ SkeletonReader::SkeletonReader(IO &io, const std::string &name, const Mode mode,
 : Engine("SkeletonReader", io, name, mode, acomm)
 {
     m_EndMessage = " in call to IO Open SkeletonReader " + m_Name + "\n";
-    acomm.Rank(&m_ReaderRank);
+    m_AMPIComm.Rank(&m_ReaderRank);
     Init();
     if (m_Verbosity == 5)
     {

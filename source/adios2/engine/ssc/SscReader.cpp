@@ -29,16 +29,16 @@ SscReader::SscReader(IO &io, const std::string &name, const Mode mode,
                      AMPI_Comm &acomm)
 : Engine("SscReader", io, name, mode, acomm),
   m_DataManSerializer(helper::IsRowMajor(io.m_HostLanguage), true,
-                      helper::IsLittleEndian(), acomm),
+                      helper::IsLittleEndian(), m_AMPIComm),
   m_RepliedMetadata(std::make_shared<std::vector<char>>())
 {
     TAU_SCOPED_TIMER_FUNC();
     m_DataTransport = std::make_shared<transportman::StagingMan>(
-        acomm, Mode::Read, m_Timeout, 1e9);
+        m_AMPIComm, Mode::Read, m_Timeout, 1e9);
     m_MetadataTransport = std::make_shared<transportman::StagingMan>(
-        acomm, Mode::Read, m_Timeout, 1e8);
+        m_AMPIComm, Mode::Read, m_Timeout, 1e8);
     m_EndMessage = " in call to IO Open SscReader " + m_Name + "\n";
-    acomm.Rank(&m_AMpiRank);
+    m_AMPIComm.Rank(&m_AMpiRank);
     Init();
     if (m_Verbosity >= 5)
     {

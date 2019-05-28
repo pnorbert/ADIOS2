@@ -27,7 +27,7 @@ InlineReader::InlineReader(IO &io, const std::string &name, const Mode mode,
 : Engine("InlineReader", io, name, mode, acomm)
 {
     m_EndMessage = " in call to IO Open InlineReader " + m_Name + "\n";
-    acomm.Rank(&m_ReaderRank);
+    m_AMPIComm.Rank(&m_ReaderRank);
     Init();
     Engine &writer = io.GetEngine(m_WriterID);
     if (m_Verbosity == 5)

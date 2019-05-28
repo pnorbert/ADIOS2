@@ -24,9 +24,9 @@ namespace engine
 BP4Reader::BP4Reader(IO &io, const std::string &name, const Mode mode,
                      AMPI_Comm &acomm)
 : Engine("BP4Reader", io, name, mode, acomm),
-  m_BP4Deserializer(acomm, m_DebugMode), m_FileManager(acomm, m_DebugMode),
-  m_SubFileManager(acomm, m_DebugMode),
-  m_FileMetadataIndexManager(acomm, m_DebugMode)
+  m_BP4Deserializer(m_AMPIComm, m_DebugMode), m_FileManager(m_AMPIComm, m_DebugMode),
+  m_SubFileManager(m_AMPIComm, m_DebugMode),
+  m_FileMetadataIndexManager(m_AMPIComm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("BP4Reader::Open");
     Init();

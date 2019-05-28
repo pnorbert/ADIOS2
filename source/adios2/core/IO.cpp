@@ -650,7 +650,8 @@ Engine &IO::Open(const std::string &name, const Mode mode)
 Engine &IO::Open(const std::string &name, const Mode mode)
 {
     // engine will grab ownership of AMPI_Comm object
-    return Open(name, mode, AMPI_Comm());
+    AMPI_Comm acomm;
+    return Open(name, mode, acomm);
 }
 #endif
 

@@ -32,7 +32,7 @@ SstWriter::SstWriter(IO &io, const std::string &name, const Mode mode,
 
     Init();
 
-    m_Output = SstWriterOpen(cstr, &Params, acomm.comm);
+    m_Output = SstWriterOpen(cstr, &Params, m_AMPIComm.comm);
     delete[] cstr;
 }
 

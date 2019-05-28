@@ -29,7 +29,7 @@ SscWriter::SscWriter(IO &io, const std::string &name, const Mode mode,
                      AMPI_Comm &acomm)
 : Engine("SscWriter", io, name, mode, acomm),
   m_DataManSerializer(helper::IsRowMajor(io.m_HostLanguage), true,
-                      helper::IsLittleEndian(), acomm)
+                      helper::IsLittleEndian(), m_AMPIComm)
 {
     TAU_SCOPED_TIMER_FUNC();
     Init();

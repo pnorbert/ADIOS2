@@ -31,13 +31,13 @@ namespace engine
 InSituMPIReader::InSituMPIReader(IO &io, const std::string &name,
                                  const Mode mode, AMPI_Comm &acomm)
 : Engine("InSituMPIReader", io, name, mode, acomm),
-  m_BP3Deserializer(acomm, m_DebugMode)
+  m_BP3Deserializer(m_AMPIComm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("InSituMPIReader::Open");
     m_EndMessage = " in call to IO Open InSituMPIReader " + m_Name + "\n";
     Init();
 
-    MPI_Comm mpiComm = acomm.comm; // Must be real MPI communicator
+    MPI_Comm mpiComm = m_AMPIComm.comm; // Must be real MPI communicator
     m_RankAllPeers = insitumpi::FindPeers(mpiComm, m_Name, false, m_CommWorld);
     MPI_Comm_rank(m_CommWorld, &m_GlobalRank);
     MPI_Comm_size(m_CommWorld, &m_GlobalNproc);

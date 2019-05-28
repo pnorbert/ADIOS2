@@ -31,14 +31,14 @@ namespace engine
 InSituMPIWriter::InSituMPIWriter(IO &io, const std::string &name,
                                  const Mode mode, AMPI_Comm &acomm)
 : Engine("InSituMPIWriter", io, name, mode, acomm),
-  m_BP3Serializer(acomm, m_DebugMode)
+  m_BP3Serializer(m_AMPIComm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("InSituMPIWriter::Open");
     m_EndMessage = " in call to InSituMPIWriter " + m_Name + " Open\n";
     Init();
     m_BP3Serializer.InitParameters(m_IO.m_Parameters);
 
-    MPI_Comm mpiComm = acomm.comm; // Must be real MPI comm
+    MPI_Comm mpiComm = m_AMPIComm.comm; // Must be real MPI comm
     m_RankAllPeers = insitumpi::FindPeers(mpiComm, m_Name, true, m_CommWorld);
     for (int i = 0; i < m_RankAllPeers.size(); i++)
     {

@@ -28,9 +28,9 @@ namespace engine
 BP4Writer::BP4Writer(IO &io, const std::string &name, const Mode mode,
                      AMPI_Comm &acomm)
 : Engine("BP4Writer", io, name, mode, acomm),
-  m_BP4Serializer(acomm, m_DebugMode), m_FileDataManager(acomm, m_DebugMode),
-  m_FileMetadataManager(acomm, m_DebugMode),
-  m_FileMetadataIndexManager(acomm, m_DebugMode)
+  m_BP4Serializer(m_AMPIComm, m_DebugMode), m_FileDataManager(m_AMPIComm, m_DebugMode),
+  m_FileMetadataManager(m_AMPIComm, m_DebugMode),
+  m_FileMetadataIndexManager(m_AMPIComm, m_DebugMode)
 {
     TAU_SCOPED_TIMER("BP4Writer::Open");
     m_IO.m_ReadStreaming = false;
