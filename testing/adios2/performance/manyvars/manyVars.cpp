@@ -126,6 +126,9 @@ std::vector<RunParams> CreateRunParams()
             break;                                                             \
         }
 
+int bbbb = MPI_ERR_RMA_RANGE;
+int aaaa = MPI_APPNUM;
+MPI_Status status;
 MPI_Comm comm = MPI_COMM_WORLD;
 int rank;
 int numprocs;

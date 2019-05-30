@@ -34,11 +34,11 @@ int DummyMPI::Gather(const void *sendbuf, int sendcnt, AMPI_Datatype sendtype,
     size_t n = 0, nsent = 0, nrecv = 0;
     if (!sendbuf && !recvbuf)
     {
-        return ier;
+        return MPI_ERR_BUFFER;
     }
     if (root)
     {
-        ier = MPI_ERR_COMM;
+        return MPI_ERR_COMM;
     }
 
     n = AMPI_Sizeof_Datatype[sendtype];
@@ -355,7 +355,8 @@ int DummyMPI::Reduce(const void *sendbuf, void *recvbuf, int count,
 }
 
 int DummyMPI::Allreduce(const void *sendbuf, void *recvbuf, int count,
-                        AMPI_Datatype datatype, AMPI_Op op, const AMPI_Comm &comm)
+                        AMPI_Datatype datatype, AMPI_Op op,
+                        const AMPI_Comm &comm)
 {
     return Reduce(sendbuf, recvbuf, count, datatype, op, 0, comm);
 }

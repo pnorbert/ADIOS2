@@ -641,8 +641,18 @@ Engine &IO::Open(const std::string &name, const Mode mode, MPI_Comm comm)
 Engine &IO::Open(const std::string &name, const Mode mode)
 {
     // engine will grab ownership of AMPI_Comm object
-    AMPI_Comm acomm(m_ADIOS.m_AMPIComm.comm);
-    return Open(name, mode, acomm);
+    int flag;
+    MPI_Initialized(&flag);
+    if (flag)
+    {
+        AMPI_Comm acomm(m_ADIOS.m_AMPIComm.comm);
+        return Open(name, mode, acomm);
+    }
+    else
+    {
+        AMPI_Comm acomm; // Dummy constructor
+        return Open(name, mode, acomm);
+    }
 }
 
 #else

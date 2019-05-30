@@ -219,6 +219,21 @@ enum
 
 #define MPI_ERR_SYSRESOURCE -2
 
+#define MPI_Comm int
+#warning using dummy MPI_Comm as int
+#define MPI_Status std::uint64_t
+using MPI_Request = std::uint64_t;
+using MPI_File = std::FILE *;
+using MPI_Info = int;
+using MPI_Datatype = int;
+using MPI_Offset = long int;
+using MPI_Fint = int;
+using MPI_Op = int;
+
+#define MPI_COMM_NULL 0
+#define MPI_COMM_WORLD 1
+#define MPI_COMM_SELF 2
+
 #endif /* not have MPI */
 
 } // end namespace adios2

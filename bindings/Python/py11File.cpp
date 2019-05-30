@@ -24,6 +24,7 @@ namespace adios2
 namespace py11
 {
 
+#ifdef ADIOS2_HAVE_MPI
 File::File(const std::string &name, const std::string mode, MPI_Comm comm,
            const std::string engineType)
 : m_Name(name), m_Mode(mode),
@@ -39,16 +40,20 @@ File::File(const std::string &name, const std::string mode, MPI_Comm comm,
                                           ioInConfigFile, "Python"))
 {
 }
+#endif
 
 File::File(const std::string &name, const std::string mode,
            const std::string engineType)
-: File(name, mode, MPI_COMM_SELF, engineType)
+: m_Name(name), m_Mode(mode), m_Stream(std::make_shared<core::Stream>(
+                                  name, ToMode(mode), engineType, "Python"))
 {
 }
 
 File::File(const std::string &name, const std::string mode,
            const std::string &configFile, const std::string ioInConfigFile)
-: File(name, mode, MPI_COMM_SELF, configFile, ioInConfigFile)
+: m_Name(name), m_Mode(mode),
+  m_Stream(std::make_shared<core::Stream>(name, ToMode(mode), configFile,
+                                          ioInConfigFile, "Python"))
 {
 }
 
