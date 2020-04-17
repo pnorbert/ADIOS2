@@ -75,7 +75,8 @@ CharacteristicNames = {
     9: 'bitmap',
     10: 'stat',
     11: 'transform_type',
-    12: 'minmax'
+    12: 'minmax',
+    13: 'temporal_flag'
 }
 
 
@@ -95,6 +96,8 @@ def GetCharacteristicDataLength(cID, typeID):
         return 8
     elif (name == 'file_index' or name == 'time_index'):
         return 4
+    elif (name == 'temporal_flag'):
+        return 1
     else:
         return 0
 

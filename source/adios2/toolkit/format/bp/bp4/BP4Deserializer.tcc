@@ -1037,16 +1037,22 @@ void BP4Deserializer::DefineAttributeInEngineIO(
 
     if (characteristics.Statistics.IsValue)
     {
-        core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(attributeName,
-                                       characteristics.Statistics.Value);
-        a.SetTemporal();
+        core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(
+            attributeName, characteristics.Statistics.Value);
+        if (characteristics.Statistics.IsTemporal)
+        {
+            a.SetTemporal();
+        }
     }
     else
     {
-    	core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(
+        core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(
             attributeName, characteristics.Statistics.Values.data(),
             characteristics.Statistics.Values.size());
-        a.SetTemporal();
+        if (characteristics.Statistics.IsTemporal)
+        {
+            a.SetTemporal();
+        }
     }
 }
 

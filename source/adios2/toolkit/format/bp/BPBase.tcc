@@ -171,6 +171,14 @@ BPBase::ParseCharacteristics(const std::vector<char> &buffer, size_t &position,
 
             break;
         }
+
+        case (characteristic_temporal_flag):
+        {
+            characteristics.Statistics.IsTemporal = static_cast<bool>(
+                helper::ReadValue<uint8_t>(buffer, position, isLittleEndian));
+            break;
+        }
+
         default:
         {
             throw std::invalid_argument("ERROR: characteristic ID " +
@@ -523,6 +531,13 @@ inline void BPBase::ParseCharacteristics(const std::vector<char> &buffer,
             position += metadataLength;
 
             characteristics.Statistics.Op.IsActive = true;
+            break;
+        }
+
+        case (characteristic_temporal_flag):
+        {
+            characteristics.Statistics.IsTemporal = static_cast<bool>(
+                helper::ReadValue<uint8_t>(buffer, position, isLittleEndian));
             break;
         }
 

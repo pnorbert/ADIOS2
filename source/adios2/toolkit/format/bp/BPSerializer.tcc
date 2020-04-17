@@ -210,6 +210,11 @@ void BPSerializer::UpdateIndexOffsetsCharacteristics(size_t &currentPosition,
                 3 * sizeof(uint64_t) * dimensionsSize + 2; // 2 is for length
             break;
         }
+        case (characteristic_temporal_flag):
+        {
+            currentPosition += sizeof(uint8_t);
+            break;
+        }
         // TODO: implement operators
         default:
         {
@@ -300,6 +305,10 @@ void BPSerializer::PutAttributeInIndex(const core::Attribute<T> &attribute,
     PutCharacteristicRecord(characteristic_payload_offset,
                             characteristicsCounter, stats.PayloadOffset,
                             buffer);
+
+    uint8_t temporal = static_cast<uint8_t>(stats.IsTemporal);
+    PutCharacteristicRecord(characteristic_temporal_flag,
+                            characteristicsCounter, temporal, buffer);
     // END OF CHARACTERISTICS
 
     // Back to characteristics count and length

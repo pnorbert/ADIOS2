@@ -109,6 +109,9 @@ def ReadCharacteristicsFromData(f, limit, typeID, ndim):
         elif cName == 'time_index' or cName == 'file_index':
             data = readDataToNumpyArray(f, 'unsigned_integer', 1)
             print("          Value       : {0}".format(data[0]))
+        elif cName == 'temporal_flag':
+            data = readDataToNumpyArray(f, 'unsigned_byte', 1)
+            print("          Value       : {0}".format(data[0]))
         elif cName == 'minmax':
             nBlocks = np.fromfile(f,
                                   dtype=np.uint16, count=1)[0]

@@ -205,6 +205,12 @@ def ReadCharacteristicsFromMetaData(buf, idx, pos, limit, typeID,
             data = bDataToNumpyArray(cData, 'unsigned_integer', 1)
             print("                Value          : {0}  ({1} bytes)".format(
                 data[0], cLen))
+        elif cName == 'temporal_flag':
+            cData = buf[pos:pos + cLen]
+            pos = pos + cLen
+            data = bDataToNumpyArray(cData, 'unsigned_byte', 1)
+            print("                Value          : {0}  ({1} bytes)".format(
+                data[0], cLen))
         elif cName == 'minmax':
             nBlocks = np.frombuffer(
                 buf, dtype=np.uint16, count=1, offset=pos)[0]

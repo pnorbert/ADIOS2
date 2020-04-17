@@ -818,6 +818,7 @@ void BPSerializer::PutAttributes(core::IO &io)
         stats.Step = m_MetadataSet.TimeStep;                                   \
         stats.FileIndex = GetFileIndex();                                      \
         core::Attribute<T> &attribute = *io.InquireAttribute<T>(name);         \
+        stats.IsTemporal = attribute.IsTemporal();                             \
         PutAttributeInData(attribute, stats);                                  \
         PutAttributeInIndex(attribute, stats);                                 \
     }
