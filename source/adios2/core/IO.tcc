@@ -96,12 +96,13 @@ Variable<T> *IO::InquireVariable(const std::string &name) noexcept
     return variable;
 }
 
+
 template <class T>
 Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
                                   const std::string &variableName,
                                   const std::string separator)
 {
-    TAU_SCOPED_TIMER("IO::DefineAttribute");
+	TAU_SCOPED_TIMER("IO::DefineAttribute");
     if (!variableName.empty() && InquireVariableType(variableName).empty())
     {
         throw std::invalid_argument(
@@ -114,6 +115,8 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
         helper::GlobalName(name, variableName, separator);
 
     //     CheckAttributeCommon(globalName);
+    bool isTemporal = false; 
+    int oldIndex = -1;
 
     auto &attributeMap = GetAttributeMap<T>();
     auto itExistingAttribute = m_Attributes.find(globalName);
@@ -128,29 +131,54 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
         //           << attributeMap.at(itExistingAttribute->second.second)
         //                  .GetInfo()["Value"]
         //           << std::endl;
-        if (helper::ValueToString(value) ==
-            attributeMap.at(itExistingAttribute->second.second)
-                .GetInfo()["Value"])
-        {
-            return attributeMap.at(itExistingAttribute->second.second);
-        }
-        else
-        {
-            throw std::invalid_argument(
-                "ERROR: attribute " + globalName +
-                " has been defined and its value cannot be changed, in call to "
-                "DefineAttribute\n");
-        }
+    	oldIndex = itExistingAttribute->second.second;
+    	auto &a = attributeMap.at(oldIndex);
+    	if (a.IsTemporal())
+    	{
+    		// Just remove existing variable and then define it again
+    		attributeMap.erase(oldIndex);
+    		isTemporal = true;
+    	}
+    	else
+    	{
+    		if (helper::ValueToString(value) ==
+    				attributeMap.at(itExistingAttribute->second.second)
+					.GetInfo()["Value"])
+    		{
+    			return attributeMap.at(itExistingAttribute->second.second);
+    		}
+    		else
+    		{
+    			throw std::invalid_argument(
+    					"ERROR: attribute " + globalName +
+						" has been defined and its value cannot be changed, in call to "
+						"DefineAttribute\n");
+    		}
+    	}
     }
-    const unsigned int newIndex =
-        attributeMap.empty() ? 0 : attributeMap.rbegin()->first + 1;
+    
+    if (isTemporal)
+    {
+   	    auto itAttributePair = attributeMap.emplace(
+    	        oldIndex, Attribute<T>(globalName, value));
 
-    auto itAttributePair =
-        attributeMap.emplace(newIndex, Attribute<T>(globalName, value));
-    m_Attributes.emplace(globalName,
-                         std::make_pair(helper::GetType<T>(), newIndex));
+    	itAttributePair.first->second.SetTemporal();
+        return itAttributePair.first->second;
+    }
+    else
+    {
+    	const unsigned int newIndex =
+    	        attributeMap.empty() ? 0 : attributeMap.rbegin()->first + 1;
 
-    return itAttributePair.first->second;
+   	    auto itAttributePair = attributeMap.emplace(
+    	        newIndex, Attribute<T>(globalName, value));
+
+    	// also add to m_Attributes global list of names/types
+        m_Attributes.emplace(globalName,
+                             std::make_pair(helper::GetType<T>(), newIndex));
+        return itAttributePair.first->second;
+    }
+    
 }
 
 template <class T>
@@ -172,6 +200,8 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T *array,
         helper::GlobalName(name, variableName, separator);
 
     //     CheckAttributeCommon(globalName);
+    bool isTemporal = false; 
+    int oldIndex = -1;
 
     auto &attributeMap = GetAttributeMap<T>();
     auto itExistingAttribute = m_Attributes.find(globalName);
@@ -186,33 +216,57 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T *array,
         //           << attributeMap.at(itExistingAttribute->second.second)
         //                  .GetInfo()["Value"]
         //           << std::endl;
-        std::string arrayValues(
-            "{ " +
-            helper::VectorToCSV(std::vector<T>(array, array + elements)) +
-            " }");
-        // std::cout << "new value is " << arrayValues << std::endl;
-        if (attributeMap.at(itExistingAttribute->second.second)
-                .GetInfo()["Value"] == arrayValues)
-        {
-            return attributeMap.at(itExistingAttribute->second.second);
-        }
-        else
-        {
-            throw std::invalid_argument(
-                "ERROR: attribute " + globalName +
-                " has been defined and its value cannot be changed, in call to "
-                "DefineAttribute\n");
-        }
+    	oldIndex = itExistingAttribute->second.second;
+    	auto &a = attributeMap.at(oldIndex);
+    	if (a.IsTemporal())
+    	{
+    		// Just remove existing variable and then define it again
+    		attributeMap.erase(oldIndex);
+    		isTemporal = true;
+    	}
+    	else
+    	{
+    		// If it exists lets check if the value has changed (which is not allowed)
+    		std::string arrayValues(
+    				"{ " +
+					helper::VectorToCSV(std::vector<T>(array, array + elements)) +
+					" }");
+    		// std::cout << "new value is " << arrayValues << std::endl;
+    		if (a.GetInfo()["Value"] == arrayValues)
+    		{
+    			return a;
+    		}
+    		else
+    		{
+    			throw std::invalid_argument(
+    					"ERROR: attribute " + globalName +
+						" has been defined and its value cannot be changed, in call to "
+						"DefineAttribute\n");
+    		}
+    	}
     }
-    const unsigned int newIndex =
-        attributeMap.empty() ? 0 : attributeMap.rbegin()->first + 1;
+    
+    if (isTemporal)
+    {
+   	    auto itAttributePair = attributeMap.emplace(
+    	        oldIndex, Attribute<T>(globalName, array, elements));
 
-    auto itAttributePair = attributeMap.emplace(
-        newIndex, Attribute<T>(globalName, array, elements));
-    m_Attributes.emplace(globalName,
-                         std::make_pair(helper::GetType<T>(), newIndex));
+    	itAttributePair.first->second.SetTemporal();
+        return itAttributePair.first->second;
+    }
+    else
+    {
+    	const unsigned int newIndex =
+    	        attributeMap.empty() ? 0 : attributeMap.rbegin()->first + 1;
 
-    return itAttributePair.first->second;
+   	    auto itAttributePair = attributeMap.emplace(
+    	        newIndex, Attribute<T>(globalName, array, elements));
+
+    	// also add to m_Attributes global list of names/types
+        m_Attributes.emplace(globalName,
+                             std::make_pair(helper::GetType<T>(), newIndex));
+        return itAttributePair.first->second;
+    }
 }
 
 template <class T>

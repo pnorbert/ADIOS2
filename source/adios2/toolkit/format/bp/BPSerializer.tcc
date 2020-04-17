@@ -321,7 +321,10 @@ void BPSerializer::PutAttributeInIndex(const core::Attribute<T> &attribute,
 
     helper::CopyToBuffer(buffer, indexLengthPosition, &indexLength);
     m_MetadataSet.AttributesIndices.emplace(attribute.m_Name, index);
-    m_SerializedAttributes.emplace(attribute.m_Name);
+    if (!attribute.IsTemporal())
+    {
+        m_SerializedAttributes.emplace(attribute.m_Name);
+    }
 }
 
 // operations related functions

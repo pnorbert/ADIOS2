@@ -68,6 +68,18 @@ namespace adios2
     {                                                                          \
         return std::string("Attribute<") + attribute.Type() + ">(Name: \"" +   \
                attribute.Name() + "\")";                                       \
+    }                                                                          \
+                                                                               \
+    template <>                                                                \
+    void Attribute<T>::SetTemporal()                                           \
+    {                                                                          \
+        m_Attribute->SetTemporal();                                            \
+    }                                                                          \
+                                                                               \
+    template <>                                                                \
+    bool Attribute<T>::IsTemporal() const noexcept                             \
+    {                                                                          \
+        return m_Attribute->IsTemporal();                                      \
     }
 
 ADIOS2_FOREACH_ATTRIBUTE_TYPE_1ARG(declare_type)

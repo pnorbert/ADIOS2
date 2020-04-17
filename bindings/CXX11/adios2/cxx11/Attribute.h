@@ -67,6 +67,9 @@ public:
      */
     std::vector<T> Data() const;
 
+    void SetTemporal();
+    bool IsTemporal() const noexcept;
+
 private:
     Attribute<T>(core::Attribute<IOType> *attribute);
     core::Attribute<IOType> *m_Attribute = nullptr;

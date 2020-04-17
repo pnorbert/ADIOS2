@@ -53,7 +53,11 @@ public:
 
     Params GetInfo() const noexcept;
 
+    void SetTemporal();
+    bool IsTemporal() const noexcept;
+
 private:
+    bool m_Temporal = false;
     Params DoGetInfo() const noexcept;
 };
 

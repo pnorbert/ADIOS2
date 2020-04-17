@@ -70,6 +70,17 @@ struct RequiresZeroPadding<long double> : std::true_type
     Params Attribute<T>::GetInfo() const noexcept                              \
     {                                                                          \
         return DoGetInfo();                                                    \
+    }                                                                          \
+    template <>                                                                \
+    void Attribute<T>::SetTemporal()                                           \
+    {                                                                          \
+        m_Temporal = true;                                                     \
+    }                                                                          \
+                                                                               \
+    template <>                                                                \
+    bool Attribute<T>::IsTemporal() const noexcept                             \
+    {                                                                          \
+        return m_Temporal;                                                     \
     }
 
 ADIOS2_FOREACH_ATTRIBUTE_STDTYPE_1ARG(declare_type)
