@@ -5,20 +5,20 @@
  * Write attributes to a file. There are four different use cases:
  * 1. Global attribute - a label that applies to the entire output
  * 2. Assigned to a variable - a label that applies to one variable
- * 3. Temporal attribute - an attribute that can change over time (output steps)
+ * 3. Mutable attribute - an attribute that can change over time (output steps)
  *    - can be both global attribute or assigned to a variable
  * 4. An attribute that shows up later in the output (not at the first step)
  *    - any type of the above
  *
- * The purpose of temporal attributes is to allow for assigning labels to
+ * The purpose of mutable attributes is to allow for assigning labels to
  * variables in applications where the label should be able to change over time.
  *
- * Attributes are handled separately from time-varying temporal attributes in
- * ADIOS. Attributes cannot be redefined unless they are temporal. They are only
- * stored once in the output's metadata for efficiency. Temporal attributes are,
+ * Attributes are handled separately from time-varying mutable attributes in
+ * ADIOS. Attributes cannot be redefined unless they are mutable. They are only
+ * stored once in the output's metadata for efficiency. Mutable attributes are,
  * in contrast, written at every output step.
  *
- * Note: Instead of using a global temporal attribute, it is better to use a
+ * Note: Instead of using a global mutable attribute, it is better to use a
  * Global Value variable that is by default can change over time (hence
  * called'variable'). At read time, if reading as a file, all the global values
  * can be seen and read. For an attribute, only the latest value can be seen.
@@ -42,9 +42,15 @@ int main(int argc, char *argv[])
 {
     int rank = 0, nproc = 1;
 #ifdef ADIOS2_HAVE_MPI
+    int wrank;
     MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nproc);
+    MPI_Comm_rank(MPI_COMM_WORLD, &wrank);
+
+    const unsigned int color = 1;
+    MPI_Comm comm;
+    MPI_Comm_split(MPI_COMM_WORLD, color, wrank, &comm);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nproc);
 #endif
     const int NSTEPS = 5;
 
@@ -53,7 +59,7 @@ int main(int argc, char *argv[])
     srand(rank * 32767);
 
 #ifdef ADIOS2_HAVE_MPI
-    adios2::ADIOS adios(MPI_COMM_WORLD);
+    adios2::ADIOS adios(comm);
 #else
     adios2::ADIOS adios;
 #endif
@@ -62,7 +68,7 @@ int main(int argc, char *argv[])
     // 1. Global attribute, constant over time
     // This is 'nproc'
 
-    // 2. Temporal Global attribute, varying value over time
+    // 2. Mutable Global attribute, varying value over time
     // This is 'step'
     // Note: this would be better defined as a Global Value variable, not as
     // attribute
@@ -104,7 +110,7 @@ int main(int argc, char *argv[])
         {
             if (!rank)
             {
-                std::cout << "Output step " << step << std::endl;
+                std::cout << "Writer: Output step " << step << std::endl;
             }
             writer.BeginStep();
 
@@ -117,7 +123,7 @@ int main(int argc, char *argv[])
             }
 #ifdef ADIOS2_HAVE_MPI
             double d;
-            MPI_Reduce(&avg, &d, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            MPI_Reduce(&avg, &d, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
             avg = d / (nproc * Nx);
 #else
             avg = avg / Nx;
@@ -127,12 +133,12 @@ int main(int argc, char *argv[])
             // Note: Global Value Variable would serve this purpose better
             adios2::Attribute<int> attrStep =
                 io.DefineAttribute<int>("Step", step);
-            attrStep.SetTemporal();
+            attrStep.SetMutable();
 
             // 3.b. Attached to a variable, varying value over time
             adios2::Attribute<double> attrGAAverage =
                 io.DefineAttribute<double>("Average", avg, VariableName);
-            attrGAAverage.SetTemporal();
+            attrGAAverage.SetMutable();
 
             // Write the variables. Attributes are automatically added in
             // EndStep
@@ -143,7 +149,7 @@ int main(int argc, char *argv[])
 
             if (!rank)
             {
-                std::cout << "Sleep for a few seconds... " << std::endl;
+                std::cout << "Writer: Sleep for a few seconds... " << std::endl;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         }

@@ -210,7 +210,7 @@ void BPSerializer::UpdateIndexOffsetsCharacteristics(size_t &currentPosition,
                 3 * sizeof(uint64_t) * dimensionsSize + 2; // 2 is for length
             break;
         }
-        case (characteristic_temporal_flag):
+        case (characteristic_mutable_flag):
         {
             currentPosition += sizeof(uint8_t);
             break;
@@ -306,9 +306,9 @@ void BPSerializer::PutAttributeInIndex(const core::Attribute<T> &attribute,
                             characteristicsCounter, stats.PayloadOffset,
                             buffer);
 
-    uint8_t temporal = static_cast<uint8_t>(stats.IsTemporal);
-    PutCharacteristicRecord(characteristic_temporal_flag,
-                            characteristicsCounter, temporal, buffer);
+    uint8_t isMutable = static_cast<uint8_t>(stats.IsMutable);
+    PutCharacteristicRecord(characteristic_mutable_flag, characteristicsCounter,
+                            isMutable, buffer);
     // END OF CHARACTERISTICS
 
     // Back to characteristics count and length
@@ -330,7 +330,7 @@ void BPSerializer::PutAttributeInIndex(const core::Attribute<T> &attribute,
 
     helper::CopyToBuffer(buffer, indexLengthPosition, &indexLength);
     m_MetadataSet.AttributesIndices.emplace(attribute.m_Name, index);
-    if (!attribute.IsTemporal())
+    if (!attribute.IsMutable())
     {
         m_SerializedAttributes.emplace(attribute.m_Name);
     }

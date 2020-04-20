@@ -53,12 +53,23 @@ public:
 
     Params GetInfo() const noexcept;
 
-    void SetTemporal();
-    bool IsTemporal() const noexcept;
+    void SetMutable();
+    bool IsMutable() const noexcept;
+
+    void AddUpdate(const T &data, const size_t step);
+    void AddUpdate(const T *data, const size_t elements, const size_t step);
 
 private:
-    bool m_Temporal = false;
+    bool m_Mutable = false;
     Params DoGetInfo() const noexcept;
+
+    /* Update management for mutable attributes */
+    // holds data for array attributes
+    std::vector<std::vector<T>> m_DataArrayVector;
+    // holds data for single value attributes
+    std::vector<T> m_DataSingleValueVector;
+    // steps in which attribute value is changing
+    std::vector<size_t> m_UpdateSteps;
 };
 
 } // end namespace core

@@ -67,8 +67,8 @@ public:
      */
     std::vector<T> Data() const;
 
-    void SetTemporal();
-    bool IsTemporal() const noexcept;
+    void SetMutable();
+    bool IsMutable() const noexcept;
 
 private:
     Attribute<T>(core::Attribute<IOType> *attribute);

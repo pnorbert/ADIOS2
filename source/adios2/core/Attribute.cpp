@@ -72,15 +72,30 @@ struct RequiresZeroPadding<long double> : std::true_type
         return DoGetInfo();                                                    \
     }                                                                          \
     template <>                                                                \
-    void Attribute<T>::SetTemporal()                                           \
+    void Attribute<T>::SetMutable()                                            \
     {                                                                          \
-        m_Temporal = true;                                                     \
+        m_Mutable = true;                                                      \
     }                                                                          \
                                                                                \
     template <>                                                                \
-    bool Attribute<T>::IsTemporal() const noexcept                             \
+    bool Attribute<T>::IsMutable() const noexcept                              \
     {                                                                          \
-        return m_Temporal;                                                     \
+        return m_Mutable;                                                      \
+    }                                                                          \
+                                                                               \
+    template <>                                                                \
+    void Attribute<T>::AddUpdate(const T &data, const size_t step)             \
+    {                                                                          \
+        m_DataSingleValue = data;                                              \
+        m_DataSingleValueVector.push_back(data);                               \
+    }                                                                          \
+                                                                               \
+    template <>                                                                \
+    void Attribute<T>::AddUpdate(const T *data, const size_t elements,         \
+                                 const size_t step)                            \
+    {                                                                          \
+        m_DataArray = std::vector<T>(data, data + elements);                   \
+        m_DataArrayVector.push_back(std::vector<T>(data, data + elements));    \
     }
 
 ADIOS2_FOREACH_ATTRIBUTE_STDTYPE_1ARG(declare_type)

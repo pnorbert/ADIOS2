@@ -19,6 +19,9 @@
 #include <vector>
 
 #include <adios2.h>
+#ifdef ADIOS2_HAVE_MPI
+#include <mpi.h>
+#endif
 
 std::string DimsToString(const adios2::Dims &dims)
 {
@@ -130,6 +133,23 @@ void ReadAttribute(const std::string &name, const std::string &varname,
 
 int main(int argc, char *argv[])
 {
+#ifdef ADIOS2_HAVE_MPI
+    int rank = 0, nproc = 1;
+    int wrank;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &wrank);
+
+    const unsigned int color = 2;
+    MPI_Comm comm;
+    MPI_Comm_split(MPI_COMM_WORLD, color, wrank, &comm);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &nproc);
+    if (nproc > 1)
+    {
+        throw std::runtime_error(
+            "attribute_read_as_stream should be a single process\n");
+    }
+#endif
     try
     {
         adios2::ADIOS adios;
@@ -138,14 +158,18 @@ int main(int argc, char *argv[])
          * Parameters, Transports, and Execution: Engines
          * Inline uses single IO for write/read */
         adios2::IO io = adios.DeclareIO("Input");
-        io.SetEngine("FileStream");
+        io.SetEngine("BP4");
+        io.SetParameters({{"BeginStepPollingFrequencySecs", "1.0"},
+                          {"OpenTimeoutSecs", "10.0"}});
+
+        std::cout << "Reader: Open file attributes.bp..." << std::endl;
 
         adios2::Engine reader = io.Open("attributes.bp", adios2::Mode::Read);
 
         while (true)
         {
-
             // Begin step
+            std::cout << "Reader: Check for new step..." << std::endl;
             adios2::StepStatus read_status =
                 reader.BeginStep(adios2::StepMode::Read, 10.0f);
             if (read_status == adios2::StepStatus::NotReady)
@@ -160,7 +184,7 @@ int main(int argc, char *argv[])
             }
 
             size_t step = reader.CurrentStep();
-            std::cout << "Process step " << step << ": " << std::endl;
+            std::cout << "Reader: Process step " << step << ": " << std::endl;
 
             ReadAttribute<int>("Nproc", "", io, reader, step);
             ReadAttribute<int>("Step", "", io, reader, step);
@@ -190,4 +214,8 @@ int main(int argc, char *argv[])
         std::cout << "Exception, STOPPING PROGRAM from rank\n";
         std::cout << e.what() << "\n";
     }
+
+#ifdef ADIOS2_HAVE_MPI
+    MPI_Finalize();
+#endif
 }

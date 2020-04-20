@@ -228,7 +228,7 @@ private:
     void DefineAttributeInEngineIO(const ElementIndexHeader &header,
                                    core::Engine &engine,
                                    const std::vector<char> &buffer,
-                                   size_t position) const;
+                                   size_t position, size_t step) const;
 
     template <class T>
     std::vector<typename core::Variable<T>::Info>

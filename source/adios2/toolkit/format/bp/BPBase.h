@@ -403,7 +403,7 @@ protected:
         characteristic_stat = 10,           //!< characteristic_stat
         characteristic_transform_type = 11, //!< characteristic_transform_type
         characteristic_minmax = 12,         //!< min-max array for subblocks
-        characteristic_temporal_flag = 13 //!< characteristic_temporal attribute
+        characteristic_mutable_flag = 13 //!< characteristic_mutable attribute
     };
 
     /** Define statistics type for characteristic ID = 10 */
@@ -514,7 +514,7 @@ protected:
         std::bitset<32> Bitmap;
         uint8_t BitFinite = 0;
         bool IsValue = false;
-        bool IsTemporal = false;
+        bool IsMutable = false;
         BPOpInfo Op;
 
         Stats() : Min(), Max(), Value() {}

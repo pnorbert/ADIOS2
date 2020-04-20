@@ -172,9 +172,9 @@ BPBase::ParseCharacteristics(const std::vector<char> &buffer, size_t &position,
             break;
         }
 
-        case (characteristic_temporal_flag):
+        case (characteristic_mutable_flag):
         {
-            characteristics.Statistics.IsTemporal = static_cast<bool>(
+            characteristics.Statistics.IsMutable = static_cast<bool>(
                 helper::ReadValue<uint8_t>(buffer, position, isLittleEndian));
             break;
         }
@@ -534,9 +534,9 @@ inline void BPBase::ParseCharacteristics(const std::vector<char> &buffer,
             break;
         }
 
-        case (characteristic_temporal_flag):
+        case (characteristic_mutable_flag):
         {
-            characteristics.Statistics.IsTemporal = static_cast<bool>(
+            characteristics.Statistics.IsMutable = static_cast<bool>(
                 helper::ReadValue<uint8_t>(buffer, position, isLittleEndian));
             break;
         }

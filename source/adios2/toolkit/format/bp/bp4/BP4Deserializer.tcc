@@ -1022,7 +1022,7 @@ void BP4Deserializer::DefineVariableInEngineIOPerStep(
 template <class T>
 void BP4Deserializer::DefineAttributeInEngineIO(
     const ElementIndexHeader &header, core::Engine &engine,
-    const std::vector<char> &buffer, size_t position) const
+    const std::vector<char> &buffer, size_t position, size_t step) const
 {
     const Characteristics<T> characteristics =
         ReadElementIndexCharacteristics<T>(
@@ -1039,9 +1039,10 @@ void BP4Deserializer::DefineAttributeInEngineIO(
     {
         core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(
             attributeName, characteristics.Statistics.Value);
-        if (characteristics.Statistics.IsTemporal)
+        if (characteristics.Statistics.IsMutable)
         {
-            a.SetTemporal();
+            a.SetMutable();
+            a.AddUpdate(characteristics.Statistics.Value, step);
         }
     }
     else
@@ -1049,9 +1050,10 @@ void BP4Deserializer::DefineAttributeInEngineIO(
         core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(
             attributeName, characteristics.Statistics.Values.data(),
             characteristics.Statistics.Values.size());
-        if (characteristics.Statistics.IsTemporal)
+        if (characteristics.Statistics.IsMutable)
         {
-            a.SetTemporal();
+            a.SetMutable();
+            a.AddUpdate(characteristics.Statistics.Value, step);
         }
     }
 }

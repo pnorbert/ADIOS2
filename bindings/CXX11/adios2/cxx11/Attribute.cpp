@@ -71,15 +71,15 @@ namespace adios2
     }                                                                          \
                                                                                \
     template <>                                                                \
-    void Attribute<T>::SetTemporal()                                           \
+    void Attribute<T>::SetMutable()                                            \
     {                                                                          \
-        m_Attribute->SetTemporal();                                            \
+        m_Attribute->SetMutable();                                             \
     }                                                                          \
                                                                                \
     template <>                                                                \
-    bool Attribute<T>::IsTemporal() const noexcept                             \
+    bool Attribute<T>::IsMutable() const noexcept                              \
     {                                                                          \
-        return m_Attribute->IsTemporal();                                      \
+        return m_Attribute->IsMutable();                                       \
     }
 
 ADIOS2_FOREACH_ATTRIBUTE_TYPE_1ARG(declare_type)
