@@ -152,8 +152,8 @@ Attribute IO::DefineAttribute(const std::string &name,
     {                                                                          \
         const T *data = reinterpret_cast<const T *>(array.data());             \
         const size_t size = static_cast<size_t>(array.size());                 \
-        attribute = &m_IO->DefineAttribute<T>(name, data, size, variableName,  \
-                                              separator);                      \
+        attribute = &m_IO->DefineAttribute<T>(name, data, size, 0,             \
+                                              variableName, separator);        \
     }
     ADIOS2_FOREACH_NUMPY_ATTRIBUTE_TYPE_1ARG(declare_type)
 #undef declare_type
@@ -177,7 +177,7 @@ Attribute IO::DefineAttribute(const std::string &name,
                                       ", in call to IO::DefineAttribute");
 
     return Attribute(&m_IO->DefineAttribute<std::string>(
-        name, stringValue, variableName, separator));
+        name, stringValue, 0, variableName, separator));
 }
 
 Attribute IO::DefineAttribute(const std::string &name,
@@ -189,7 +189,7 @@ Attribute IO::DefineAttribute(const std::string &name,
                                       ", in call to IO::DefineAttribute");
 
     return Attribute(&m_IO->DefineAttribute<std::string>(
-        name, strings.data(), strings.size(), variableName, separator));
+        name, strings.data(), strings.size(), 0, variableName, separator));
 }
 
 Attribute IO::InquireAttribute(const std::string &name)

@@ -55,11 +55,11 @@ namespace adios2
                                                                                \
         if (m_Attribute->m_IsSingleValue)                                      \
         {                                                                      \
-            return std::vector<T>{m_Attribute->m_DataSingleValue};             \
+            return std::vector<T>{m_Attribute->SingleValue()};                 \
         }                                                                      \
         else                                                                   \
         {                                                                      \
-            return helper::NewVectorType<IOType, T>(m_Attribute->m_DataArray); \
+            return helper::NewVectorType<IOType, T>(m_Attribute->DataArray()); \
         }                                                                      \
     }                                                                          \
                                                                                \

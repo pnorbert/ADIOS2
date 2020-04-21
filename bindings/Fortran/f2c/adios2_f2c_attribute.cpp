@@ -107,11 +107,12 @@ void FC_GLOBAL(adios2_attribute_data_f2c,
 
             char *dataT = reinterpret_cast<char *>(data);
 
+            const std::vector<std::string> &vec = attributeCpp->DataArray();
+
             for (auto e = 0; e < *size; ++e)
             {
-                attributeCpp->m_DataArray[e].copy(
-                    &dataT[e * adios2_string_array_element_max_size],
-                    attributeCpp->m_DataArray[e].size());
+                vec[e].copy(&dataT[e * adios2_string_array_element_max_size],
+                            vec[e].size());
             }
         }
         else

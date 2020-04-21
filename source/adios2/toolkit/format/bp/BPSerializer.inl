@@ -32,18 +32,19 @@ inline void BPSerializer::PutAttributeCharacteristicValueInIndex(
 
     if (attribute.m_IsSingleValue) // Single string
     {
-        const uint16_t dataSize =
-            static_cast<uint16_t>(attribute.m_DataSingleValue.size());
+        const std::string &data = attribute.SingleValue();
+        const uint16_t dataSize = static_cast<uint16_t>(data.size());
         helper::InsertToBuffer(buffer, &dataSize);
-        helper::InsertToBuffer(buffer, attribute.m_DataSingleValue.data(),
-                               attribute.m_DataSingleValue.size());
+        helper::InsertToBuffer(buffer, data.data(), data.size());
     }
     else // string array
     {
-        for (size_t s = 0; s < attribute.m_Elements; ++s)
+        const std::vector<std::string> &vec = attribute.DataArray();
+        for (size_t s = 0; s < vec.size(); ++s)
         {
             // without zero terminated character
-            const std::string element(attribute.m_DataArray[s]);
+
+            const std::string &element = vec[s];
 
             const uint16_t elementSize = static_cast<uint16_t>(element.size());
 
@@ -63,12 +64,12 @@ inline size_t BPSerializer::GetAttributeSizeInData(
 
     if (attribute.m_IsSingleValue)
     {
-        size += 4 + attribute.m_DataSingleValue.size();
+        size += 4 + attribute.SingleValue().size();
     }
     else
     {
         size += 4;
-        for (const std::string &dataString : attribute.m_DataArray)
+        for (const std::string &dataString : attribute.DataArray())
         {
             size += 4 + dataString.size();
         }

@@ -16,13 +16,13 @@ namespace core
 {
 
 AttributeBase::AttributeBase(const std::string &name, const std::string type)
-: m_Name(name), m_Type(type), m_Elements(1), m_IsSingleValue(true)
+: m_Name(name), m_Type(type), m_IsSingleValue(true)
 {
 }
 
 AttributeBase::AttributeBase(const std::string &name, const std::string type,
                              const size_t elements)
-: m_Name(name), m_Type(type), m_Elements(elements), m_IsSingleValue(false)
+: m_Name(name), m_Type(type), m_IsSingleValue(false)
 {
 }
 

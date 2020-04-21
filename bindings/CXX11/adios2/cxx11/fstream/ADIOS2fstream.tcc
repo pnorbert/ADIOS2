@@ -174,7 +174,7 @@ std::vector<T> fstream::read_attribute(const std::string &name,
         return data;
     }
 
-    data.resize(attribute->m_Elements);
+    data.resize(attribute->NElements());
     m_Stream->ReadAttribute(name, reinterpret_cast<IOType *>(data.data()),
                             variableName, separator);
     return data;

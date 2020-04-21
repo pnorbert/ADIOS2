@@ -25,7 +25,8 @@ void Stream::WriteAttribute(const std::string &name, const T &value,
                             const std::string &variableName,
                             const std::string separator, const bool endStep)
 {
-    m_IO->DefineAttribute<T>(name, value, variableName, separator);
+    m_IO->DefineAttribute<T>(name, value, m_Engine->CurrentStep(), variableName,
+                             separator);
     CheckOpen();
     if (!m_StepStatus)
     {
@@ -46,7 +47,8 @@ void Stream::WriteAttribute(const std::string &name, const T *array,
                             const std::string &variableName,
                             const std::string separator, const bool endStep)
 {
-    m_IO->DefineAttribute<T>(name, array, elements, variableName, separator);
+    m_IO->DefineAttribute<T>(name, array, elements, m_Engine->CurrentStep(),
+                             variableName, separator);
     CheckOpen();
     if (!m_StepStatus)
     {
@@ -280,12 +282,12 @@ void Stream::ReadAttribute(const std::string &name, T *data,
 
     if (attribute->m_IsSingleValue)
     {
-        data[0] = attribute->m_DataSingleValue;
+        data[0] = attribute->SingleValue();
     }
     else
     {
-        std::copy(attribute->m_DataArray.begin(), attribute->m_DataArray.end(),
-                  data);
+        const auto &vec = attribute->DataArray();
+        std::copy(vec.begin(), vec.end(), data);
     }
 }
 

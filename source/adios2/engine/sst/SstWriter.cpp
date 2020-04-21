@@ -179,7 +179,7 @@ void SstWriter::FFSMarshalAttributes()
             core::Attribute<std::string> &attribute =
                 *m_IO.InquireAttribute<std::string>(name);
             int element_count = -1;
-            const char *data_addr = attribute.m_DataSingleValue.c_str();
+            const char *data_addr = attribute.SingleValue().c_str();
             if (!attribute.m_IsSingleValue)
             {
                 //
@@ -192,16 +192,20 @@ void SstWriter::FFSMarshalAttributes()
     else if (type == helper::GetType<T>())                                     \
     {                                                                          \
         core::Attribute<T> &attribute = *m_IO.InquireAttribute<T>(name);       \
-        int element_count = -1;                                                \
-        void *data_addr = &attribute.m_DataSingleValue;                        \
-        if (!attribute.m_IsSingleValue)                                        \
+        if (attribute.m_IsSingleValue)                                         \
         {                                                                      \
-            element_count = attribute.m_Elements;                              \
-            data_addr = attribute.m_DataArray.data();                          \
+            SstFFSMarshalAttribute(m_Output, attribute.m_Name.c_str(),         \
+                                   type.c_str(), sizeof(T), -1,                \
+                                   &attribute.SingleValue());                  \
         }                                                                      \
-        SstFFSMarshalAttribute(m_Output, attribute.m_Name.c_str(),             \
-                               type.c_str(), sizeof(T), element_count,         \
-                               data_addr);                                     \
+        else                                                                   \
+        {                                                                      \
+            const auto &vec = attribute.DataArray();                           \
+            int element_count = vec.size();                                    \
+            SstFFSMarshalAttribute(m_Output, attribute.m_Name.c_str(),         \
+                                   type.c_str(), sizeof(T), element_count,     \
+                                   vec.data());                                \
+        }                                                                      \
     }
 
         ADIOS2_FOREACH_ATTRIBUTE_PRIMITIVE_STDTYPE_1ARG(declare_type)

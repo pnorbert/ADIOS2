@@ -1038,22 +1038,20 @@ void BP4Deserializer::DefineAttributeInEngineIO(
     if (characteristics.Statistics.IsValue)
     {
         core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(
-            attributeName, characteristics.Statistics.Value);
+            attributeName, characteristics.Statistics.Value, step);
         if (characteristics.Statistics.IsMutable)
         {
             a.SetMutable();
-            a.AddUpdate(characteristics.Statistics.Value, step);
         }
     }
     else
     {
         core::Attribute<T> &a = engine.m_IO.DefineAttribute<T>(
             attributeName, characteristics.Statistics.Values.data(),
-            characteristics.Statistics.Values.size());
+            characteristics.Statistics.Values.size(), step);
         if (characteristics.Statistics.IsMutable)
         {
             a.SetMutable();
-            a.AddUpdate(characteristics.Statistics.Value, step);
         }
     }
 }

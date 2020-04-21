@@ -98,6 +98,7 @@ Variable<T> *IO::InquireVariable(const std::string &name) noexcept
 
 template <class T>
 Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
+                                  const size_t step,
                                   const std::string &variableName,
                                   const std::string separator)
 {
@@ -127,7 +128,8 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
         {
             // Just change value and return attribute
             Attribute<T> &attr = attributeMap.at(oldIndex);
-            attr.m_DataSingleValue = value;
+            attr.AddUpdate(value, step);
+            attr.SetStep(step);
             return attr;
         }
         else
@@ -151,8 +153,8 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
         const unsigned int newIndex =
             attributeMap.empty() ? 0 : attributeMap.rbegin()->first + 1;
 
-        auto itAttributePair =
-            attributeMap.emplace(newIndex, Attribute<T>(globalName, value));
+        auto itAttributePair = attributeMap.emplace(
+            newIndex, Attribute<T>(globalName, value, step));
 
         // also add to m_Attributes global list of names/types
         m_Attributes.emplace(globalName,
@@ -163,7 +165,7 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
 
 template <class T>
 Attribute<T> &IO::DefineAttribute(const std::string &name, const T *array,
-                                  const size_t elements,
+                                  const size_t elements, const size_t step,
                                   const std::string &variableName,
                                   const std::string separator)
 {
@@ -193,7 +195,8 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T *array,
         {
             // Just change value and return attribute
             Attribute<T> &attr = attributeMap.at(oldIndex);
-            attr.m_DataArray = std::vector<T>(array, array + elements);
+            attr.AddUpdate(array, elements, step);
+            attr.SetStep(step);
             return attr;
         }
         else
@@ -224,7 +227,7 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T *array,
             attributeMap.empty() ? 0 : attributeMap.rbegin()->first + 1;
 
         auto itAttributePair = attributeMap.emplace(
-            newIndex, Attribute<T>(globalName, array, elements));
+            newIndex, Attribute<T>(globalName, array, elements, step));
 
         // also add to m_Attributes global list of names/types
         m_Attributes.emplace(globalName,

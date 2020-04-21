@@ -206,22 +206,21 @@ inline void BP3Serializer::PutAttributeInDataCommon(
 
     if (dataType == type_string)
     {
-        const uint32_t dataSize =
-            static_cast<uint32_t>(attribute.m_DataSingleValue.size());
+        const std::string &s = attribute.SingleValue();
+        const uint32_t dataSize = static_cast<uint32_t>(s.size());
         helper::CopyToBuffer(buffer, position, &dataSize);
-        helper::CopyToBuffer(buffer, position,
-                             attribute.m_DataSingleValue.data(),
-                             attribute.m_DataSingleValue.size());
+        helper::CopyToBuffer(buffer, position, s.data(), s.size());
     }
     else if (dataType == type_string_array)
     {
-        const uint32_t elements = static_cast<uint32_t>(attribute.m_Elements);
+        const auto &ss = attribute.DataArray();
+        const uint32_t elements = static_cast<uint32_t>(ss.size());
         helper::CopyToBuffer(buffer, position, &elements);
 
-        for (size_t s = 0; s < attribute.m_Elements; ++s)
+        for (size_t i = 0; i < ss.size(); ++i)
         {
             // include zero terminated
-            const std::string element(attribute.m_DataArray[s] + '\0');
+            const std::string element(ss[i] + '\0');
 
             const uint32_t elementSize = static_cast<uint32_t>(element.size());
 
@@ -252,17 +251,17 @@ void BP3Serializer::PutAttributeInDataCommon(
     stats.PayloadOffset = absolutePosition + position - attributeLengthPosition;
 
     const uint32_t dataSize =
-        static_cast<uint32_t>(attribute.m_Elements * sizeof(T));
+        static_cast<uint32_t>(attribute.NElements() * sizeof(T));
     helper::CopyToBuffer(buffer, position, &dataSize);
 
     if (attribute.m_IsSingleValue) // single value
     {
-        helper::CopyToBuffer(buffer, position, &attribute.m_DataSingleValue);
+        helper::CopyToBuffer(buffer, position, &attribute.SingleValue());
     }
     else // array
     {
-        helper::CopyToBuffer(buffer, position, attribute.m_DataArray.data(),
-                             attribute.m_Elements);
+        const auto &vec = attribute.DataArray();
+        helper::CopyToBuffer(buffer, position, vec.data(), vec.size());
     }
 
     PutAttributeLengthInData(attribute, stats, attributeLengthPosition);

@@ -25,15 +25,17 @@ Params Attribute<T>::DoGetInfo() const noexcept
 {
     Params info;
     info["Type"] = m_Type;
-    info["Elements"] = std::to_string(m_Elements);
 
     if (m_IsSingleValue)
     {
-        info["Value"] = helper::ValueToString(m_DataSingleValue);
+        info["Value"] = helper::ValueToString(SingleValue());
+        info["Elements"] = std::to_string(1);
     }
     else
     {
-        info["Value"] = "{ " + helper::VectorToCSV(m_DataArray) + " }";
+        auto &v = DataArray();
+        info["Value"] = "{ " + helper::VectorToCSV(v) + " }";
+        info["Elements"] = std::to_string(v.size());
     }
     return info;
 }

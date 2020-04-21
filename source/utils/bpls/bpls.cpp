@@ -609,17 +609,16 @@ int printAttributeValue(core::Engine *fp, core::IO *io,
     enum ADIOS_DATATYPES adiosvartype = type_to_enum(attribute->m_Type);
     if (attribute->m_IsSingleValue)
     {
-        print_data((void *)&attribute->m_DataSingleValue, 0, adiosvartype,
-                   true);
+        print_data((void *)&attribute->SingleValue(), 0, adiosvartype, true);
     }
     else
     {
         fprintf(outf, "{");
-        size_t nelems = attribute->m_DataArray.size();
+        const auto &vec = attribute->DataArray();
+        size_t nelems = vec.size();
         for (size_t j = 0; j < nelems; j++)
         {
-            print_data((void *)&attribute->m_DataArray[j], 0, adiosvartype,
-                       true);
+            print_data((void *)&vec[j], 0, adiosvartype, true);
             if (j < nelems - 1)
             {
                 fprintf(outf, ", ");
@@ -640,34 +639,31 @@ int printAttributeValue(core::Engine *fp, core::IO *io,
 
     if (attribute->m_IsSingleValue)
     {
+        const std::string &s = attribute->SingleValue();
         if (xmlprint)
         {
-            printDataAnyway =
-                print_data_xml(attribute->m_DataSingleValue.data(),
-                               attribute->m_DataSingleValue.length());
+            printDataAnyway = print_data_xml(s.data(), s.length());
         }
         if (printDataAnyway)
         {
-            print_data((void *)&attribute->m_DataSingleValue, 0, adiosvartype,
-                       true);
+            print_data((const void *)&s, 0, adiosvartype, true);
         }
     }
     else
     {
+        const std::vector<std::string> &vec = attribute->DataArray();
         fprintf(outf, "{");
-        size_t nelems = attribute->m_DataArray.size();
+        size_t nelems = vec.size();
         for (size_t j = 0; j < nelems; j++)
         {
             if (xmlprint)
             {
                 printDataAnyway =
-                    print_data_xml(attribute->m_DataArray[j].data(),
-                                   attribute->m_DataArray[j].length());
+                    print_data_xml(vec[j].data(), vec[j].length());
             }
             if (printDataAnyway)
             {
-                print_data((void *)&attribute->m_DataArray[j], 0, adiosvartype,
-                           true);
+                print_data((const void *)&vec[j], 0, adiosvartype, true);
             }
             if (j < nelems - 1)
             {

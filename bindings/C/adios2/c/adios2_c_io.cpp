@@ -380,7 +380,7 @@ adios2_attribute *adios2_define_variable_attribute(
             const std::string singleString(
                 reinterpret_cast<const char *>(value));
             attributeCpp = &ioCpp.DefineAttribute<std::string>(
-                name, singleString, variable_name, separator);
+                name, singleString, 0, variable_name, separator);
             break;
         }
 #define make_case(adios2_type)                                                 \
@@ -390,7 +390,7 @@ adios2_attribute *adios2_define_variable_attribute(
             name,                                                              \
             *reinterpret_cast<const MapAdios2Type<adios2_type>::Type *>(       \
                 value),                                                        \
-            variable_name, separator);                                         \
+            0, variable_name, separator);                                      \
         break;                                                                 \
     }
             ADIOS2_FOREACH_C_ATTRIBUTE_TYPE_1ARG(make_case)
@@ -451,8 +451,8 @@ adios2_attribute *adios2_define_variable_attribute_array(
             std::vector<std::string> arrayStrings(char2D, char2D + size);
 
             attributeCpp = &ioCpp.DefineAttribute<std::string>(
-                name, arrayStrings.data(), arrayStrings.size(), variable_name,
-                separator);
+                name, arrayStrings.data(), arrayStrings.size(), 0,
+                variable_name, separator);
             break;
         }
 #define make_case(adios2_type)                                                 \
@@ -461,7 +461,7 @@ adios2_attribute *adios2_define_variable_attribute_array(
         attributeCpp = &ioCpp.DefineAttribute(                                 \
             name,                                                              \
             reinterpret_cast<const MapAdios2Type<adios2_type>::Type *>(data),  \
-            size, variable_name, separator);                                   \
+            size, 0, variable_name, separator);                                \
         break;                                                                 \
     }
             ADIOS2_FOREACH_C_ATTRIBUTE_TYPE_1ARG(make_case)

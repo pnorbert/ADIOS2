@@ -382,14 +382,15 @@ void SscReader::SyncWritePattern()
             {                                                                  \
                 m_IO.DefineAttribute<T>(                                       \
                     attributeJson["Name"].get<std::string>(),                  \
-                    attributeJson["Value"].get<T>());                          \
+                    attributeJson["Value"].get<T>(), CurrentStep());           \
             }                                                                  \
             else                                                               \
             {                                                                  \
                 m_IO.DefineAttribute<T>(                                       \
                     attributeJson["Name"].get<std::string>(),                  \
                     attributeJson["Array"].get<std::vector<T>>().data(),       \
-                    attributeJson["Array"].get<std::vector<T>>().size());      \
+                    attributeJson["Array"].get<std::vector<T>>().size(),       \
+                    CurrentStep());                                            \
             }                                                                  \
         }                                                                      \
     }

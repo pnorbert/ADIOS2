@@ -953,13 +953,13 @@ void BP3Deserializer::DefineAttributeInEngineIO(
     if (characteristics.Statistics.IsValue)
     {
         engine.m_IO.DefineAttribute<T>(attributeName,
-                                       characteristics.Statistics.Value);
+                                       characteristics.Statistics.Value, 0);
     }
     else
     {
         engine.m_IO.DefineAttribute<T>(
             attributeName, characteristics.Statistics.Values.data(),
-            characteristics.Statistics.Values.size());
+            characteristics.Statistics.Values.size(), 0);
     }
 }
 

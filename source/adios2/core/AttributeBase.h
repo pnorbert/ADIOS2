@@ -29,7 +29,6 @@ class AttributeBase
 public:
     const std::string m_Name;
     const std::string m_Type;
-    const size_t m_Elements;
     const bool m_IsSingleValue;
 
     /**

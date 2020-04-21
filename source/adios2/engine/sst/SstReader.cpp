@@ -94,13 +94,14 @@ SstReader::SstReader(IO &io, const std::string &name, const Mode mode,
             }
             else if (Type == helper::GetType<std::string>())
             {
-                Reader->m_IO.DefineAttribute<std::string>(attrName,
-                                                          *(char **)data);
+                Reader->m_IO.DefineAttribute<std::string>(
+                    attrName, *(char **)data, Reader->CurrentStep());
             }
 #define declare_type(T)                                                        \
     else if (Type == helper::GetType<T>())                                     \
     {                                                                          \
-        Reader->m_IO.DefineAttribute<T>(attrName, *(T *)data);                 \
+        Reader->m_IO.DefineAttribute<T>(attrName, *(T *)data,                  \
+                                        Reader->CurrentStep());                \
     }
 
             ADIOS2_FOREACH_ATTRIBUTE_PRIMITIVE_STDTYPE_1ARG(declare_type)

@@ -39,31 +39,59 @@ struct RequiresZeroPadding<long double> : std::true_type
 #define declare_type(T)                                                        \
                                                                                \
     template <>                                                                \
-    Attribute<T>::Attribute(const Attribute<T> &other)                         \
-    : AttributeBase(other), m_DataArray(other.m_DataArray)                     \
+    Attribute<T>::Attribute(const Attribute<T> &other) : AttributeBase(other)  \
     {                                                                          \
-        if (RequiresZeroPadding<T>::value)                                     \
-            std::memset(&m_DataSingleValue, 0, sizeof(m_DataSingleValue));     \
-        m_DataSingleValue = other.m_DataSingleValue;                           \
+        /* TODO: Padding */                                                    \
+        m_DataSingleValueVector = other.m_DataSingleValueVector;               \
+        m_DataArrayVector = other.m_DataArrayVector;                           \
+        m_UpdateSteps = other.m_UpdateSteps;                                   \
+        m_CurrentStep = other.m_CurrentStep;                                   \
+        m_CurrentStepPos = other.m_CurrentStepPos;                             \
     }                                                                          \
                                                                                \
     template <>                                                                \
     Attribute<T>::Attribute(const std::string &name, const T *array,           \
-                            const size_t elements)                             \
+                            const size_t elements, const size_t step)          \
     : AttributeBase(name, helper::GetType<T>(), elements)                      \
     {                                                                          \
         if (RequiresZeroPadding<T>::value)                                     \
-            std::memset(&m_DataSingleValue, 0, sizeof(m_DataSingleValue));     \
-        m_DataArray = std::vector<T>(array, array + elements);                 \
+        {                                                                      \
+            m_DataArrayVector.resize(1);                                       \
+            m_DataArrayVector[0].resize(elements);                             \
+            for (int i = 0; i < elements; ++i)                                 \
+            {                                                                  \
+                std::memset(&m_DataArrayVector[0][i], 0, sizeof(T));           \
+                m_DataArrayVector[0][i] = array[i];                            \
+            }                                                                  \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            m_DataArrayVector.push_back(                                       \
+                std::vector<T>(array, array + elements));                      \
+        }                                                                      \
+        m_UpdateSteps.push_back(step);                                         \
+        m_CurrentStep = step;                                                  \
+        m_CurrentStepPos = m_UpdateSteps.size() - 1;                           \
     }                                                                          \
                                                                                \
     template <>                                                                \
-    Attribute<T>::Attribute(const std::string &name, const T &value)           \
+    Attribute<T>::Attribute(const std::string &name, const T &value,           \
+                            const size_t step)                                 \
     : AttributeBase(name, helper::GetType<T>())                                \
     {                                                                          \
         if (RequiresZeroPadding<T>::value)                                     \
-            std::memset(&m_DataSingleValue, 0, sizeof(m_DataSingleValue));     \
-        m_DataSingleValue = value;                                             \
+        {                                                                      \
+            m_DataSingleValueVector.resize(1);                                 \
+            std::memset(&m_DataSingleValueVector[0], 0, sizeof(T));            \
+            m_DataSingleValueVector[0] = value;                                \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            m_DataSingleValueVector.push_back(value);                          \
+        }                                                                      \
+        m_UpdateSteps.push_back(step);                                         \
+        m_CurrentStep = step;                                                  \
+        m_CurrentStepPos = m_UpdateSteps.size() - 1;                           \
     }                                                                          \
                                                                                \
     template <>                                                                \
@@ -84,18 +112,65 @@ struct RequiresZeroPadding<long double> : std::true_type
     }                                                                          \
                                                                                \
     template <>                                                                \
-    void Attribute<T>::AddUpdate(const T &data, const size_t step)             \
+    void Attribute<T>::AddUpdate(const T &value, const size_t step)            \
     {                                                                          \
-        m_DataSingleValue = data;                                              \
-        m_DataSingleValueVector.push_back(data);                               \
+        if (RequiresZeroPadding<T>::value)                                     \
+        {                                                                      \
+            size_t n = m_DataSingleValueVector.size();                         \
+            m_DataSingleValueVector.resize(n + 1);                             \
+            std::memset(&m_DataSingleValueVector[n], 0, sizeof(T));            \
+            m_DataSingleValueVector[n] = value;                                \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            m_DataSingleValueVector.push_back(value);                          \
+        }                                                                      \
+        m_UpdateSteps.push_back(step);                                         \
     }                                                                          \
                                                                                \
     template <>                                                                \
-    void Attribute<T>::AddUpdate(const T *data, const size_t elements,         \
+    void Attribute<T>::AddUpdate(const T *array, const size_t elements,        \
                                  const size_t step)                            \
     {                                                                          \
-        m_DataArray = std::vector<T>(data, data + elements);                   \
-        m_DataArrayVector.push_back(std::vector<T>(data, data + elements));    \
+        m_DataArrayVector.push_back(std::vector<T>(array, array + elements));  \
+        m_UpdateSteps.push_back(step);                                         \
+    }                                                                          \
+                                                                               \
+    template <>                                                                \
+    void Attribute<T>::SetStep(const size_t step) noexcept                     \
+    {                                                                          \
+        m_CurrentStep = step;                                                  \
+        if (m_IsSingleValue)                                                   \
+        {                                                                      \
+            m_CurrentStepPos = m_DataSingleValueVector.size(); /*TODO*/        \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            m_CurrentStepPos = m_DataArrayVector.size(); /*TODO*/              \
+        }                                                                      \
+    }                                                                          \
+                                                                               \
+    template <>                                                                \
+    const T &Attribute<T>::SingleValue() const noexcept                        \
+    {                                                                          \
+        return m_DataSingleValueVector[m_CurrentStepPos];                      \
+    }                                                                          \
+    template <>                                                                \
+    const std::vector<T> &Attribute<T>::DataArray() const noexcept             \
+    {                                                                          \
+        return m_DataArrayVector[m_CurrentStepPos];                            \
+    }                                                                          \
+    template <>                                                                \
+    const size_t Attribute<T>::NElements() const noexcept                      \
+    {                                                                          \
+        if (m_IsSingleValue)                                                   \
+        {                                                                      \
+            return 1;                                                          \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            return DataArray().size();                                         \
+        }                                                                      \
     }
 
 ADIOS2_FOREACH_ATTRIBUTE_STDTYPE_1ARG(declare_type)

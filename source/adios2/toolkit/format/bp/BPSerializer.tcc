@@ -29,12 +29,12 @@ inline void BPSerializer::PutAttributeCharacteristicValueInIndex(
 
     if (attribute.m_IsSingleValue) // single value
     {
-        helper::InsertToBuffer(buffer, &attribute.m_DataSingleValue);
+        helper::InsertToBuffer(buffer, &attribute.SingleValue());
     }
     else // array
     {
-        helper::InsertToBuffer(buffer, attribute.m_DataArray.data(),
-                               attribute.m_Elements);
+        auto &vec = attribute.DataArray();
+        helper::InsertToBuffer(buffer, vec.data(), vec.size());
     }
     ++characteristicsCounter;
 }
@@ -233,7 +233,7 @@ BPSerializer::GetAttributeSizeInData(const core::Attribute<T> &attribute) const
     noexcept
 {
     size_t size = 14 + attribute.m_Name.size() + 10;
-    size += 4 + sizeof(T) * attribute.m_Elements;
+    size += 4 + sizeof(T) * attribute.NElements();
     return size;
 }
 
@@ -292,7 +292,7 @@ void BPSerializer::PutAttributeInIndex(const core::Attribute<T> &attribute,
     helper::InsertToBuffer(buffer, &dimensions); // count
     constexpr uint16_t dimensionsLength = 24;
     helper::InsertToBuffer(buffer, &dimensionsLength); // length
-    PutDimensionsRecord({attribute.m_Elements}, {}, {}, buffer);
+    PutDimensionsRecord({attribute.NElements()}, {}, {}, buffer);
     ++characteristicsCounter;
 
     // VALUE

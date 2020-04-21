@@ -164,11 +164,11 @@ void AttributeMapToJson(IO &input, nlohmann::json &output)
         attributeJson["IsSingleValue"] = attribute->m_IsSingleValue;           \
         if (attribute->m_IsSingleValue)                                        \
         {                                                                      \
-            attributeJson["Value"] = attribute->m_DataSingleValue;             \
+            attributeJson["Value"] = attribute->SingleValue();                 \
         }                                                                      \
         else                                                                   \
         {                                                                      \
-            attributeJson["Array"] = attribute->m_DataArray;                   \
+            attributeJson["Array"] = attribute->DataArray();                   \
         }                                                                      \
         output["Attributes"].emplace_back(std::move(attributeJson));           \
     }

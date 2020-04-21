@@ -123,14 +123,42 @@ adios2_error adios2_attribute_size(size_t *size,
         const adios2::core::AttributeBase *attributeBase =
             reinterpret_cast<const adios2::core::AttributeBase *>(attribute);
 
-        *size = attributeBase->m_IsSingleValue ? 1 : attributeBase->m_Elements;
-        return adios2_error_none;
+        if (attributeBase->m_IsSingleValue)
+        {
+            *size = 1;
+        }
+        else
+        {
+            const std::string type(attributeBase->m_Type);
+            if (type == "")
+            {
+                // not supported
+            }
+            else if (type == adios2::helper::GetType<std::string>())
+            {
+                const adios2::core::Attribute<std::string> *attributeCpp =
+                    dynamic_cast<const adios2::core::Attribute<std::string> *>(
+                        attributeBase);
+                *size = attributeCpp->NElements();
+            }
+#define declare_template_instantiation(T)                                      \
+    else if (type == adios2::helper::GetType<T>())                             \
+    {                                                                          \
+        const adios2::core::Attribute<T> *attributeCpp =                       \
+            dynamic_cast<const adios2::core::Attribute<T> *>(attributeBase);   \
+        *size = attributeCpp->NElements();                                     \
+    }
+            ADIOS2_FOREACH_ATTRIBUTE_PRIMITIVE_STDTYPE_1ARG(
+                declare_template_instantiation)
+#undef declare_template_instantiation
+        }
     }
     catch (...)
     {
         return static_cast<adios2_error>(
             adios2::helper::ExceptionToError("adios2_attribute_size"));
     }
+    return adios2_error_none;
 }
 
 adios2_error adios2_attribute_data(void *data, size_t *size,
@@ -160,19 +188,19 @@ adios2_error adios2_attribute_data(void *data, size_t *size,
             if (attributeCpp->m_IsSingleValue)
             {
                 char *dataT = reinterpret_cast<char *>(data);
-                attributeCpp->m_DataSingleValue.copy(
-                    dataT, attributeCpp->m_DataSingleValue.size());
+                const std::string &s = attributeCpp->SingleValue();
+                s.copy(dataT, s.size());
                 *size = 1;
             }
             else
             {
-                *size = attributeCpp->m_Elements;
+                const auto &vec = attributeCpp->DataArray();
+                *size = vec.size();
                 char **dataT = reinterpret_cast<char **>(data);
 
                 for (size_t e = 0; e < *size; ++e)
                 {
-                    attributeCpp->m_DataArray[e].copy(
-                        dataT[e], attributeCpp->m_DataArray[e].size());
+                    vec[e].copy(dataT[e], vec[e].size());
                 }
             }
         }
@@ -184,14 +212,14 @@ adios2_error adios2_attribute_data(void *data, size_t *size,
         T *dataT = reinterpret_cast<T *>(data);                                \
         if (attributeCpp->m_IsSingleValue)                                     \
         {                                                                      \
-            *dataT = attributeCpp->m_DataSingleValue;                          \
+            *dataT = attributeCpp->SingleValue();                              \
             *size = 1;                                                         \
         }                                                                      \
         else                                                                   \
         {                                                                      \
-            std::copy(attributeCpp->m_DataArray.begin(),                       \
-                      attributeCpp->m_DataArray.end(), dataT);                 \
-            *size = attributeCpp->m_Elements;                                  \
+            const auto &vec = attributeCpp->DataArray();                       \
+            std::copy(vec.begin(), vec.end(), dataT);                          \
+            *size = vec.size();                                                \
         }                                                                      \
     }
         ADIOS2_FOREACH_ATTRIBUTE_PRIMITIVE_STDTYPE_1ARG(

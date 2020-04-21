@@ -51,14 +51,15 @@ std::vector<std::string> Attribute::DataString()
         const core::Attribute<std::string> *attribute =
             dynamic_cast<core::Attribute<std::string> *>(m_Attribute);
 
-        data.reserve(attribute->m_Elements);
         if (attribute->m_IsSingleValue)
         {
-            data.push_back(attribute->m_DataSingleValue);
+            data.push_back(attribute->SingleValue());
         }
         else
         {
-            data = attribute->m_DataArray;
+            const std::vector<std::string> &vec = attribute->DataArray();
+            data.reserve(vec.size());
+            data = vec;
         }
     }
     else
@@ -82,23 +83,24 @@ pybind11::array Attribute::Data()
 #define declare_type(T)                                                        \
     else if (type == helper::GetType<T>())                                     \
     {                                                                          \
-        pybind11::array pyArray(pybind11::dtype::of<T>(),                      \
-                                m_Attribute->m_Elements);                      \
         if (m_Attribute->m_IsSingleValue)                                      \
         {                                                                      \
+            pybind11::array pyArray(pybind11::dtype::of<T>(), 1);              \
             const T value = dynamic_cast<core::Attribute<T> *>(m_Attribute)    \
-                                ->m_DataSingleValue;                           \
+                                ->SingleValue();                               \
             std::memcpy(const_cast<void *>(pyArray.data()), &value,            \
                         sizeof(T));                                            \
+            return pyArray;                                                    \
         }                                                                      \
         else                                                                   \
         {                                                                      \
             const std::vector<T> &values =                                     \
-                dynamic_cast<core::Attribute<T> *>(m_Attribute)->m_DataArray;  \
+                dynamic_cast<core::Attribute<T> *>(m_Attribute)->DataArray();  \
+            pybind11::array pyArray(pybind11::dtype::of<T>(), values.size());  \
             std::memcpy(const_cast<void *>(pyArray.data()), values.data(),     \
-                        sizeof(T) * m_Attribute->m_Elements);                  \
+                        sizeof(T) * values.size());                            \
+            return pyArray;                                                    \
         }                                                                      \
-        return pyArray;                                                        \
     }
     ADIOS2_FOREACH_NUMPY_ATTRIBUTE_TYPE_1ARG(declare_type)
 #undef declare_type
