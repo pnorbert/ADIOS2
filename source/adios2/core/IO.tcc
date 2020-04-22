@@ -127,10 +127,9 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T &value,
         if (a.IsMutable())
         {
             // Just change value and return attribute
-            Attribute<T> &attr = attributeMap.at(oldIndex);
-            attr.AddUpdate(value, step);
-            attr.SetStep(step);
-            return attr;
+            a.AddUpdate(value, step);
+            a.SetStep(step);
+            return a;
         }
         else
         {
@@ -194,10 +193,9 @@ Attribute<T> &IO::DefineAttribute(const std::string &name, const T *array,
         if (a.IsMutable())
         {
             // Just change value and return attribute
-            Attribute<T> &attr = attributeMap.at(oldIndex);
-            attr.AddUpdate(array, elements, step);
-            attr.SetStep(step);
-            return attr;
+            a.AddUpdate(array, elements, step);
+            a.SetStep(step);
+            return a;
         }
         else
         {

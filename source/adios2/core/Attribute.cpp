@@ -142,11 +142,11 @@ struct RequiresZeroPadding<long double> : std::true_type
         m_CurrentStep = step;                                                  \
         if (m_IsSingleValue)                                                   \
         {                                                                      \
-            m_CurrentStepPos = m_DataSingleValueVector.size(); /*TODO*/        \
+            m_CurrentStepPos = m_DataSingleValueVector.size() - 1; /*TODO*/    \
         }                                                                      \
         else                                                                   \
         {                                                                      \
-            m_CurrentStepPos = m_DataArrayVector.size(); /*TODO*/              \
+            m_CurrentStepPos = m_DataArrayVector.size() - 1; /*TODO*/          \
         }                                                                      \
     }                                                                          \
                                                                                \
