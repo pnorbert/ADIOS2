@@ -14,6 +14,7 @@
 #include "decomp.h"
 #include "processConfig.h"
 #include "settings.h"
+#include "stat.h"
 #include "stream.h"
 
 int main(int argc, char *argv[])
@@ -75,6 +76,8 @@ int main(int argc, char *argv[])
         MPI_Finalize();
         return 1;
     }
+
+    Stat stat(cfg, settings);
 
     double timeStart, timeEnd;
     MPI_Barrier(settings.appComm);
@@ -281,6 +284,12 @@ int main(int argc, char *argv[])
             if (!cfg.stepOverStreams.size() && step >= cfg.nSteps)
             {
                 exitLoop = true;
+            }
+            if (!settings.myRank && settings.saveStats)
+            {
+                std::cout << "Status: Step " << std::to_string(step)
+                          << std::endl;
+                stat.Save(step);
             }
             ++step;
         }

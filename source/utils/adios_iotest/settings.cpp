@@ -25,12 +25,13 @@ struct option options[] = {{"help", no_argument, NULL, 'h'},
                            {"weak-scaling", no_argument, NULL, 'w'},
                            {"timer", no_argument, NULL, 't'},
                            {"fixed", no_argument, NULL, 'F'},
+                           {"stat", no_argument, NULL, 'S'},
 #ifdef ADIOS2_HAVE_HDF5_PARALLEL
                            {"hdf5", no_argument, NULL, 'H'},
 #endif
                            {NULL, 0, NULL, 0}};
 
-static const char *optstring = "-hvswtFHa:c:d:x:";
+static const char *optstring = "-hvswtFSHa:c:d:x:";
 
 size_t Settings::ndigits(size_t n) const
 {
@@ -43,8 +44,7 @@ void Settings::displayHelp()
 {
     std::cout
         << "Usage: adios_iotest -a appid -c config {-s | -w} -d d1 [d2 .. dN] "
-           "[-x "
-           "file]\n"
+           "[-x file] [-FtS]\n"
         << "  -a appID:  unique number for each application in the workflow\n"
         << "  -c config: data specification config file\n"
         << "  -d ...     define process decomposition:\n"
@@ -61,7 +61,9 @@ void Settings::displayHelp()
         << "  -h         display this help\n"
         << "  -F         turn on fixed I/O pattern explicitly\n"
         << "  -t         print and dump the timing measured by the I/O "
-           "timer\n\n";
+           "timer\n"
+        << "  -S         turn on saving IO and memory statistics every step\n"
+        << "\n";
 }
 
 size_t Settings::stringToNumber(const std::string &varName,
@@ -103,6 +105,9 @@ int Settings::processArgs(int argc, char *argv[])
             break;
         case 'F':
             fixedPattern = true;
+            break;
+        case 'S':
+            saveStats = true;
             break;
         case 'h':
             if (!myRank)
