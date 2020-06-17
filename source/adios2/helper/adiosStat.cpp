@@ -28,7 +28,7 @@ Stat::Stat(const int rank, const std::string &name)
     if (statDirCreated)
     {
         std::stringstream srank;
-        srank << std::setfill('0') << std::setw(6) << rank << ".txt";
+        srank << std::setfill('0') << std::setw(6) << rank;
         of_statm.open(statDir + "/statm_" + srank.str() + ".txt",
                       std::ios_base::out | std::ios_base::trunc);
         of_io.open(statDir + "/io_" + srank.str() + ".txt",
