@@ -14,6 +14,7 @@
 #include "adios2/common/ADIOSConfig.h"
 #include "adios2/core/Engine.h"
 #include "adios2/helper/adiosComm.h"
+#include "adios2/helper/adiosStat.h"
 #include "adios2/toolkit/format/bp/bp3/BP3Serializer.h"
 #include "adios2/toolkit/transportman/TransportMan.h"
 
@@ -57,6 +58,8 @@ private:
 
     /** Manages the optional collective metadata files */
     transportman::TransportMan m_FileMetadataManager;
+
+    helper::Stat stat;
 
     void Init() final;
 

@@ -27,11 +27,13 @@ namespace engine
 BP3Writer::BP3Writer(IO &io, const std::string &name, const Mode mode,
                      helper::Comm comm)
 : Engine("BP3", io, name, mode, std::move(comm)), m_BP3Serializer(m_Comm),
-  m_FileDataManager(m_Comm), m_FileMetadataManager(m_Comm)
+  m_FileDataManager(m_Comm), m_FileMetadataManager(m_Comm),
+  stat(m_Comm.Rank(), "w_" + name)
 {
     TAU_SCOPED_TIMER("BP3Writer::Open");
     m_IO.m_ReadStreaming = false;
     m_EndMessage = " in call to IO Open BPFileWriter " + m_Name + "\n";
+    stat.Save("before Open");
     Init();
 }
 
@@ -41,6 +43,7 @@ StepStatus BP3Writer::BeginStep(StepMode mode, const float timeoutSeconds)
     m_BP3Serializer.m_DeferredVariables.clear();
     m_BP3Serializer.m_DeferredVariablesDataSize = 0;
     m_IO.m_ReadStreaming = false;
+    stat.Save("BeginStep");
     return StepStatus::OK;
 }
 
@@ -100,6 +103,7 @@ void BP3Writer::EndStep()
     {
         Flush();
     }
+    stat.Save("EndStep");
 }
 
 void BP3Writer::Flush(const int transportIndex)
@@ -256,6 +260,7 @@ void BP3Writer::DoClose(const int transportIndex)
     }
 
     m_BP3Serializer.DeleteBuffers();
+    stat.Save("Close");
 }
 
 void BP3Writer::WriteProfilingJSONFile()
@@ -370,6 +375,7 @@ void BP3Writer::WriteData(const bool isFinal, const int transportIndex)
                                  dataSize, transportIndex);
 
     m_FileDataManager.FlushFiles(transportIndex);
+    stat.Save("WriteData");
 }
 
 void BP3Writer::AggregateWriteData(const bool isFinal, const int transportIndex)
@@ -398,6 +404,7 @@ void BP3Writer::AggregateWriteData(const bool isFinal, const int transportIndex)
                                          transportIndex);
 
             m_FileDataManager.FlushFiles(transportIndex);
+            stat.Save("WriteData rank " + std::to_string(r));
         }
 
         m_BP3Serializer.m_Aggregator.WaitAbsolutePosition(
@@ -423,12 +430,14 @@ void BP3Writer::AggregateWriteData(const bool isFinal, const int transportIndex)
                                          bufferSTL.m_Position, transportIndex);
 
             m_FileDataManager.FlushFiles(transportIndex);
+            stat.Save("WriteData");
         }
 
         m_BP3Serializer.m_Aggregator.Close();
     }
 
     m_BP3Serializer.m_Aggregator.ResetBuffers();
+    stat.Save("AggregateWriteData");
 }
 
 #define declare_type(T, L)                                                     \
