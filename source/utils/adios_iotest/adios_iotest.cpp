@@ -287,8 +287,6 @@ int main(int argc, char *argv[])
             }
             if (!settings.myRank && settings.saveStats)
             {
-                std::cout << "Status: Step " << std::to_string(step)
-                          << std::endl;
                 stat.Save(step);
             }
             ++step;

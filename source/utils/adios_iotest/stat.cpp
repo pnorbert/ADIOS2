@@ -94,8 +94,6 @@ void Stat::SaveStatm(size_t step)
     {
         return;
     }
-    std::cout << "Status SaveStatm(): Step " << std::to_string(step)
-              << std::endl;
     std::ifstream ifs("/proc/self/statm", std::ios_base::in);
     if (ifs.good())
     {
@@ -114,8 +112,6 @@ void Stat::SaveIO(size_t step)
     {
         return;
     }
-    std::cout << "Status SaveStatio(): Step " << std::to_string(step)
-              << std::endl;
     std::ifstream ifs("/proc/self/io", std::ios_base::in);
     if (ifs.good())
     {
@@ -136,9 +132,6 @@ void Stat::SaveIO(size_t step)
 
 void Stat::SaveMeminfo(size_t step)
 {
-
-    std::cout << "Status SaveMeminfo(): Step " << std::to_string(step)
-              << std::endl;
     std::ifstream ifs("/proc/meminfo",
                       std::ios_base::in | std::ios_base::binary);
     if (ifs.good())
