@@ -104,6 +104,8 @@ add_library(adios2_core
   toolkit/transport/null/NullTransport.cpp
 
   toolkit/transportman/TransportMan.cpp
+  toolkit/transportman/AsyncTaskManager.cpp
+  toolkit/transportman/AsyncTaskManagerSingleThread.cpp
 
   toolkit/aggregator/mpi/MPIAggregator.cpp
   toolkit/aggregator/mpi/MPIChain.cpp
