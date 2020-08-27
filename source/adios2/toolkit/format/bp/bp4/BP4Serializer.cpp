@@ -136,8 +136,16 @@ void BP4Serializer::MakeHeader(BufferSTL &b, const std::string fileType,
     const uint8_t activeFlag = (isActive ? 1 : 0);
     helper::CopyToBuffer(buffer, position, &activeFlag);
 
-    // byte 39: unused
-    position += 1;
+    // byte 39: Inverse of Sort flag (default was ON before this was added,
+    // so 0 means ON now
+    if (position != m_SortedFlagPosition)
+    {
+        throw std::runtime_error(
+            "ADIOS Coding ERROR in BP4Serializer::MakeHeader. Sorted Flag "
+            "position mismatch");
+    }
+    const uint8_t sortedFlag = (m_Parameters.SortMetadata ? 0 : 1);
+    helper::CopyToBuffer(buffer, position, &sortedFlag);
 
     // byte 40-63: unused
     position += 24;
@@ -328,7 +336,14 @@ void BP4Serializer::AggregateCollectiveMetadata(helper::Comm const &comm,
     m_Profiler.Start("buffering");
     m_Profiler.Start("meta_sort_merge");
 
-    AggregateCollectiveMetadataIndices(comm, bufferSTL);
+    if (m_Parameters.SortMetadata)
+    {
+        AggregateCollectiveMetadataIndices(comm, bufferSTL);
+    }
+    else
+    {
+        AggregateCollectiveMetadataIndicesUnsorted(comm, bufferSTL);
+    }
 
     int rank = comm.Rank();
     if (rank == 0)
@@ -1121,6 +1136,115 @@ void BP4Serializer::AggregateCollectiveMetadataIndices(helper::Comm const &comm,
                       totalExtraSize);
         lf_SortMergeIndices(m_PGIndicesInfo, m_VariableIndicesInfo,
                             m_AttributesIndicesInfo, serialized);
+    }
+}
+
+void BP4Serializer::AggregateCollectiveMetadataIndicesUnsorted(
+    helper::Comm const &comm, BufferSTL &outBufferSTL)
+{
+    int rank = comm.Rank();
+    int size = comm.Size();
+
+    auto lf_IndicesSize =
+        [&](const std::unordered_map<std::string, SerialElementIndex> &indices)
+        -> size_t
+
+    {
+        size_t indicesSize = 0;
+        for (const auto &indexPair : indices)
+        {
+            indicesSize += indexPair.second.Buffer.size();
+        }
+        return indicesSize + 12;
+    };
+
+    auto lf_SerializeIndices =
+        [&](const std::unordered_map<std::string, SerialElementIndex> &indices,
+            size_t &position)
+
+    {
+        size_t startPos = position;
+        position += 12; // 4 byte Nelems, 8 byte length
+        for (const auto &indexPair : indices)
+        {
+            const auto &buffer = indexPair.second.Buffer;
+            helper::CopyToBuffer(m_SerializedIndices, position, buffer.data(),
+                                 buffer.size());
+        }
+        const uint64_t length = static_cast<uint64_t>(position - startPos - 12);
+        const uint32_t nelems = static_cast<uint64_t>(indices.size());
+        helper::CopyToBuffer(m_SerializedIndices, startPos, &nelems);
+        helper::CopyToBuffer(m_SerializedIndices, startPos, &length);
+    };
+
+    auto lf_SerializeAllIndices = [&](helper::Comm const &comm,
+                                      const int rank) {
+        const size_t pgIndicesSize = m_MetadataSet.PGIndex.Buffer.size();
+        const size_t variablesIndicesSize =
+            lf_IndicesSize(m_MetadataSet.VarsIndices);
+        const size_t attributesIndicesSize =
+            lf_IndicesSize(m_MetadataSet.AttributesIndices);
+
+        // first pre-allocate
+        const size_t serializedIndicesSize = 8 * 5 + 1 * 4 + pgIndicesSize +
+                                             variablesIndicesSize +
+                                             attributesIndicesSize;
+
+        m_SerializedIndices.reserve(serializedIndicesSize);
+        m_SerializedIndices.resize(serializedIndicesSize);
+
+        const uint32_t rank32 = static_cast<uint32_t>(rank);
+        const uint64_t size64 = static_cast<uint64_t>(serializedIndicesSize);
+        // const uint64_t variablesIndexOffset =
+        //    static_cast<uint64_t>(pgIndicesSize + 36);
+        // const uint64_t attributesIndexOffset =
+        //    static_cast<uint64_t>(pgIndicesSize + 36 + variablesIndicesSize);
+
+        size_t position = 0;
+        helper::CopyToBuffer(m_SerializedIndices, position, &rank32);
+        helper::CopyToBuffer(m_SerializedIndices, position, &size64);
+        helper::CopyToBuffer(m_SerializedIndices, position, &pgIndicesSize);
+        helper::CopyToBuffer(m_SerializedIndices, position,
+                             &variablesIndicesSize);
+        helper::CopyToBuffer(m_SerializedIndices, position,
+                             &attributesIndicesSize);
+        helper::CopyToBuffer(m_SerializedIndices, position,
+                             &m_MetadataSet.DataPGCount);
+
+        helper::CopyToBuffer(m_SerializedIndices, position,
+                             m_MetadataSet.PGIndex.Buffer.data(),
+                             m_MetadataSet.PGIndex.Buffer.size());
+        lf_SerializeIndices(m_MetadataSet.VarsIndices, position);
+        lf_SerializeIndices(m_MetadataSet.AttributesIndices, position);
+    };
+
+    // BODY of function starts here
+    lf_SerializeAllIndices(comm, rank); // Set m_SerializedIndices
+
+    // first 8 bytes is the length of metadata for this step
+    size_t StepLengthPosition = outBufferSTL.m_Position;
+    if (rank == 0)
+    {
+        outBufferSTL.m_Position += 12;
+    }
+
+    comm.GathervVectors(m_SerializedIndices, outBufferSTL.m_Buffer,
+                        outBufferSTL.m_Position, 0);
+    if (rank == 0)
+    {
+        const std::vector<uint64_t> ptrs = {
+            StepLengthPosition, StepLengthPosition, StepLengthPosition,
+            outBufferSTL.m_Position};
+        // last step in these block of metadata is m_MetadataSet.Timestep
+        // which was already incremented in SerializeData before this call
+        const uint32_t timestep = m_MetadataSet.TimeStep - 1;
+        m_MetadataIndexTable[rank][timestep] = ptrs;
+
+        size_t StepLength = outBufferSTL.m_Position - StepLengthPosition - 12;
+        helper::CopyToBuffer(outBufferSTL.m_Buffer, StepLengthPosition,
+                             &StepLength);
+        helper::CopyToBuffer(outBufferSTL.m_Buffer, StepLengthPosition,
+                             &timestep);
     }
 }
 

@@ -201,6 +201,11 @@ void BPBase::Init(const Params &parameters, const std::string hint,
             parsedParameters.StreamReader = helper::StringTo<bool>(
                 value, " in Parameter key=StreamReader " + hint);
         }
+        else if (key == "sortmetadata")
+        {
+            parsedParameters.SortMetadata = helper::StringTo<bool>(
+                value, " in Parameter key=SortMetadata " + hint);
+        }
     }
     if (!engineType.empty())
     {

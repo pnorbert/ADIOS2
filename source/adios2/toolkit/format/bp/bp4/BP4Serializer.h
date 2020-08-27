@@ -254,6 +254,8 @@ private:
 
     void AggregateCollectiveMetadataIndices(helper::Comm const &comm,
                                             BufferSTL &bufferSTL);
+    void AggregateCollectiveMetadataIndicesUnsorted(helper::Comm const &comm,
+                                                    BufferSTL &bufferSTL);
 };
 
 #define declare_template_instantiation(T)                                      \

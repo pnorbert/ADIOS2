@@ -158,6 +158,20 @@ void BP4Writer::InitParameters()
     m_BP4Serializer.Init(m_IO.m_Parameters, "in call to BP4::Open to write");
     m_WriteToBB = !(m_BP4Serializer.m_Parameters.BurstBufferPath.empty());
     m_DrainBB = m_WriteToBB && m_BP4Serializer.m_Parameters.BurstBufferDrain;
+
+    if (!m_BP4Serializer.m_Parameters.SortMetadata &&
+        (m_BP4Serializer.m_Parameters.FlushStepsCount > 1))
+    {
+        if (m_BP4Serializer.m_RankMPI == 0)
+        {
+            std::cerr
+                << "ADIOS WARNING: Parameter settings SortMetadata = OFF and "
+                   "FlushStepsCount > 1 is not allowed."
+                   " FlushStepsCount is reset to 1 to proceed."
+                << std::endl;
+        }
+        m_BP4Serializer.m_Parameters.FlushStepsCount = 1;
+    }
 }
 
 void BP4Writer::InitTransports()

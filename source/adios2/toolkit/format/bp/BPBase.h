@@ -215,6 +215,11 @@ public:
          * instead of parsing everything available
          */
         bool StreamReader = false;
+
+        /** Sorting metadata flag: ON: BP4 original format,
+         * OFF: metadata blocks are not sorted on rank 0
+         */
+        bool SortMetadata = true;
     };
 
     /** Return type of the ResizeBuffer function. */

@@ -610,16 +610,124 @@ def ReadMetadataStep(f, fileSize, step):
     return True
 
 
+def ReadMetadataUnsorted(f, fileSize, step):
+    # Read unsorted metadata
+    mdStartPosition = f.tell()
+   
+    print("========================================================")
+    print("Step {0}: ".format(step))
+    print("========================================================")
+    print("    Index offset  : {0}".format(mdStartPosition))
+
+    # Read the 
+    idxLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
+    idxStep = np.fromfile(f, dtype=np.uint32, count=1)[0]
+    print("    Index length  : {0}".format(idxLength))
+    print("    Index step    : {0}".format(idxStep))
+
+    mdStartPosition = f.tell()
+    mdEndPosition = mdStartPosition + idxLength
+    # 4 bytes: rank
+    # 8+8+8+8 bytes: PG block length, variable and attributes relative offsets in block, pg count
+
+    status = True
+    firstPG = True
+    while (f.tell() < mdEndPosition - 28 and status):
+        if not firstPG:
+            print("    ========================================================")
+        #print("dbg: start on offset   : {0}".format(f.tell()))
+        blockRank = np.fromfile(f, dtype=np.uint32, count=1)[0]
+        print("    PG block rank     : {0}".format(blockRank))
+        blockLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
+        print("    PG block length   : {0} (Idx lengths + 44 header)".format(
+            blockLength))
+        pgIdxLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
+        print("    PG Idx length     : {0}".format(pgIdxLength))
+        varIdxLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
+        print("    Vars Idx length   : {0}".format(varIdxLength))
+        attrIdxLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
+        print("    Attr Idx length   : {0}".format(attrIdxLength))
+        pgCount = np.fromfile(f, dtype=np.uint64, count=1)[0]
+        print("    # of PGs          : {0}".format(pgCount))
+        
+        # Read the single PG index in this block
+        pgStartPosition = f.tell()
+        pgmdPos = 0
+        pgmd = f.read(pgIdxLength)
+        status, pgmdPos = ReadPGMD(
+            pgmd, 0, pgmdPos, pgIdxLength, pgStartPosition + pgmdPos)
+        if not status:
+            return False
+
+        # Read the VAR Index in this block
+
+        print("    ----------------------------------")
+        print("    Var Index offset  : {0}".format(f.tell()))
+
+        # 4 bytes VAR Count + 8 bytes Var Index Length
+        varCount = np.fromfile(f, dtype=np.uint32, count=1)[0]
+        varLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
+        print("    # of Variables    : {0}".format(varCount))
+        print("    Var Index length  : {0} bytes (+12 for count+len)".format(
+            varLength))
+
+        varsStartPosition = f.tell()
+        if varsStartPosition + varLength > fileSize:
+            print("ERROR: There is not enough bytes in file to read the VAR index")
+            return False
+
+        varmd = f.read(varLength)
+        varmdPos = 0
+        for i in range(varCount):
+            # VMD block
+            status, varmdPos = ReadVarMD(
+                varmd, i, varmdPos, varLength, varsStartPosition + varmdPos)
+            if not status:
+                return False
+
+        # Read the ATTR Index in this block
+
+        print("    ----------------------------------")
+        print("    Attr Index offset : {0}".format(f.tell()))
+
+        # 4 bytes ATTR Count + 8 bytes Attr Index Length
+        attrCount = np.fromfile(f, dtype=np.uint32, count=1)[0]
+        attrLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
+        print("    # of attriables    : {0}".format(attrCount))
+        print("    Attr Index length  : {0} bytes (+12 for count+len)".format(
+            attrLength))
+
+        attrsStartPosition = f.tell()
+        if attrsStartPosition + attrLength > fileSize:
+            print("ERROR: There is not enough bytes in file "
+                  "to read the Attribute index")
+            return False
+
+        attrmd = f.read(attrLength)
+        attrmdPos = 0
+        for i in range(attrCount):
+            # VMD block
+            status, attrmdPos = ReadAttrMD(
+                attrmd, i, attrmdPos, attrLength, attrsStartPosition + attrmdPos)
+            if not status:
+                return False
+        firstPG = False
+        #print("dbg: end on offs: {0}".format(f.tell()))
+    return True
+
 def DumpMetaData(fileName):
     print("========================================================")
     print("    Metadata File: " + fileName)
     print("========================================================")
     with open(fileName, "rb") as f:
         fileSize = fstat(f.fileno()).st_size
-        status = ReadHeader(f, fileSize, "Metadata")
+        status, sortedMetadataFlag = ReadHeader(f, fileSize, "Metadata")
         step = 0
         while (f.tell() < fileSize - 12 and status):
-            status = ReadMetadataStep(f, fileSize, step)
+            if sortedMetadataFlag:
+                status = ReadMetadataStep(f, fileSize, step)
+            else:
+                status = ReadMetadataUnsorted(f, fileSize, step)
             step = step + 1
     return status
 
