@@ -204,6 +204,10 @@ private:
                                      core::Engine &engine,
                                      size_t submetadatafileId, size_t step);
 
+    void ParseUnsortedIndexPerStep(const BufferSTL &bufferSTL,
+                                   core::Engine &engine,
+                                   size_t submetadatafileId, size_t step);
+
     /**
      * Reads a variable index element (serialized) and calls IO.DefineVariable
      * to deserialize the Variable metadata

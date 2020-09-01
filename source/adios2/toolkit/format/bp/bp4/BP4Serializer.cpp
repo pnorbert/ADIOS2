@@ -138,7 +138,7 @@ void BP4Serializer::MakeHeader(BufferSTL &b, const std::string fileType,
 
     // byte 39: Inverse of Sort flag (default was ON before this was added,
     // so 0 means ON now
-    if (position != m_SortedFlagPosition)
+    if (position != m_UnsortedFlagPosition)
     {
         throw std::runtime_error(
             "ADIOS Coding ERROR in BP4Serializer::MakeHeader. Sorted Flag "

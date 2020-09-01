@@ -146,6 +146,7 @@ public:
         int8_t Version = -1;
         bool IsLittleEndian = true;
         bool HasSubFiles = false;
+        bool IsMetadataUnsorted = false;
 
         Minifooter(const int8_t version);
     };

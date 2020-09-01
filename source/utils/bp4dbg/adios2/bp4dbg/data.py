@@ -619,7 +619,7 @@ def DumpData(fileName):
     print("========================================================")
     with open(fileName, "rb") as f:
         fileSize = fstat(f.fileno()).st_size
-        status = ReadHeader(f, fileSize, "Data")
+        status, unsortedMetadataFlag = ReadHeader(f, fileSize, "Data")
         if not status:
             return status
         pgidx = 0

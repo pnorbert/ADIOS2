@@ -804,7 +804,11 @@ void BP4Deserializer::DefineVariableInEngineIOPerStep(
             static_cast<size_t>(header.Length) + 4;
         position = initialPosition;
         // variable->m_AvailableStepsCount = step;
-        ++variable->m_AvailableStepsCount;
+        auto it = variable->m_AvailableStepBlockIndexOffsets.find(step);
+        if (it == variable->m_AvailableStepBlockIndexOffsets.end())
+        {
+            ++variable->m_AvailableStepsCount;
+        }
         while (position < endPositionCurrentStep)
         {
             const size_t subsetPosition = position;

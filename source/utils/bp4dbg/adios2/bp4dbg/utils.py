@@ -98,7 +98,7 @@ def GetCharacteristicDataLength(cID, typeID):
 
 # Read Header info 64 bytes
 # fileType: Data, Metadata, Index Table
-# return: status, sortedMetadata  (bool, bool)
+# return: status, unsortedMetadata  (bool, bool)
 def ReadHeader(f, fileSize, fileType):
     status = True
     if fileSize < 64:
@@ -134,40 +134,40 @@ def ReadHeader(f, fileSize, fileType):
 
     unsortedMetadata = int(header[39])
     if unsortedMetadata == 0:
-        sortedMetadataStr = 'yes'
-        sortedMetadataFlag = True
+        unsortedMetadataStr = ' no'
+        unsortedMetadataFlag = False
     elif unsortedMetadata == 1:
-        sortedMetadataStr = ' no'
-        sortedMetadataFlag = False
+        unsortedMetadataStr = 'yes'
+        unsortedMetadataFlag = True
     else:
         print("ERROR: byte 39 must be 0 or 1 to indicate if the"
-              "meatadata is sorted. It is however {0} in this file".format(
+              "meatadata is unsorted. It is however {0} in this file".format(
                   unsortedMetadata))
-        sortedMetadataStr = ' ? '
-        sortedMetadataFlag = False
+        unsortedMetadataStr = ' ? '
+        unsortedMetadataFlag = False
         status = False
     # 40..63 unused
 
     print("-----------------------------------------------------------"
           "-----------------------------------------------------------"
-          "--------")
+          "----------")
     print("|        Version string            | Major | Minor | Patch "
-          "| unused | Endian | BP version | Active | Sorted "
+          "| unused | Endian | BP version | Active | Unsorted "
           "|    unused      |")
     print("|          32 bytes                |   1B  |   1B  |   1B  "
-          "|   1B   |   1B   |     1B     |   1B   |   1B   "
+          "|   1B   |   1B   |     1B     |   1B   |    1B    "
           "|      24B       |")
     print("+----------------------------------------------------------"
           "-----------------------------------------------------------"
-          "-------+")
+          "---------+")
     print("| {0} |   {1}   |   {2}   |   {3}   |        |  {4}   "
-          "|      {5}     |  {6}   |  {7}   |                |".format(
+          "|      {5}     |  {6}   |   {7}    |                |".format(
               versionStr, major, minor, micro, endian, bpversion, 
-              activeStr, sortedMetadataStr))
+              activeStr, unsortedMetadataStr))
     print("-----------------------------------------------------------"
           "-----------------------------------------------------------"
-          "--------")
-    return status, sortedMetadataFlag
+          "----------")
+    return status, unsortedMetadataFlag
 
 
 if __name__ == "__main__":

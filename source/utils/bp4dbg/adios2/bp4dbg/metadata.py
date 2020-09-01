@@ -615,16 +615,15 @@ def ReadMetadataUnsorted(f, fileSize, step):
     mdStartPosition = f.tell()
    
     print("========================================================")
-    print("Step {0}: ".format(step))
-    print("========================================================")
-    print("    Index offset  : {0}".format(mdStartPosition))
+    print("Index offset  : {0}".format(mdStartPosition))
 
     # Read the 
     idxLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
     idxStep = np.fromfile(f, dtype=np.uint32, count=1)[0]
-    print("    Index length  : {0}".format(idxLength))
-    print("    Index step    : {0}".format(idxStep))
-
+    print("Index length  : {0}".format(idxLength))
+    print("Index step    : {0}".format(idxStep))
+    #print("Step {0}: ".format(step))
+    print("========================================================")
     mdStartPosition = f.tell()
     mdEndPosition = mdStartPosition + idxLength
     # 4 bytes: rank
@@ -635,7 +634,7 @@ def ReadMetadataUnsorted(f, fileSize, step):
     while (f.tell() < mdEndPosition - 28 and status):
         if not firstPG:
             print("    ========================================================")
-        #print("dbg: start on offset   : {0}".format(f.tell()))
+        print("    PG block offset   : {0}".format(f.tell()))
         blockRank = np.fromfile(f, dtype=np.uint32, count=1)[0]
         print("    PG block rank     : {0}".format(blockRank))
         blockLength = np.fromfile(f, dtype=np.uint64, count=1)[0]
@@ -651,13 +650,14 @@ def ReadMetadataUnsorted(f, fileSize, step):
         print("    # of PGs          : {0}".format(pgCount))
         
         # Read the single PG index in this block
-        pgStartPosition = f.tell()
-        pgmdPos = 0
-        pgmd = f.read(pgIdxLength)
-        status, pgmdPos = ReadPGMD(
-            pgmd, 0, pgmdPos, pgIdxLength, pgStartPosition + pgmdPos)
-        if not status:
-            return False
+        if pgCount > 0:
+            pgStartPosition = f.tell()
+            pgmdPos = 0
+            pgmd = f.read(pgIdxLength)
+            status, pgmdPos = ReadPGMD(
+                pgmd, 0, pgmdPos, pgIdxLength, pgStartPosition + pgmdPos)
+            if not status:
+                return False
 
         # Read the VAR Index in this block
 
@@ -688,7 +688,7 @@ def ReadMetadataUnsorted(f, fileSize, step):
         # Read the ATTR Index in this block
 
         print("    ----------------------------------")
-        print("    Attr Index offset : {0}".format(f.tell()))
+        print("    Attr Index offset  : {0}".format(f.tell()))
 
         # 4 bytes ATTR Count + 8 bytes Attr Index Length
         attrCount = np.fromfile(f, dtype=np.uint32, count=1)[0]
@@ -721,13 +721,13 @@ def DumpMetaData(fileName):
     print("========================================================")
     with open(fileName, "rb") as f:
         fileSize = fstat(f.fileno()).st_size
-        status, sortedMetadataFlag = ReadHeader(f, fileSize, "Metadata")
+        status, unsortedMetadataFlag = ReadHeader(f, fileSize, "Metadata")
         step = 0
         while (f.tell() < fileSize - 12 and status):
-            if sortedMetadataFlag:
-                status = ReadMetadataStep(f, fileSize, step)
-            else:
+            if unsortedMetadataFlag:
                 status = ReadMetadataUnsorted(f, fileSize, step)
+            else:
+                status = ReadMetadataStep(f, fileSize, step)
             step = step + 1
     return status
 

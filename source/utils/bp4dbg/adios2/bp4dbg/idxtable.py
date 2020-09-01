@@ -48,7 +48,7 @@ def DumpIndexTable(fileName):
     status = False
     with open(fileName, "rb") as f:
         fileSize = fstat(f.fileno()).st_size
-        status, sortedMetadataFlag = ReadHeader(f, fileSize, "Index Table")
+        status, unsortedMetadataFlag = ReadHeader(f, fileSize, "Index Table")
         if status:
             status = ReadIndex(f, fileSize)
     return status

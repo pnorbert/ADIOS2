@@ -50,9 +50,17 @@ size_t BP4Deserializer::ParseMetadata(const BufferSTL &bufferSTL,
     index table */
     for (size_t i = oldSteps; i < allSteps; i++)
     {
-        ParsePGIndexPerStep(bufferSTL, engine.m_IO.m_HostLanguage, 0, i + 1);
-        ParseVariablesIndexPerStep(bufferSTL, engine, 0, i + 1);
-        ParseAttributesIndexPerStep(bufferSTL, engine, 0, i + 1);
+        if (m_Minifooter.IsMetadataUnsorted)
+        {
+            ParseUnsortedIndexPerStep(bufferSTL, engine, 0, i + 1);
+        }
+        else
+        {
+            ParsePGIndexPerStep(bufferSTL, engine.m_IO.m_HostLanguage, 0,
+                                i + 1);
+            ParseVariablesIndexPerStep(bufferSTL, engine, 0, i + 1);
+            ParseAttributesIndexPerStep(bufferSTL, engine, 0, i + 1);
+        }
         lastposition = m_MetadataIndexTable[0][i + 1][3];
     }
     return lastposition;
@@ -108,6 +116,16 @@ void BP4Deserializer::ParseMetadataIndex(BufferSTL &bufferSTL,
             buffer, position, m_Minifooter.IsLittleEndian);
         m_WriterIsActive = (activeChar == '\1' ? true : false);
 
+        /* Metadata sorted flag:
+         * 0 means original sorted and
+         * 1 means the new unsorted metadata
+         */
+
+        position = m_UnsortedFlagPosition;
+        const char unsortedChar = helper::ReadValue<uint8_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+        m_Minifooter.IsMetadataUnsorted = (unsortedChar == '\1' ? true : false);
+
         // move position to first row
         position = 64;
     }
@@ -157,68 +175,181 @@ const helper::BlockOperationInfo &BP4Deserializer::InitPostOperatorBlockData(
     return blockOperationsInfo.at(index);
 }
 
-/* void BP4Deserializer::GetPreOperatorBlockData(
-    const std::vector<char> &postOpData,
-    const helper::BlockOperationInfo &blockOperationInfo,
-    std::vector<char> &preOpData) const
+void BP4Deserializer::ParseUnsortedIndexPerStep(const BufferSTL &bufferSTL,
+                                                core::Engine &engine,
+                                                size_t submetadatafileId,
+                                                size_t step)
 {
-    // pre-allocate decompressed block
-    preOpData.resize(helper::GetTotalSize(blockOperationInfo.PreCount) *
-                     blockOperationInfo.PreSizeOf);
-
-    // get the right bp4Op
-    std::shared_ptr<BP4Operation> bp4Op =
-        SetBP4Operation(blockOperationInfo.Info.at("Type"));
-    bp4Op->GetData(postOpData.data(), blockOperationInfo, preOpData.data());
-} */
-
-// PRIVATE
-/* void BP4Deserializer::ParseMinifooter(const BufferSTL &bufferSTL)
-{
-    auto lf_GetEndianness = [](const uint8_t endianness, bool &isLittleEndian) {
-        switch (endianness)
-        {
-        case 0:
-            isLittleEndian = true;
-            break;
-        case 1:
-            isLittleEndian = false;
-            break;
-        }
-    };
-
     const auto &buffer = bufferSTL.m_Buffer;
-    const size_t bufferSize = buffer.size();
-    size_t position = bufferSize - 4;
-    const uint8_t endianess = helper::ReadValue<uint8_t>(buffer, position);
-    lf_GetEndianness(endianess, m_Minifooter.IsLittleEndian);
-    position += 1;
+    size_t position = m_MetadataIndexTable[submetadatafileId][step][0];
+    const std::string &hostLanguage = engine.m_IO.m_HostLanguage;
 
-    const uint8_t subFilesIndex = helper::ReadValue<uint8_t>(buffer, position);
-    if (subFilesIndex > 0)
+    // read length of entire index for the step
+    uint64_t indexLen = helper::ReadValue<uint64_t>(
+        buffer, position, m_Minifooter.IsLittleEndian);
+
+    // read Step of index
+    uint32_t indexStep = helper::ReadValue<uint32_t>(
+        buffer, position, m_Minifooter.IsLittleEndian);
+
+    if (indexStep != step)
     {
-        m_Minifooter.HasSubFiles = true;
+        throw std::runtime_error(
+            "BP4Deserializer::ParseUnsortedIndexPerStep() processing step " +
+            std::to_string(step) + " encountered step " +
+            std::to_string(indexStep) + " at position " +
+            std::to_string(m_MetadataIndexTable[submetadatafileId][step][0]));
     }
 
-    m_Minifooter.Version = helper::ReadValue<uint8_t>(buffer, position);
-    if (m_Minifooter.Version < 3)
+    size_t indexEndPosition = position + indexLen;
+
+    while (position < indexEndPosition)
     {
-        throw std::runtime_error("ERROR: ADIOS2 only supports bp format "
-                                 "version 3 and above, found " +
-                                 std::to_string(m_Minifooter.Version) +
-                                 " version \n");
+        // we have one PG to process at a time
+        m_MetadataSet.DataPGCount += 1;
+
+        // read rank of PG
+        uint32_t pgRank = helper::ReadValue<uint32_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+
+        // read length of index block which is not used, only for moving the
+        // pointer
+        size_t idxBlockLen = helper::ReadValue<uint64_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+
+        // length of PG, Var and Attr index in the block
+        size_t pgIdxLen = helper::ReadValue<uint64_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+        size_t varIdxLen = helper::ReadValue<uint64_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+        size_t attrIdxLen = helper::ReadValue<uint64_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+
+        // read PG count, which is always 1 here
+        helper::ReadValue<uint64_t>(buffer, position,
+                                    m_Minifooter.IsLittleEndian);
+
+        /* Sanity check of lengths */
+        if (pgIdxLen + varIdxLen + attrIdxLen + 44 != idxBlockLen)
+        {
+            throw std::runtime_error(
+                "BP4Deserializer::ParseUnsortedIndexPerStep() processing "
+                "step " +
+                std::to_string(step) + " at position " +
+                std::to_string(position - 44) +
+                +" processing index block has invalid lengths ");
+        }
+
+        ProcessGroupIndex index = ReadProcessGroupIndexHeader(
+            buffer, position, m_Minifooter.IsLittleEndian);
+        if (index.IsColumnMajor == 'y')
+        {
+            m_IsRowMajor = false;
+        }
+        if (m_IsRowMajor != helper::IsRowMajor(hostLanguage))
+        {
+            m_ReverseDimensions = true;
+        }
+
+        /* Parse Variables */
+
+        auto lf_ReadElementIndexPerStep = [&](core::Engine &engine,
+                                              const std::vector<char> &buffer,
+                                              size_t position, size_t step) {
+            const ElementIndexHeader header = ReadElementIndexHeader(
+                buffer, position, m_Minifooter.IsLittleEndian);
+
+            switch (header.DataType)
+            {
+
+#define make_case(T)                                                           \
+    case (TypeTraits<T>::type_enum):                                           \
+    {                                                                          \
+        DefineVariableInEngineIOPerStep<T>(header, engine, buffer, position,   \
+                                           step);                              \
+        break;                                                                 \
     }
+                ADIOS2_FOREACH_STDTYPE_1ARG(make_case)
+#undef make_case
 
-    position = bufferSize - m_MetadataSet.MiniFooterSize;
+            } // end switch
+        };
 
-    m_Minifooter.VersionTag.assign(&buffer[position], 28);
-    position += 28;
+        const uint32_t varCount = helper::ReadValue<uint32_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+        const uint64_t varLength = helper::ReadValue<uint64_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
 
-    m_Minifooter.PGIndexStart = helper::ReadValue<uint64_t>(buffer, position);
-    m_Minifooter.VarsIndexStart = helper::ReadValue<uint64_t>(buffer, position);
-    m_Minifooter.AttributesIndexStart =
-        helper::ReadValue<uint64_t>(buffer, position);
-} */
+        const size_t varStartPosition = position;
+        size_t varLocalPosition = 0;
+
+        /* FIXME: multi-threaded processing does not work here
+         * because DefineVariable may be called from several threads
+         */
+        while (varLocalPosition < varLength)
+        {
+            lf_ReadElementIndexPerStep(engine, buffer, position, step);
+
+            const size_t elementIndexSize =
+                static_cast<size_t>(helper::ReadValue<uint32_t>(
+                    buffer, position, m_Minifooter.IsLittleEndian));
+            position += elementIndexSize;
+            varLocalPosition = position - varStartPosition;
+        }
+
+        /* Parse the attributes index at each step */
+
+        auto lf_ReadElementIndex = [&](core::Engine &engine,
+                                       const std::vector<char> &buffer,
+                                       size_t position) {
+            const ElementIndexHeader header = ReadElementIndexHeader(
+                buffer, position, m_Minifooter.IsLittleEndian);
+
+            switch (header.DataType)
+            {
+
+#define make_case(T)                                                           \
+    case (TypeTraits<T>::type_enum):                                           \
+    {                                                                          \
+        DefineAttributeInEngineIO<T>(header, engine, buffer, position);        \
+        break;                                                                 \
+    }
+                ADIOS2_FOREACH_ATTRIBUTE_STDTYPE_1ARG(make_case)
+#undef make_case
+            case (type_string_array):
+            {
+                DefineAttributeInEngineIO<std::string>(header, engine, buffer,
+                                                       position);
+                break;
+            }
+
+            } // end switch
+        };
+
+        const uint32_t attrCount = helper::ReadValue<uint32_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+        const uint64_t attrLength = helper::ReadValue<uint64_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+
+        const size_t attrStartPosition = position;
+        size_t attrLocalPosition = 0;
+
+        // Read sequentially
+        while (attrLocalPosition < attrLength)
+        {
+            lf_ReadElementIndex(engine, buffer, position);
+            const size_t elementIndexSize =
+                static_cast<size_t>(helper::ReadValue<uint32_t>(
+                    buffer, position, m_Minifooter.IsLittleEndian));
+            position += elementIndexSize;
+            attrLocalPosition = position - attrStartPosition;
+        }
+    } /* finished processing one PG */
+}
+
+/*
+ * ====================== END OF Unsorted Metadata Parsing =================
+ */
 
 void BP4Deserializer::ParsePGIndexPerStep(const BufferSTL &bufferSTL,
                                           const std::string hostLanguage,
@@ -246,45 +377,6 @@ void BP4Deserializer::ParsePGIndexPerStep(const BufferSTL &bufferSTL,
         m_ReverseDimensions = true;
     }
 }
-
-/* void BP4Deserializer::ParsePGIndex(const BufferSTL &bufferSTL,
-                                   const core::IO &io)
-{
-    const auto &buffer = bufferSTL.m_Buffer;
-    size_t position = m_Minifooter.PGIndexStart;
-
-    m_MetadataSet.DataPGCount = helper::ReadValue<uint64_t>(buffer, position);
-    const size_t length = helper::ReadValue<uint64_t>(buffer, position);
-
-    size_t localPosition = 0;
-
-    std::unordered_set<uint32_t> stepsFound;
-    m_MetadataSet.StepsCount = 0;
-
-    while (localPosition < length)
-    {
-        ProcessGroupIndex index = ReadProcessGroupIndexHeader(buffer, position);
-        if (index.IsColumnMajor == 'y')
-        {
-            m_IsRowMajor = false;
-        }
-
-        m_MetadataSet.CurrentStep = static_cast<size_t>(index.Step - 1);
-
-        // Count the number of unseen steps
-        if (stepsFound.insert(index.Step).second)
-        {
-            ++m_MetadataSet.StepsCount;
-        }
-
-        localPosition += index.Length + 2;
-    }
-
-    if (m_IsRowMajor != helper::IsRowMajor(io.m_HostLanguage))
-    {
-        m_ReverseDimensions = true;
-    }
-} */
 
 void BP4Deserializer::ParseVariablesIndexPerStep(const BufferSTL &bufferSTL,
                                                  core::Engine &engine,
@@ -386,93 +478,6 @@ void BP4Deserializer::ParseVariablesIndexPerStep(const BufferSTL &bufferSTL,
     */
 }
 
-/* void BP4Deserializer::ParseVariablesIndex(const BufferSTL &bufferSTL,
-                                          core::IO &io)
-{
-    auto lf_ReadElementIndex = [&](
-        core::IO &io, const std::vector<char> &buffer, size_t position) {
-        const ElementIndexHeader header =
-            ReadElementIndexHeader(buffer, position);
-
-        switch (header.DataType)
-        {
-
-#define make_case(T)                                                           \
-    case (TypeTraits<T>::type_enum):                                           \
-    {                                                                          \
-        DefineVariableInIO<T>(header, io, buffer, position);
-        break;                                                                 \
-    }
-            ADIOS2_FOREACH_ATTRIBUTE_STDTYPE_1ARG(make_case)
-#undef make_case
-
-        } // end switch
-    };
-
-    const auto &buffer = bufferSTL.m_Buffer;
-    size_t position = m_Minifooter.VarsIndexStart;
-
-    const uint32_t count = helper::ReadValue<uint32_t>(buffer, position);
-    const uint64_t length = helper::ReadValue<uint64_t>(buffer, position);
-
-    const size_t startPosition = position;
-    size_t localPosition = 0;
-
-    if (m_Threads == 1)
-    {
-        while (localPosition < length)
-        {
-            lf_ReadElementIndex(io, buffer, position);
-
-            const size_t elementIndexSize = static_cast<size_t>(
-                helper::ReadValue<uint32_t>(buffer, position));
-            position += elementIndexSize;
-            localPosition = position - startPosition;
-        }
-        return;
-    }
-
-    // threads for reading Variables
-    std::vector<std::future<void>> asyncs(m_Threads);
-    std::vector<size_t> asyncPositions(m_Threads);
-
-    bool launched = false;
-
-    while (localPosition < length)
-    {
-        // extract async positions
-        for (unsigned int t = 0; t < m_Threads; ++t)
-        {
-            asyncPositions[t] = position;
-            const size_t elementIndexSize = static_cast<size_t>(
-                helper::ReadValue<uint32_t>(buffer, position));
-            position += elementIndexSize;
-            localPosition = position - startPosition;
-
-            if (launched)
-            {
-                asyncs[t].get();
-            }
-
-            if (localPosition <= length)
-            {
-                asyncs[t] = std::async(std::launch::async, lf_ReadElementIndex,
-                                       std::ref(io), std::ref(buffer),
-                                       asyncPositions[t]);
-            }
-        }
-        launched = true;
-    }
-
-    for (auto &async : asyncs)
-    {
-        if (async.valid())
-        {
-            async.wait();
-        }
-    }
-} */
-
 /* Parse the attributes index at each step */
 void BP4Deserializer::ParseAttributesIndexPerStep(const BufferSTL &bufferSTL,
                                                   core::Engine &engine,
@@ -528,55 +533,6 @@ void BP4Deserializer::ParseAttributesIndexPerStep(const BufferSTL &bufferSTL,
         localPosition = position - startPosition;
     }
 }
-
-/* void BP4Deserializer::ParseAttributesIndex(const BufferSTL &bufferSTL,
-                                           core::IO &io)
-{
-    auto lf_ReadElementIndex = [&](
-        core::IO &io, const std::vector<char> &buffer, size_t position) {
-        const ElementIndexHeader header =
-            ReadElementIndexHeader(buffer, position);
-
-        switch (header.DataType)
-        {
-
-#define make_case(T)                                                           \
-    case (TypeTraits<T>::type_enum):                                           \
-    {                                                                          \
-        DefineAttributeInIO<T>(header, io, buffer, position);                  \
-        break;                                                                 \
-    }
-            ADIOS2_FOREACH_ATTRIBUTE_STDTYPE_1ARG(make_case)
-#undef make_case
-
-        case (type_string_array):
-        {
-            DefineAttributeInIO<std::string>(header, io, buffer, position);
-            break;
-        }
-
-        } // end switch
-    };
-
-    const auto &buffer = bufferSTL.m_Buffer;
-    size_t position = m_Minifooter.AttributesIndexStart;
-
-    const uint32_t count = helper::ReadValue<uint32_t>(buffer, position);
-    const uint64_t length = helper::ReadValue<uint64_t>(buffer, position);
-
-    const size_t startPosition = position;
-    size_t localPosition = 0;
-
-    // Read sequentially
-    while (localPosition < length)
-    {
-        lf_ReadElementIndex(io, buffer, position);
-        const size_t elementIndexSize =
-            static_cast<size_t>(helper::ReadValue<uint32_t>(buffer, position));
-        position += elementIndexSize;
-        localPosition = position - startPosition;
-    }
-} */
 
 std::map<std::string, helper::SubFileInfoMap>
 BP4Deserializer::PerformGetsVariablesSubFileInfo(core::IO &io)
