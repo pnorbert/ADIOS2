@@ -39,6 +39,24 @@ BPBase::Characteristics<T> BPBase::ReadElementIndexCharacteristics(
     return characteristics;
 }
 
+template <class T>
+void BPBase::ReadElementIndexCharacteristics2(
+    const std::vector<char> &buffer, size_t &position, const DataTypes dataType,
+    Characteristics<T> &characteristics, const bool untilTimeStep,
+    const bool isLittleEndian) const
+{
+    characteristics.Shape.resize(0);
+    characteristics.Start.resize(0);
+    characteristics.Count.resize(0);
+    characteristics.EntryCount =
+        helper::ReadValue<uint8_t>(buffer, position, isLittleEndian);
+    characteristics.EntryLength =
+        helper::ReadValue<uint32_t>(buffer, position, isLittleEndian);
+
+    ParseCharacteristics(buffer, position, dataType, untilTimeStep,
+                         characteristics, isLittleEndian);
+}
+
 // String specialization
 template <>
 inline void

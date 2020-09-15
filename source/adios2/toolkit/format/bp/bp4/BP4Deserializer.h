@@ -208,6 +208,18 @@ private:
                                    core::Engine &engine,
                                    size_t submetadatafileId, size_t step);
 
+    template <class T>
+    void UpdateVariableInEngineIOPerStep(
+        core::Variable<T> *variable, const ElementIndexHeader &header,
+        core::Engine &engine, const std::vector<char> &buffer, size_t position,
+        size_t step, Characteristics<T> &characteristics) const;
+
+    template <class T>
+    core::Variable<T> *CreateVariableInEngineIOPerStep(
+        const std::string &variableName, const ElementIndexHeader &header,
+        core::Engine &engine, const std::vector<char> &buffer, size_t position,
+        size_t step, Characteristics<T> &characteristics) const;
+
     /**
      * Reads a variable index element (serialized) and calls IO.DefineVariable
      * to deserialize the Variable metadata

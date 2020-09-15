@@ -510,7 +510,11 @@ std::map<size_t, std::shared_ptr<BPOperation>> BPBase::SetBPOperations(
     template BPBase::Characteristics<T>                                        \
     BPBase::ReadElementIndexCharacteristics(const std::vector<char> &,         \
                                             size_t &, const BPBase::DataTypes, \
-                                            const bool, const bool) const;
+                                            const bool, const bool) const;     \
+                                                                               \
+    template void BPBase::ReadElementIndexCharacteristics2(                    \
+        const std::vector<char> &, size_t &, const BPBase::DataTypes,          \
+        Characteristics<T> &, const bool, const bool) const;
 
 ADIOS2_FOREACH_STDTYPE_1ARG(declare_template_instantiation)
 #undef declare_template_instantiation

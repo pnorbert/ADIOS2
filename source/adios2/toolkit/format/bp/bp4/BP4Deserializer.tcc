@@ -771,18 +771,160 @@ inline void BP4Deserializer::DefineVariableInEngineIOPerStep<std::string>(
     variable->m_Engine = &engine;
 }
 
+/* Update the variable of each step when parsing the metadata */
+template <class T>
+void BP4Deserializer::UpdateVariableInEngineIOPerStep(
+    core::Variable<T> *variable, const ElementIndexHeader &header,
+    core::Engine &engine, const std::vector<char> &buffer, size_t position,
+    size_t step, Characteristics<T> &characteristics) const
+{
+    const size_t initialPosition = position;
+
+    size_t endPositionCurrentStep =
+        initialPosition + static_cast<size_t>(header.Length) + 4 -
+        (header.Name.size() + header.GroupName.size() + header.Path.size() +
+         23);
+    position = initialPosition;
+
+    auto it = variable->m_AvailableStepBlockIndexOffsets.find(step);
+    if (it == variable->m_AvailableStepBlockIndexOffsets.end())
+    {
+        ++variable->m_AvailableStepsCount;
+    }
+
+    while (position < endPositionCurrentStep)
+    {
+        const size_t subsetPosition = position;
+
+        // read until step is found
+        ReadElementIndexCharacteristics2<T>(
+            buffer, position, static_cast<DataTypes>(header.DataType),
+            characteristics, false, m_Minifooter.IsLittleEndian);
+
+        const T blockMin = characteristics.Statistics.IsValue
+                               ? characteristics.Statistics.Value
+                               : characteristics.Statistics.Min;
+        const T blockMax = characteristics.Statistics.IsValue
+                               ? characteristics.Statistics.Value
+                               : characteristics.Statistics.Max;
+
+        if (helper::LessThan(blockMin, variable->m_Min))
+        {
+            variable->m_Min = blockMin;
+        }
+
+        if (helper::GreaterThan(blockMax, variable->m_Max))
+        {
+            variable->m_Max = blockMax;
+        }
+
+        if (characteristics.EntryShapeID == ShapeID::LocalValue)
+        {
+            if (subsetPosition == initialPosition)
+            {
+                // reset shape and count
+                variable->m_Shape[0] = 1;
+                variable->m_Count[0] = 1;
+            }
+            else
+            {
+                ++variable->m_Shape[0];
+                ++variable->m_Count[0];
+            }
+        }
+        else if (characteristics.EntryShapeID == ShapeID::GlobalArray)
+        {
+            if (subsetPosition == initialPosition)
+            {
+                if (characteristics.Shape !=
+                    variable->m_AvailableShapes.rbegin()->second)
+                {
+                    variable->m_AvailableShapes[step] = characteristics.Shape;
+                }
+            }
+        }
+
+        variable->m_AvailableStepBlockIndexOffsets[step].push_back(
+            subsetPosition);
+
+        position = subsetPosition + characteristics.EntryLength + 5;
+    }
+}
+
+template <class T>
+core::Variable<T> *BP4Deserializer::CreateVariableInEngineIOPerStep(
+    const std::string &variableName, const ElementIndexHeader &header,
+    core::Engine &engine, const std::vector<char> &buffer, size_t position,
+    size_t step, Characteristics<T> &characteristics) const
+{
+    core::Variable<T> *variable;
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    switch (characteristics.EntryShapeID)
+    {
+    case (ShapeID::GlobalValue):
+    {
+        variable = &engine.m_IO.DefineVariable<T>(variableName);
+        break;
+    }
+    case (ShapeID::GlobalArray):
+    {
+        const Dims shape = m_ReverseDimensions
+                               ? Dims(characteristics.Shape.rbegin(),
+                                      characteristics.Shape.rend())
+                               : characteristics.Shape;
+
+        variable = &engine.m_IO.DefineVariable<T>(variableName, shape,
+                                                  Dims(shape.size(), 0), shape);
+        variable->m_AvailableShapes[characteristics.Statistics.Step] =
+            variable->m_Shape;
+        break;
+    }
+    case (ShapeID::LocalValue):
+    {
+        variable = &engine.m_IO.DefineVariable<T>(variableName, {1}, {0}, {1});
+        variable->m_ShapeID = ShapeID::LocalValue;
+        break;
+    }
+    case (ShapeID::LocalArray):
+    {
+        const Dims count = m_ReverseDimensions
+                               ? Dims(characteristics.Count.rbegin(),
+                                      characteristics.Count.rend())
+                               : characteristics.Count;
+        variable = &engine.m_IO.DefineVariable<T>(variableName, {}, {}, count);
+        break;
+    }
+    default:
+        throw std::runtime_error(
+            "ERROR: invalid ShapeID or not yet supported for variable " +
+            variableName + ", in call to Open\n");
+    } // end switch
+
+    if (characteristics.Statistics.IsValue)
+    {
+        variable->m_Value = characteristics.Statistics.Value;
+        variable->m_Min = characteristics.Statistics.Value;
+        variable->m_Max = characteristics.Statistics.Value;
+    }
+    else
+    {
+        variable->m_Min = characteristics.Statistics.Min;
+        variable->m_Max = characteristics.Statistics.Max;
+    }
+    return variable;
+} // end mutex lock
+
 /* Define the variable of each step when parsing the metadata */
 template <class T>
 void BP4Deserializer::DefineVariableInEngineIOPerStep(
     const ElementIndexHeader &header, core::Engine &engine,
     const std::vector<char> &buffer, size_t position, size_t step) const
 {
-    const size_t initialPosition = position;
-
-    const Characteristics<T> characteristics =
-        ReadElementIndexCharacteristics<T>(
-            buffer, position, static_cast<DataTypes>(header.DataType), false,
-            m_Minifooter.IsLittleEndian);
+    Characteristics<T> characteristics;
+    /*characteristics.Count.resize(0);
+    characteristics.Start.resize(0);
+    characteristics.Shape.resize(0);
+    characteristics.Statistics.SubBlockInfo.Div.resize(0);*/
 
     const std::string variableName =
         header.Path.empty() ? header.Name
@@ -797,174 +939,57 @@ void BP4Deserializer::DefineVariableInEngineIOPerStep(
 
     if (variable)
     {
-        size_t endPositionCurrentStep =
-            initialPosition -
-            (header.Name.size() + header.GroupName.size() + header.Path.size() +
-             23) +
-            static_cast<size_t>(header.Length) + 4;
-        position = initialPosition;
-        // variable->m_AvailableStepsCount = step;
-        auto it = variable->m_AvailableStepBlockIndexOffsets.find(step);
-        if (it == variable->m_AvailableStepBlockIndexOffsets.end())
-        {
-            ++variable->m_AvailableStepsCount;
-        }
-        while (position < endPositionCurrentStep)
-        {
-            const size_t subsetPosition = position;
-
-            // read until step is found
-            const Characteristics<T> subsetCharacteristics =
-                ReadElementIndexCharacteristics<T>(
-                    buffer, position, static_cast<DataTypes>(header.DataType),
-                    false, m_Minifooter.IsLittleEndian);
-
-            const T blockMin = characteristics.Statistics.IsValue
-                                   ? subsetCharacteristics.Statistics.Value
-                                   : subsetCharacteristics.Statistics.Min;
-            const T blockMax = characteristics.Statistics.IsValue
-                                   ? subsetCharacteristics.Statistics.Value
-                                   : subsetCharacteristics.Statistics.Max;
-
-            if (helper::LessThan(blockMin, variable->m_Min))
-            {
-                variable->m_Min = blockMin;
-            }
-
-            if (helper::GreaterThan(blockMax, variable->m_Max))
-            {
-                variable->m_Max = blockMax;
-            }
-
-            if (subsetCharacteristics.EntryShapeID == ShapeID::LocalValue)
-            {
-                if (subsetPosition == initialPosition)
-                {
-                    // reset shape and count
-                    variable->m_Shape[0] = 1;
-                    variable->m_Count[0] = 1;
-                }
-                else
-                {
-                    ++variable->m_Shape[0];
-                    ++variable->m_Count[0];
-                }
-            }
-            else if (subsetCharacteristics.EntryShapeID == ShapeID::GlobalArray)
-            {
-                if (subsetPosition == initialPosition)
-                {
-                    if (subsetCharacteristics.Shape !=
-                        variable->m_AvailableShapes.rbegin()->second)
-                    {
-                        variable->m_AvailableShapes[step] =
-                            subsetCharacteristics.Shape;
-                    }
-                }
-            }
-
-            variable->m_AvailableStepBlockIndexOffsets[step].push_back(
-                subsetPosition);
-            position = subsetPosition + subsetCharacteristics.EntryLength + 5;
-        }
+        UpdateVariableInEngineIOPerStep(variable, header, engine, buffer,
+                                        position, step, characteristics);
         return;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(m_Mutex);
-        switch (characteristics.EntryShapeID)
-        {
-        case (ShapeID::GlobalValue):
-        {
-            variable = &engine.m_IO.DefineVariable<T>(variableName);
-            break;
-        }
-        case (ShapeID::GlobalArray):
-        {
-            const Dims shape = m_ReverseDimensions
-                                   ? Dims(characteristics.Shape.rbegin(),
-                                          characteristics.Shape.rend())
-                                   : characteristics.Shape;
-
-            variable = &engine.m_IO.DefineVariable<T>(
-                variableName, shape, Dims(shape.size(), 0), shape);
-            variable->m_AvailableShapes[characteristics.Statistics.Step] =
-                variable->m_Shape;
-            break;
-        }
-        case (ShapeID::LocalValue):
-        {
-            variable =
-                &engine.m_IO.DefineVariable<T>(variableName, {1}, {0}, {1});
-            variable->m_ShapeID = ShapeID::LocalValue;
-            break;
-        }
-        case (ShapeID::LocalArray):
-        {
-            const Dims count = m_ReverseDimensions
-                                   ? Dims(characteristics.Count.rbegin(),
-                                          characteristics.Count.rend())
-                                   : characteristics.Count;
-            variable =
-                &engine.m_IO.DefineVariable<T>(variableName, {}, {}, count);
-            break;
-        }
-        default:
-            throw std::runtime_error(
-                "ERROR: invalid ShapeID or not yet supported for variable " +
-                variableName + ", in call to Open\n");
-        } // end switch
-
-        if (characteristics.Statistics.IsValue)
-        {
-            variable->m_Value = characteristics.Statistics.Value;
-            variable->m_Min = characteristics.Statistics.Value;
-            variable->m_Max = characteristics.Statistics.Value;
-        }
-        else
-        {
-            variable->m_Min = characteristics.Statistics.Min;
-            variable->m_Max = characteristics.Statistics.Max;
-        }
-    } // end mutex lock
-
     // going back to get variable index position
-    variable->m_IndexStart =
-        initialPosition - (header.Name.size() + header.GroupName.size() +
-                           header.Path.size() + 23);
-
-    const size_t endPosition =
-        variable->m_IndexStart + static_cast<size_t>(header.Length) + 4;
-
-    position = initialPosition;
+    const size_t initialPosition = position;
+    const size_t endPosition = initialPosition -
+                               (header.Name.size() + header.GroupName.size() +
+                                header.Path.size() + 23) +
+                               static_cast<size_t>(header.Length) + 4;
 
     size_t currentStep = 0; // Starts at 1 in bp file
     std::set<uint32_t> stepsFound;
-    variable->m_AvailableStepsCount = 0;
+    bool firstBlock = true;
     while (position < endPosition)
     {
         const size_t subsetPosition = position;
 
         // read until step is found
-        const Characteristics<T> subsetCharacteristics =
-            ReadElementIndexCharacteristics<T>(
-                buffer, position, static_cast<DataTypes>(header.DataType),
-                false, m_Minifooter.IsLittleEndian);
+        ReadElementIndexCharacteristics2<T>(
+            buffer, position, static_cast<DataTypes>(header.DataType),
+            characteristics, false, m_Minifooter.IsLittleEndian);
+
+        if (firstBlock)
+        {
+            variable = CreateVariableInEngineIOPerStep(variableName, header,
+                                                       engine, buffer, position,
+                                                       step, characteristics);
+            variable->m_IndexStart =
+                initialPosition -
+                (header.Name.size() + header.GroupName.size() +
+                 header.Path.size() + 23);
+            variable->m_AvailableStepsCount = 0;
+            firstBlock = false;
+        }
 
         const T blockMin = characteristics.Statistics.IsValue
-                               ? subsetCharacteristics.Statistics.Value
-                               : subsetCharacteristics.Statistics.Min;
+                               ? characteristics.Statistics.Value
+                               : characteristics.Statistics.Min;
         const T blockMax = characteristics.Statistics.IsValue
-                               ? subsetCharacteristics.Statistics.Value
-                               : subsetCharacteristics.Statistics.Max;
+                               ? characteristics.Statistics.Value
+                               : characteristics.Statistics.Max;
 
         const bool isNextStep =
-            stepsFound.insert(subsetCharacteristics.Statistics.Step).second;
+            stepsFound.insert(characteristics.Statistics.Step).second;
 
         // update min max for global values only if new step is found
         if ((isNextStep &&
-             subsetCharacteristics.EntryShapeID == ShapeID::GlobalValue) ||
-            (subsetCharacteristics.EntryShapeID != ShapeID::GlobalValue))
+             characteristics.EntryShapeID == ShapeID::GlobalValue) ||
+            (characteristics.EntryShapeID != ShapeID::GlobalValue))
         {
             if (helper::LessThan(blockMin, variable->m_Min))
             {
@@ -979,27 +1004,27 @@ void BP4Deserializer::DefineVariableInEngineIOPerStep(
 
         if (isNextStep)
         {
-            currentStep = subsetCharacteristics.Statistics.Step;
+            currentStep = characteristics.Statistics.Step;
             ++variable->m_AvailableStepsCount;
-            if (subsetCharacteristics.EntryShapeID == ShapeID::LocalValue)
+            if (characteristics.EntryShapeID == ShapeID::LocalValue)
             {
                 // reset shape and count
                 variable->m_Shape[0] = 1;
                 variable->m_Count[0] = 1;
             }
-            else if (subsetCharacteristics.EntryShapeID == ShapeID::GlobalArray)
+            else if (characteristics.EntryShapeID == ShapeID::GlobalArray)
             {
-                if (subsetCharacteristics.Shape !=
+                if (characteristics.Shape !=
                     variable->m_AvailableShapes.rbegin()->second)
                 {
                     variable->m_AvailableShapes[currentStep] =
-                        subsetCharacteristics.Shape;
+                        characteristics.Shape;
                 }
             }
         }
         else
         {
-            if (subsetCharacteristics.EntryShapeID == ShapeID::LocalValue)
+            if (characteristics.EntryShapeID == ShapeID::LocalValue)
             {
                 ++variable->m_Shape[0];
                 ++variable->m_Count[0];
@@ -1008,7 +1033,7 @@ void BP4Deserializer::DefineVariableInEngineIOPerStep(
 
         variable->m_AvailableStepBlockIndexOffsets[currentStep].push_back(
             subsetPosition);
-        position = subsetPosition + subsetCharacteristics.EntryLength + 5;
+        position = subsetPosition + characteristics.EntryLength + 5;
     }
 
     if (variable->m_ShapeID == ShapeID::LocalValue)

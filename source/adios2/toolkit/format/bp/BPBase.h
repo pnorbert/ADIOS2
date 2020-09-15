@@ -621,6 +621,23 @@ protected:
                                     const bool isLittleEndian = true) const;
 
     /**
+     * Read variable element (block) characteristics from a buffer position and
+     * advancing the position until done into a pre-allocated struct
+     * @param buffer input buffer
+     * @param position input start position, output as end element
+     * characteristic position
+     * @param untilTimeStep, stop if time step characteristic is found
+     * @return populated Characteristics<T> struct
+     */
+    template <class T>
+    void
+    ReadElementIndexCharacteristics2(const std::vector<char> &buffer,
+                                     size_t &position, const DataTypes dataType,
+                                     Characteristics<T> &characteristics,
+                                     const bool untilTimeStep = false,
+                                     const bool isLittleEndian = true) const;
+
+    /**
      * Common function to extract a BP standard string, 2 bytes for length +
      * contents from a buffer position advancing the position until done
      * @param buffer input buffer
