@@ -3,11 +3,14 @@
  * accompanying file Copyright.txt for details.
  */
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
+#include <chrono>
 #include <iostream>
 #include <numeric> //std::iota
 #include <stdexcept>
+#include <thread>
 
 #include <adios2.h>
 
@@ -15,7 +18,8 @@
 
 #include "../SmallTestData.h"
 
-std::string engineName; // comes from command line
+std::string engineName;      // comes from command line
+std::string burstBufferPath; // comes from command line
 
 class BPWriteAppendReadTestADIOS2 : public ::testing::Test
 {
@@ -172,6 +176,11 @@ TEST_F(BPWriteAppendReadTestADIOS2, ADIOS2BPWriteAppendRead2D2x4)
         }
         io.AddTransport("file");
         io.SetParameter("AggregatorRatio", "1");
+        if (!burstBufferPath.empty())
+        {
+            io.SetParameter("BurstBufferPath", burstBufferPath);
+            io.SetParameter("BurstBufferVerbose", "2");
+        }
 
         adios2::Engine bpWriter = io.Open(fname, adios2::Mode::Write);
 
@@ -324,8 +333,20 @@ TEST_F(BPWriteAppendReadTestADIOS2, ADIOS2BPWriteAppendRead2D2x4)
         }
         io.AddTransport("file");
         io.SetParameter("AggregatorRatio", "1");
+        if (!burstBufferPath.empty())
+        {
+            io.SetParameter("BurstBufferPath", burstBufferPath);
+            io.SetParameter("BurstBufferVerbose", "2");
+            std::string bbfname = burstBufferPath + "/" + fname;
+            std::string bbfnew = bbfname + ".step1";
+            std::cout << "-- Rename file " << bbfname << " to " << bbfnew
+                      << std::endl;
+            std::rename(bbfname.c_str(), bbfnew.c_str());
+        }
 
         adios2::Engine bpAppender = io.Open(fname, adios2::Mode::Append);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(30000));
 
         for (size_t step = NSteps; step < 2 * NSteps; ++step)
         {
@@ -724,6 +745,10 @@ int main(int argc, char **argv)
     if (argc > 1)
     {
         engineName = std::string(argv[1]);
+    }
+    if (argc > 2)
+    {
+        burstBufferPath = std::string(argv[2]);
     }
     result = RUN_ALL_TESTS();
 

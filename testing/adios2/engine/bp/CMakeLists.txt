@@ -79,3 +79,9 @@ gtest_add_tests_helper(StepsInSituLocalArray MPI_ALLOW BP Engine.BP. .FileStream
   WORKING_DIRECTORY ${FS_DIR} EXTRA_ARGS "FileStream"
 )
 
+# BP4 only for now
+gtest_add_tests_helper(WriteAppendReadADIOS2 ${test_mpi} BP Engine.BP. .BP4.BurstBuffer
+  WORKING_DIRECTORY ${BP4_DIR} EXTRA_ARGS "BP4" "bb"
+)
+
+
