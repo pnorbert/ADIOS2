@@ -278,6 +278,8 @@ void BPBase::Init(const Params &parameters, const std::string hint,
                                     profiling::Timer("aggregation", timeUnit));
         m_Profiler.m_Timers.emplace("mkdir",
                                     profiling::Timer("mkdir", timeUnit));
+        m_Profiler.m_Timers.emplace("engineTotal",
+                                    profiling::Timer("engineTotal", timeUnit));
         m_Profiler.m_Bytes.emplace("buffering", 0);
     }
 

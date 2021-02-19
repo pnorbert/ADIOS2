@@ -43,9 +43,11 @@ BP4Writer::BP4Writer(IO &io, const std::string &name, const Mode mode,
 StepStatus BP4Writer::BeginStep(StepMode mode, const float timeoutSeconds)
 {
     TAU_SCOPED_TIMER("BP4Writer::BeginStep");
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     m_BP4Serializer.m_DeferredVariables.clear();
     m_BP4Serializer.m_DeferredVariablesDataSize = 0;
     m_IO.m_ReadStreaming = false;
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
     return StepStatus::OK;
 }
 
@@ -61,7 +63,7 @@ void BP4Writer::PerformPuts()
     {
         return;
     }
-
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     m_BP4Serializer.ResizeBuffer(m_BP4Serializer.m_DeferredVariablesDataSize,
                                  "in call to PerformPuts");
 
@@ -85,6 +87,7 @@ void BP4Writer::PerformPuts()
     }
     m_BP4Serializer.m_DeferredVariables.clear();
     m_BP4Serializer.m_DeferredVariablesDataSize = 0;
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
 }
 
 void BP4Writer::EndStep()
@@ -94,13 +97,13 @@ void BP4Writer::EndStep()
     {
         PerformPuts();
     }
-
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     // true: advances step
     m_BP4Serializer.SerializeData(m_IO, true);
 
     const size_t currentStep = CurrentStep();
     const size_t flushStepsCount = m_BP4Serializer.m_Parameters.FlushStepsCount;
-
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
     if (currentStep % flushStepsCount == 0)
     {
         Flush();
@@ -111,7 +114,10 @@ void BP4Writer::Flush(const int transportIndex)
 {
     TAU_SCOPED_TIMER("BP4Writer::Flush");
     DoFlush(false, transportIndex);
+
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     m_BP4Serializer.ResetBuffer(m_BP4Serializer.m_Data, false, false);
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
 
     if (m_BP4Serializer.m_Parameters.CollectiveMetadata)
     {
@@ -123,6 +129,7 @@ void BP4Writer::Flush(const int transportIndex)
 void BP4Writer::Init()
 {
     InitParameters();
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     if (m_BP4Serializer.m_Parameters.NumAggregators <
         static_cast<unsigned int>(m_BP4Serializer.m_SizeMPI))
     {
@@ -131,6 +138,7 @@ void BP4Writer::Init()
     }
     InitTransports();
     InitBPBuffer();
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
 }
 
 #define declare_type(T)                                                        \
@@ -403,6 +411,7 @@ void BP4Writer::DoClose(const int transportIndex)
 
     DoFlush(true, transportIndex);
 
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     if (m_BP4Serializer.m_Aggregator.m_IsConsumer)
     {
         m_FileDataManager.CloseFiles(transportIndex);
@@ -422,6 +431,7 @@ void BP4Writer::DoClose(const int transportIndex)
         WriteCollectiveMetadataFile(true);
     }
 
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
     if (m_BP4Serializer.m_Profiler.m_IsActive &&
         m_FileDataManager.AllTransportsClosed())
     {
@@ -696,6 +706,7 @@ void BP4Writer::WriteCollectiveMetadataFile(const bool isFinal)
 void BP4Writer::WriteData(const bool isFinal, const int transportIndex)
 {
     TAU_SCOPED_TIMER("BP4Writer::WriteData");
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     size_t dataSize;
 
     // write data without footer
@@ -720,11 +731,13 @@ void BP4Writer::WriteData(const bool isFinal, const int transportIndex)
                                            m_DrainSubStreamNames[i], dataSize);
         }
     }
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
 }
 
 void BP4Writer::AggregateWriteData(const bool isFinal, const int transportIndex)
 {
     TAU_SCOPED_TIMER("BP4Writer::AggregateWriteData");
+    m_BP4Serializer.m_Profiler.Start("engineTotal");
     m_BP4Serializer.CloseStream(m_IO, false);
     size_t totalBytesWritten = 0;
     const size_t dataBufferSize = m_BP4Serializer.m_Data.m_Position;
@@ -788,6 +801,7 @@ void BP4Writer::AggregateWriteData(const bool isFinal, const int transportIndex)
     m_BP4Serializer.m_Data.Resize(dataBufferSize,
                                   "Reset buffersize to final size" +
                                       std::to_string(dataBufferSize));
+    m_BP4Serializer.m_Profiler.Stop("engineTotal");
 }
 
 #define declare_type(T, L)                                                     \
