@@ -69,6 +69,9 @@ add_library(adios2_core
   toolkit/format/buffer/Buffer.cpp
   toolkit/format/buffer/heap/BufferSTL.cpp
 
+  toolkit/buffering/BufferBlock.cpp
+  toolkit/buffering/BufferList.cpp
+
   toolkit/format/bp/BPBase.cpp toolkit/format/bp/BPBase.tcc
   toolkit/format/bp/BPSerializer.cpp toolkit/format/bp/BPSerializer.tcc
 
