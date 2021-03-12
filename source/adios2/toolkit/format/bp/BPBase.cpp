@@ -221,6 +221,11 @@ void BPBase::Init(const Params &parameters, const std::string hint,
             parsedParameters.StreamReader = helper::StringTo<bool>(
                 value, " in Parameter key=StreamReader " + hint);
         }
+        else if (key == "mergeblocksperprocess")
+        {
+            parsedParameters.MergeBlocksPerProcess = helper::StringTo<bool>(
+                value, " in Parameter key=MergeBlocksPerProcess " + hint);
+        }
     }
     if (!engineType.empty())
     {

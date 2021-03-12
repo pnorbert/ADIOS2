@@ -222,6 +222,9 @@ public:
          * aggregators
          */
         unsigned int NumAggregators = 0;
+
+        /** Merge Blocks on a process if possible */
+        bool MergeBlocksPerProcess = false;
     };
 
     /** Return type of the ResizeBuffer function. */

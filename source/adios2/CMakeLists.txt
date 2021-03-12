@@ -55,6 +55,7 @@ add_library(adios2_core
 
   engine/bp4/BP4Reader.cpp engine/bp4/BP4Reader.tcc
   engine/bp4/BP4Writer.cpp engine/bp4/BP4Writer.tcc
+  helper/adiosBlockMerge.cpp
 
   engine/skeleton/SkeletonReader.cpp engine/skeleton/SkeletonReader.tcc
   engine/skeleton/SkeletonWriter.cpp engine/skeleton/SkeletonWriter.tcc

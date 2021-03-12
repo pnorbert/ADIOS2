@@ -11,6 +11,7 @@
 #define ADIOS2_ENGINE_BP4_BP4WRITER_TCC_
 
 #include "BP4Writer.h"
+#include "adios2/helper/adiosBlockMerge.h"
 
 namespace adios2
 {
@@ -133,17 +134,74 @@ T *BP4Writer::BufferDataCommon(const size_t payloadPosition,
 template <class T>
 void BP4Writer::PerformPutCommon(Variable<T> &variable)
 {
-    for (size_t b = 0; b < variable.m_BlocksInfo.size(); ++b)
+    if (m_BP4Serializer.m_Parameters.MergeBlocksPerProcess &&
+        variable.m_ShapeID == ShapeID::GlobalArray &&
+        variable.m_BlocksInfo.size() > 1)
     {
-        auto itSpanBlock = variable.m_BlocksSpan.find(b);
-        if (itSpanBlock == variable.m_BlocksSpan.end())
+        const size_t ndim = variable.Shape().size();
+        adios2::helper::ContainerInfo ci;
+        ci.boundaryList.resize(ndim);
+        ci.blocks.reserve(variable.m_BlocksInfo.size());
+        /* Create the list of blocks for potential merging */
+        for (size_t b = 0; b < variable.m_BlocksInfo.size(); ++b)
         {
+            auto itSpanBlock = variable.m_BlocksSpan.find(b);
+            if (itSpanBlock == variable.m_BlocksSpan.end())
+            {
+                if (ci.blockCount.size == 0)
+                {
+                    // first block records the uniform block size
+                    ci.blockCount = variable.m_BlocksInfo[b].Count;
+                }
+                for (size_t d = 0; d < ndim; ++d)
+                {
+                    ci.boundaryList[d].emplace_back(
+                        variable.m_BlocksInfo[b].Start[d]);
+                }
+                ci.blocks.emplace_back(b, variable.m_BlocksInfo[b].Start,
+                                       variable.m_BlocksInfo[b].Count);
+                // PutSyncCommon(variable, variable.m_BlocksInfo[b], false);
+            }
+            else /* Span blocks are not part of the merging routine */
+            {
+                m_BP4Serializer.PutSpanMetadata(
+                    variable, variable.m_BlocksInfo[b], itSpanBlock->second);
+                continue;
+            }
+        }
+        if (ci.blocks.size() == 0)
+        {
+            return;
+        }
+        if (ci.blocks.size() == 1)
+        {
+            /* single block left after spans, just put as is */
+            size_t b = ci.blocks[0].ID;
             PutSyncCommon(variable, variable.m_BlocksInfo[b], false);
         }
         else
         {
-            m_BP4Serializer.PutSpanMetadata(variable, variable.m_BlocksInfo[b],
-                                            itSpanBlock->second);
+            /* Get list of potential bigger blocks and their composing blocks */
+            adios2::helper::ContainerInfoList cl;
+            cl.push_back(ci);
+            adios2::helper::ContainerInfoList bigBlocks =
+                FindContainerBoxes(ndim, cl);
+        }
+    }
+    else /* standard old way: put each block individually */
+    {
+        for (size_t b = 0; b < variable.m_BlocksInfo.size(); ++b)
+        {
+            auto itSpanBlock = variable.m_BlocksSpan.find(b);
+            if (itSpanBlock == variable.m_BlocksSpan.end())
+            {
+                PutSyncCommon(variable, variable.m_BlocksInfo[b], false);
+            }
+            else
+            {
+                m_BP4Serializer.PutSpanMetadata(
+                    variable, variable.m_BlocksInfo[b], itSpanBlock->second);
+            }
         }
     }
 
