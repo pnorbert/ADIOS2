@@ -148,11 +148,6 @@ void BP4Writer::PerformPutCommon(Variable<T> &variable)
             auto itSpanBlock = variable.m_BlocksSpan.find(b);
             if (itSpanBlock == variable.m_BlocksSpan.end())
             {
-                if (ci.blockCount.size == 0)
-                {
-                    // first block records the uniform block size
-                    ci.blockCount = variable.m_BlocksInfo[b].Count;
-                }
                 for (size_t d = 0; d < ndim; ++d)
                 {
                     ci.boundaryList[d].emplace_back(

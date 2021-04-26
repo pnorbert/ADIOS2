@@ -339,7 +339,18 @@ ContainerInfoList FindContainerBoxes(const size_t ndim,
         BoundaryList &bound = bBox.boundaryList;
         std::vector<BlockRef> &blocksInBoundingBox = bBox.blocks;
         size_t boundingBoxSize = 1;
-        for (size_t i = 0; i < bound.size(); i++)
+        if (bound.size() != ndim)
+        {
+            throw std::runtime_error(
+                "ERROR: adiosBlockMerge:FindContainerBoxes() was called with "
+                "ndim = " +
+                std::to_string(ndim) + " but the boundary has " +
+                std::to_string(bound.size()) + " dimensions");
+        }
+
+        /* case 1: If current box is completely filled with blocks, add it to
+         * results */
+        for (size_t i = 0; i < ndim; i++)
         {
             boundingBoxSize *= bound[i].size();
         }
@@ -350,6 +361,7 @@ ContainerInfoList FindContainerBoxes(const size_t ndim,
             continue;
         }
 
+        /* case 2: If there is only one block left in box, add box to results */
         if (blocksInBoundingBox.size() == 1)
         {
             std::vector<std::vector<size_t>> oneBlockBound(ndim);
@@ -368,6 +380,7 @@ ContainerInfoList FindContainerBoxes(const size_t ndim,
             continue;
         }
 
+        /* case 3: we need to cut the box into two */
         std::vector<std::unordered_map<size_t, double>> planeHist(ndim);
         for (size_t i = 0; i < ndim; i++)
         {
@@ -544,8 +557,9 @@ ContainerInfoList FindContainerBoxes(const size_t ndim,
         }
         else
         {
-            std::cerr << "it shouldn't come here!\n";
-            exit(1);
+            throw std::runtime_error(
+                "ERROR: adiosBlockMerge:FindContainerBoxes() reached invalid "
+                "branch. This is a programming error. ");
         }
         if (blocksInBoundLeft.size() > 0)
         {
