@@ -392,8 +392,8 @@ IO::GetAvailableVariables(const std::set<std::string> &keys) noexcept
 
 std::map<std::string, Params>
 IO::GetAvailableAttributes(const std::string &variableName,
-                           const std::string separator,
-                           const bool fullNameKeys) noexcept
+                           const std::string separator, const bool fullNameKeys,
+                           const bool namesOnly) noexcept
 {
     TAU_SCOPED_TIMER("IO::GetAvailableAttributes");
     std::map<std::string, Params> attributesInfo;
@@ -409,7 +409,7 @@ IO::GetAvailableAttributes(const std::string &variableName,
         else
         {
             attributesInfo = itVariable->second->GetAttributesInfo(
-                *this, separator, fullNameKeys);
+                *this, separator, fullNameKeys, namesOnly);
         }
         return attributesInfo;
     }
@@ -419,14 +419,22 @@ IO::GetAvailableAttributes(const std::string &variableName,
     {
         const std::string &name = attributePair.first;
 
-        if (attributePair.second->m_Type == DataType::Compound)
+        if (namesOnly)
         {
+            attributesInfo[name] = {};
         }
         else
         {
-            attributesInfo[name] = attributePair.second->GetInfo();
+            if (attributePair.second->m_Type == DataType::Compound)
+            {
+            }
+            else
+            {
+                attributesInfo[name] = attributePair.second->GetInfo();
+            }
         }
     }
+
     return attributesInfo;
 }
 

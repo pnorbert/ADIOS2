@@ -306,6 +306,9 @@ public:
      * etc.)
      * @param fullNameKeys true: return full attribute names in keys, false
      * (default): return attribute names relative to variableName
+     * @param namesOnly: returns a map with the attribute names but with
+     * no Parameters. Use this if you only need the list of attribute names and
+     * call AttributeType() and InquireAttribute) on the names individually.
      * @return map:
      * <pre>
      * key: unique attribute name
@@ -314,32 +317,37 @@ public:
      *      string value: attribute info value
      * </pre>
      */
-    std::map<std::string, Params>
-    AvailableAttributes(const std::string &variableName = "",
-                        const std::string separator = "/",
-                        const bool fullNameKeys = false);
+    std::map<std::string, Params> AvailableAttributes(
+        const std::string &variableName = "", const std::string separator = "/",
+        const bool fullNameKeys = false, const bool namesOnly = false);
 
     /**
-     * Inspects variable type. This function can be used in conjunction with
-     * MACROS in an else if (type == adios2::GetType<T>() ) {} loop
-     * @param name unique variable name identifier in current IO
-     * @return type as in adios2::GetType<T>() (e.g. "double", "float"),
-     * empty std::string if variable not found
+     * Inspects variable type. This function can be used in
+     * conjunction with MACROS in an else if (type ==
+     * adios2::GetType<T>() ) {} loop
+     * @param name unique variable name identifier in
+     * current IO
+     * @return type as in adios2::GetType<T>() (e.g.
+     * "double", "float"), empty std::string if variable not
+     * found
      */
     std::string VariableType(const std::string &name) const;
 
     /**
-     * Inspects attribute type. This function can be used in conjunction with
-     * MACROS in an else if (type == adios2::GetType<T>() ) {} loop
-     * @param name unique attribute name identifier in current IO
-     * @return type as in adios2::GetType<T>() (e.g. "double", "float"),
-     * empty std::string if attribute not found
+     * Inspects attribute type. This function can be used in
+     * conjunction with MACROS in an else if (type ==
+     * adios2::GetType<T>() ) {} loop
+     * @param name unique attribute name identifier in
+     * current IO
+     * @return type as in adios2::GetType<T>() (e.g.
+     * "double", "float"), empty std::string if attribute
+     * not found
      */
     std::string AttributeType(const std::string &name) const;
 
     /**
-     * EXPERIMENTAL: carries information about an Operation added with
-     * AddOperation
+     * EXPERIMENTAL: carries information about an Operation
+     * added with AddOperation
      */
     struct Operation
     {
@@ -352,10 +360,11 @@ public:
     };
 
     /**
-     * EXPERIMENTAL: Adds operation and parameters to current IO object
+     * EXPERIMENTAL: Adds operation and parameters to
+     * current IO object
      * @param op operator to be added
-     * @param parameters key/value settings particular to the IO, not to
-     * be confused by op own parameters
+     * @param parameters key/value settings particular to
+     * the IO, not to be confused by op own parameters
      * @return operation index handler in Operations()
      */
     size_t AddOperation(const Operator op, const Params &parameters = Params());

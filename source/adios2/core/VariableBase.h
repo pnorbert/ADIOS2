@@ -210,7 +210,8 @@ public:
      */
     std::map<std::string, Params>
     GetAttributesInfo(core::IO &io, const std::string separator,
-                      const bool fullNameKeys) const noexcept;
+                      const bool fullNameKeys,
+                      const bool namesOnly = false) const noexcept;
 
 protected:
     bool m_ConstantDims = false; ///< true: fix m_Shape, m_Start, m_Count

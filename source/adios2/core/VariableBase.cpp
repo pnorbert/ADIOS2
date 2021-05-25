@@ -301,31 +301,39 @@ void VariableBase::ResetStepsSelection(const bool zeroStart) noexcept
 
 std::map<std::string, Params>
 VariableBase::GetAttributesInfo(core::IO &io, const std::string separator,
-                                const bool fullNameKeys) const noexcept
+                                const bool fullNameKeys,
+                                const bool namesOnly) const noexcept
 {
-    auto lf_GetAttributeInfo = [](const std::string &prefix,
-                                  const std::string &attributeName,
-                                  core::IO &io,
-                                  std::map<std::string, Params> &attributesInfo,
-                                  const bool fullNameKeys) {
-        if (attributeName.compare(0, prefix.size(), prefix) != 0)
-        {
-            return;
-        }
+    auto lf_GetAttributeInfo =
+        [](const std::string &prefix, const std::string &attributeName,
+           core::IO &io, std::map<std::string, Params> &attributesInfo,
+           const bool fullNameKeys, const bool namesOnly) {
+            if (attributeName.compare(0, prefix.size(), prefix) != 0)
+            {
+                return;
+            }
 
-        auto itAttribute = io.GetAttributes().find(attributeName);
+            auto itAttribute = io.GetAttributes().find(attributeName);
 
-        const std::string key =
-            fullNameKeys ? attributeName : attributeName.substr(prefix.size());
+            const std::string key = fullNameKeys
+                                        ? attributeName
+                                        : attributeName.substr(prefix.size());
 
-        if (itAttribute->second->m_Type == DataType::Compound)
-        {
-        }
-        else
-        {
-            attributesInfo[key] = itAttribute->second->GetInfo();
-        }
-    };
+            if (namesOnly)
+            {
+                attributesInfo[key] = {};
+            }
+            else
+            {
+                if (itAttribute->second->m_Type == DataType::Compound)
+                {
+                }
+                else
+                {
+                    attributesInfo[key] = itAttribute->second->GetInfo();
+                }
+            }
+        };
 
     // BODY OF FUNCTION STARTS HERE
     std::map<std::string, Params> attributesInfo;
@@ -337,7 +345,7 @@ VariableBase::GetAttributesInfo(core::IO &io, const std::string separator,
         for (const std::string &attributeName : m_PrefixedAttributes)
         {
             lf_GetAttributeInfo(prefix, attributeName, io, attributesInfo,
-                                fullNameKeys);
+                                fullNameKeys, namesOnly);
         }
     }
     else
@@ -346,7 +354,7 @@ VariableBase::GetAttributesInfo(core::IO &io, const std::string separator,
         {
             const std::string &attributeName = attributePair.first;
             lf_GetAttributeInfo(prefix, attributeName, io, attributesInfo,
-                                fullNameKeys);
+                                fullNameKeys, namesOnly);
         }
     }
 
