@@ -43,9 +43,24 @@ BP4Writer::BP4Writer(IO &io, const std::string &name, const Mode mode,
 StepStatus BP4Writer::BeginStep(StepMode mode, const float timeoutSeconds)
 {
     TAU_SCOPED_TIMER("BP4Writer::BeginStep");
+    if (mode != StepMode::Append && mode != StepMode::Update)
+    {
+        throw std::invalid_argument("BeginStep(" + ToString(mode) +
+                                    ") is invalid. BP4Writer "
+                                    "accepts Append or Update only.");
+    }
+    m_StepMode = mode;
     m_BP4Serializer.m_DeferredVariables.clear();
     m_BP4Serializer.m_DeferredVariablesDataSize = 0;
     m_IO.m_ReadStreaming = false;
+    /* Historically BP3/BP4/InsituMPI engines forward the step in previous
+     * EndStep already. Rewind here is we updating the previous step */
+    if (mode == StepMode::Update &&
+        m_BP4Serializer.m_MetadataSet.CurrentStep > 0)
+    {
+        --m_BP4Serializer.m_MetadataSet.TimeStep;
+        --m_BP4Serializer.m_MetadataSet.CurrentStep;
+    }
     return StepStatus::OK;
 }
 
@@ -104,6 +119,13 @@ void BP4Writer::EndStep()
     if (currentStep % flushStepsCount == 0)
     {
         Flush();
+    }
+
+    if (!m_BP4Serializer.m_HasIterations && m_StepMode == StepMode::Update)
+    {
+        /* this flag will never change back to false */
+        m_BP4Serializer.m_HasIterations = true;
+        UpdateIterationFlag(true);
     }
 }
 
@@ -581,6 +603,25 @@ void BP4Writer::UpdateActiveFlag(const bool active)
             m_FileDrainer.AddOperationWriteAt(
                 m_DrainMetadataIndexFileNames[i],
                 m_BP4Serializer.m_ActiveFlagPosition, 1, &activeChar);
+            m_FileDrainer.AddOperationSeekEnd(m_DrainMetadataIndexFileNames[i]);
+        }
+    }
+}
+
+void BP4Writer::UpdateIterationFlag(const bool flag)
+{
+    const char iterationChar = (flag ? '\1' : '\0');
+    m_FileMetadataIndexManager.WriteFileAt(
+        &iterationChar, 1, m_BP4Serializer.m_IterationFlagPosition);
+    m_FileMetadataIndexManager.FlushFiles();
+    m_FileMetadataIndexManager.SeekToFileEnd();
+    if (m_DrainBB)
+    {
+        for (size_t i = 0; i < m_MetadataIndexFileNames.size(); ++i)
+        {
+            m_FileDrainer.AddOperationWriteAt(
+                m_DrainMetadataIndexFileNames[i],
+                m_BP4Serializer.m_IterationFlagPosition, 1, &iterationChar);
             m_FileDrainer.AddOperationSeekEnd(m_DrainMetadataIndexFileNames[i]);
         }
     }

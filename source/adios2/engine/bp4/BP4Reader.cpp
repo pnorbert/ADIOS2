@@ -38,7 +38,7 @@ StepStatus BP4Reader::BeginStep(StepMode mode, const float timeoutSeconds)
     TAU_SCOPED_TIMER("BP4Reader::BeginStep");
     if (mode != StepMode::Read)
     {
-        throw std::invalid_argument("ERROR: mode is not supported yet, "
+        throw std::invalid_argument("ERROR: mode is not supported, "
                                     "only Read is valid for "
                                     "engine BP4Reader, in call to "
                                     "BeginStep\n");

@@ -38,6 +38,13 @@ BP3Writer::BP3Writer(IO &io, const std::string &name, const Mode mode,
 StepStatus BP3Writer::BeginStep(StepMode mode, const float timeoutSeconds)
 {
     TAU_SCOPED_TIMER("BP3Writer::BeginStep");
+    if (mode != StepMode::Append && mode != StepMode::Update)
+    {
+        throw std::invalid_argument("BeginStep(" + ToString(mode) +
+                                    ") is invalid. BP3Writer "
+                                    "accepts Append or Update only.");
+    }
+    m_StepMode = mode;
     m_BP3Serializer.m_DeferredVariables.clear();
     m_BP3Serializer.m_DeferredVariablesDataSize = 0;
     m_IO.m_ReadStreaming = false;
@@ -91,7 +98,7 @@ void BP3Writer::EndStep()
     }
 
     // true: advances step
-    m_BP3Serializer.SerializeData(m_IO, true);
+    m_BP3Serializer.SerializeData(m_IO, (m_StepMode == StepMode::Append));
 
     const size_t currentStep = CurrentStep();
     const size_t flushStepsCount = m_BP3Serializer.m_Parameters.FlushStepsCount;

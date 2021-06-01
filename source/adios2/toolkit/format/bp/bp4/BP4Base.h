@@ -61,8 +61,11 @@ public:
     static constexpr size_t m_EndianFlagPosition = 36;
     static constexpr size_t m_BPVersionPosition = 37;
     static constexpr size_t m_ActiveFlagPosition = 38;
+    static constexpr size_t m_IterationFlagPosition = 39;
     static constexpr size_t m_VersionTagPosition = 0;
     static constexpr size_t m_VersionTagLength = 32;
+
+    bool m_HasIterations = false; // one step does consists of multiple entries
 
     /**
      * Unique constructor

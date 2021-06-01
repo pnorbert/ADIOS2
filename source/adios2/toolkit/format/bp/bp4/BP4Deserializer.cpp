@@ -127,6 +127,12 @@ void BP4Deserializer::ParseMetadataIndex(BufferSTL &bufferSTL,
             buffer, position, m_Minifooter.IsLittleEndian);
         m_WriterIsActive = (activeChar == '\1' ? true : false);
 
+        // Iteration flag
+        position = m_IterationFlagPosition;
+        const char iterationChar = helper::ReadValue<uint8_t>(
+            buffer, position, m_Minifooter.IsLittleEndian);
+        m_HasIterations = (iterationChar == '\1' ? true : false);
+
         // move position to first row
         position = 64;
     }

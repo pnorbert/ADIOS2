@@ -51,6 +51,7 @@ bp3_bp4_gtest_add_tests_helper(NoXMLRecovery MPI_ALLOW)
 bp3_bp4_gtest_add_tests_helper(StepsFileGlobalArray MPI_ALLOW)
 bp3_bp4_gtest_add_tests_helper(StepsFileLocalArray MPI_ALLOW)
 bp3_bp4_gtest_add_tests_helper(SelectSteps MPI_ALLOW)
+bp3_bp4_gtest_add_tests_helper(BeginStepUpdateMode MPI_ALLOW)
 
 bp3_bp4_gtest_add_tests_helper(SelectionsOnRowMajorData MPI_NONE)
 bp3_bp4_gtest_add_tests_helper(SelectionsOnColumnMajorData MPI_NONE)

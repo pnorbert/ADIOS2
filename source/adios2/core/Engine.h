@@ -57,6 +57,10 @@ public:
     /** open mode from ADIOSTypes.h OpenMode */
     const Mode m_OpenMode;
 
+    /** Step Mode from ADIOSTypes.h adios2::StepMode used in last BeginStep
+     * call*/
+    StepMode m_StepMode;
+
     /**
      * Unique Base class constructor
      * @param engineType derived class identifier

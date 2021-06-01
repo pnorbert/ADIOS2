@@ -138,6 +138,7 @@ private:
         const uint64_t currentStepEndPos, const uint64_t currentTimeStamp);
 
     void UpdateActiveFlag(const bool active);
+    void UpdateIterationFlag(const bool flag);
 
     void WriteCollectiveMetadataFile(const bool isFinal = false);
 

@@ -136,7 +136,7 @@ void BP4Serializer::MakeHeader(BufferSTL &b, const std::string fileType,
     const uint8_t activeFlag = (isActive ? 1 : 0);
     helper::CopyToBuffer(buffer, position, &activeFlag);
 
-    // byte 39: unused
+    // byte 39: iteration flag is 0 at this point
     position += 1;
 
     // byte 40-63: unused

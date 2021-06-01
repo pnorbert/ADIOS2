@@ -66,11 +66,11 @@ int main(int argc, char *argv[])
 
         /*
          * Define global array: type, name, global dimensions
-         * The local process' part (start, count) can be defined now or later
-         * before Write().
+         * The local process' part (start, count) can be defined now or
+         * later before Write().
          */
-        adios2::Variable<double> varGlobalArray =
-            io.DefineVariable<double>("GlobalArray", {(unsigned int)nproc, Nx});
+        adios2::Variable<double> varGlobalArray = io.DefineVariable<double>(
+            "GlobalArray", {(unsigned int)nproc * NSTEPS, Nx});
 
         // Open file. "w" means we overwrite any existing file on disk,
         // but Advance() will append steps to the same file.
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
         for (size_t step = 0; step < NSTEPS; step++)
         {
-            writer.BeginStep();
+            writer.BeginStep(adios2::StepMode::Update);
 
             for (size_t i = 0; i < Nx; i++)
             {
@@ -89,7 +89,8 @@ int main(int argc, char *argv[])
             // variable we write and its offsets in the global spaces
             // adios2::SelectionBoundingBox sel();
             varGlobalArray.SetSelection(adios2::Box<adios2::Dims>(
-                {static_cast<size_t>(rank), 0}, {1, static_cast<size_t>(Nx)}));
+                {static_cast<size_t>(nproc * step + rank), 0},
+                {1, static_cast<size_t>(Nx)}));
             writer.Put<double>(varGlobalArray, row.data());
 
             // Indicate we are done for this step.
