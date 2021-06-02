@@ -152,10 +152,15 @@ void BP4Reader::Init()
     m_BP4Deserializer.Init(m_IO.m_Parameters, "in call to BP4::Open to write");
 
     /* Create per-node communicator */
+    // debug: split by color 2 to 2
+    /*int colorN = m_BP4Deserializer.m_RankMPI / 2;
+    m_commPerNode =
+        m_Comm.Split(colorN, 0, "creating node-chain comm in BP4Reader::Open");
+        */
     m_commPerNode =
         m_Comm.GroupByShm("creating per-node comm in BP4Reader::Open");
-    m_RankPerNode = m_Comm.Rank();
-    m_SizePerNode = m_Comm.Size();
+    m_RankPerNode = m_commPerNode.Rank();
+    m_SizePerNode = m_commPerNode.Size();
 
     /* Create node-chain communicator */
     /*
