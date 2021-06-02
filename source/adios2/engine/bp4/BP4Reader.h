@@ -91,6 +91,13 @@ private:
     bool m_FirstStep = true;
     bool m_IdxHeaderParsed = false; // true after first index parsing
 
+    /** Organize read processes per node and only read by on process per node */
+    helper::Comm m_commPerNode;
+    int m_RankPerNode = 0;
+    int m_SizePerNode = 1;
+    /** Organize one process per node into a chain (rank 0s in m_commPerNode) */
+    helper::Comm m_commNodeChain;
+
     void Init();
     void InitTransports();
 

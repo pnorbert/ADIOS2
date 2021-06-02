@@ -150,6 +150,22 @@ void BP4Reader::Init()
     }
 
     m_BP4Deserializer.Init(m_IO.m_Parameters, "in call to BP4::Open to write");
+
+    /* Create per-node communicator */
+    m_commPerNode =
+        m_Comm.GroupByShm("creating per-node comm in BP4Reader::Open");
+    m_RankPerNode = m_Comm.Rank();
+    m_SizePerNode = m_Comm.Size();
+
+    /* Create node-chain communicator */
+    /*
+     *  Communicators connecting rank N of each node
+     *  We are only interested in the chain of rank 0s
+     */
+    int color = (m_RankPerNode ? 1 : 0);
+    m_commNodeChain =
+        m_Comm.Split(color, 0, "creating node-chain comm in BP4Reader::Open");
+
     InitTransports();
 
     /* Do a collective wait for the file(s) to appear within timeout.
@@ -300,6 +316,16 @@ void BP4Reader::OpenFiles(TimePoint &timeoutInstant, const Seconds &pollSeconds,
         }
     }
 
+    /* Open the metadata file on each node by one process */
+    if (!m_RankPerNode && m_BP4Deserializer.m_RankMPI)
+    {
+        const std::string metadataFile(
+            m_BP4Deserializer.GetBPMetadataFileName(m_Name));
+        m_MDFileManager.OpenFiles({metadataFile}, adios2::Mode::Read,
+                                  m_IO.m_TransportsParameters,
+                                  m_BP4Deserializer.m_Profiler.m_IsActive);
+    }
+
     /* At this point we may have an empty index table.
      * The writer has created the file but no content may have been stored yet.
      */
@@ -411,6 +437,8 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
 {
     size_t newIdxSize = 0;
     // Put all metadata in buffer
+    // Only one process reads the index table and waits until
+    // the metadata file is big enough to contain all expected steps
     if (m_BP4Deserializer.m_RankMPI == 0)
     {
         /* Read metadata index table into memory */
@@ -439,20 +467,7 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
                 }
             } while (SleepOrQuit(timeoutInstant, pollSeconds));
 
-            if (fileSize >= expectedMinFileSize)
-            {
-                m_BP4Deserializer.m_Metadata.Resize(
-                    expectedMinFileSize,
-                    "allocating metadata buffer, in call to BP4Reader Open");
-
-                m_MDFileManager.ReadFile(
-                    m_BP4Deserializer.m_Metadata.m_Buffer.data(),
-                    expectedMinFileSize);
-                m_MDFileAlreadyReadSize = expectedMinFileSize;
-                m_MDIndexFileAlreadyReadSize = metadataIndexFileSize;
-                newIdxSize = metadataIndexFileSize;
-            }
-            else
+            if (fileSize < expectedMinFileSize)
             {
                 throw std::ios_base::failure(
                     "ERROR: File " + m_Name +
@@ -467,6 +482,7 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
                     ". One reason could be if the reader finds old data while "
                     "the writer is creating the new files.");
             }
+            newIdxSize = metadataIndexFileSize;
         }
     }
 
@@ -474,11 +490,28 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
 
     if (newIdxSize > 0)
     {
-        // broadcast buffer to all ranks from zero
-        m_Comm.BroadcastVector(m_BP4Deserializer.m_Metadata.m_Buffer);
-
         // broadcast metadata index buffer to all ranks from zero
         m_Comm.BroadcastVector(m_BP4Deserializer.m_MetadataIndex.m_Buffer);
+
+        if (!m_RankPerNode)
+        {
+            /* One process per node read the metadata content */
+            uint64_t expectedMinFileSize =
+                MetadataExpectedMinFileSize(m_BP4Deserializer, m_Name, true);
+
+            m_BP4Deserializer.m_Metadata.Resize(
+                expectedMinFileSize,
+                "allocating metadata buffer, in call to BP4Reader Open");
+
+            m_MDFileManager.ReadFile(
+                m_BP4Deserializer.m_Metadata.m_Buffer.data(),
+                expectedMinFileSize);
+            m_MDFileAlreadyReadSize = expectedMinFileSize;
+            m_MDIndexFileAlreadyReadSize = newIdxSize;
+        }
+
+        // broadcast buffer to all ranks on each node
+        m_commPerNode.BroadcastVector(m_BP4Deserializer.m_Metadata.m_Buffer);
 
         /* Parse metadata index table */
         m_BP4Deserializer.ParseMetadataIndex(m_BP4Deserializer.m_MetadataIndex,
@@ -506,6 +539,128 @@ void BP4Reader::InitBuffer(const TimePoint &timeoutInstant,
 
 size_t BP4Reader::UpdateBuffer(const TimePoint &timeoutInstant,
                                const Seconds &pollSeconds)
+{
+    std::vector<size_t> sizes(2, 0);
+
+    if (m_BP4Deserializer.m_RankMPI == 0)
+    {
+        const size_t idxFileSize = m_MDIndexFileManager.GetFileSize(0);
+        if (idxFileSize > m_MDIndexFileAlreadyReadSize)
+        {
+            const size_t maxIdxSize =
+                idxFileSize - m_MDIndexFileAlreadyReadSize;
+            std::vector<char> idxbuf(maxIdxSize);
+            m_MDIndexFileManager.ReadFile(idxbuf.data(), maxIdxSize,
+                                          m_MDIndexFileAlreadyReadSize);
+
+            size_t newIdxSize = 0;
+            size_t expectedMinFileSize;
+            char *buf = idxbuf.data();
+
+            MetadataCalculateMinFileSize(
+                m_BP4Deserializer, m_Name, buf, maxIdxSize, !m_IdxHeaderParsed,
+                m_MDFileAlreadyReadSize, newIdxSize, expectedMinFileSize);
+
+            // const uint64_t expectedMinFileSize = MetadataExpectedMinFileSize(
+            //    m_BP4Deserializer, m_Name, !m_IdxHeaderParsed);
+
+            if (m_BP4Deserializer.m_MetadataIndex.m_Buffer.size() < newIdxSize)
+            {
+                m_BP4Deserializer.m_MetadataIndex.Resize(
+                    newIdxSize, "re-allocating metadata index buffer, in "
+                                "call to BP4Reader::BeginStep/UpdateBuffer");
+            }
+            m_BP4Deserializer.m_MetadataIndex.Reset(true, false);
+            std::copy(idxbuf.begin(), idxbuf.begin() + newIdxSize,
+                      m_BP4Deserializer.m_MetadataIndex.m_Buffer.begin());
+
+            /* Wait until as much metadata arrives in the file as much
+             * is indicated by the existing index entries
+             */
+
+            size_t fileSize = 0;
+            do
+            {
+                fileSize = m_MDFileManager.GetFileSize(0);
+                if (fileSize >= expectedMinFileSize)
+                {
+                    break;
+                }
+            } while (SleepOrQuit(timeoutInstant, pollSeconds));
+
+            if (fileSize >= expectedMinFileSize)
+            {
+                sizes[0] = newIdxSize;
+                sizes[1] = expectedMinFileSize;
+            }
+        }
+    }
+
+    m_Comm.BroadcastVector(sizes, 0);
+    size_t newIdxSize = sizes[0];
+    size_t expectedMinFileSize = sizes[1];
+
+    if (newIdxSize > 0)
+    {
+        if (m_BP4Deserializer.m_RankMPI != 0)
+        {
+            m_BP4Deserializer.m_MetadataIndex.Reset(true, false);
+        }
+
+        // broadcast metadata index buffer to all ranks from zero
+        m_Comm.BroadcastVector(m_BP4Deserializer.m_MetadataIndex.m_Buffer);
+
+        if (!m_RankPerNode)
+        {
+            /* One process per node read the metadata content */
+            /* Read corresponding new metadata (throwing away the old)
+             * There may be unprocessed entries in the metadata if the index
+             * had less steps than the metadata file at the last read.
+             * Those steps are read again here, starting in the beginning of
+             * the buffer now.
+             */
+            const size_t newMDSize =
+                expectedMinFileSize - m_MDFileAlreadyReadSize;
+            if (m_BP4Deserializer.m_Metadata.m_Buffer.size() < newMDSize)
+            {
+                m_BP4Deserializer.m_Metadata.Resize(
+                    newMDSize, "allocating metadata buffer, in call to "
+                               "BP4Reader Open");
+            }
+            m_BP4Deserializer.m_Metadata.Reset(true, false);
+            m_MDFileManager.ReadFile(
+                m_BP4Deserializer.m_Metadata.m_Buffer.data(), newMDSize,
+                m_MDFileAlreadyReadSize);
+
+            m_MDFileAbsolutePos = m_MDFileAlreadyReadSize;
+            m_MDFileAlreadyReadSize = expectedMinFileSize;
+
+            m_MDIndexFileAlreadyReadSize += newIdxSize;
+
+            sizes[0] = m_MDFileAlreadyReadSize;
+            sizes[1] = m_MDFileAbsolutePos;
+        }
+
+        m_Comm.BroadcastVector(sizes, 0);
+
+        if (m_RankPerNode != 0)
+        {
+            m_MDFileAlreadyReadSize = sizes[0];
+            m_MDFileAbsolutePos = sizes[1];
+            m_BP4Deserializer.m_Metadata.Reset(true, false);
+            // we need this pointer in Metadata buffer on all processes
+            // for parsing it correctly in ProcessMetadataForNewSteps()
+        }
+
+        // broadcast buffer to all ranks from zero
+        m_commPerNode.BroadcastVector(m_BP4Deserializer.m_Metadata.m_Buffer);
+    }
+    return newIdxSize;
+}
+
+#if 0
+size_t BP4Reader::UpdateBuffer2(const TimePoint &timeoutInstant,
+                                const Seconds &pollSeconds)
 {
     std::vector<size_t> sizes(3, 0);
     if (m_BP4Deserializer.m_RankMPI == 0)
@@ -610,6 +765,8 @@ size_t BP4Reader::UpdateBuffer(const TimePoint &timeoutInstant,
     }
     return newIdxSize;
 }
+#endif
+
 void BP4Reader::ProcessMetadataForNewSteps(const size_t newIdxSize)
 {
     /* Remove all existing variables from previous steps
