@@ -76,6 +76,7 @@ void Engine::Close(const int transportIndex)
 }
 
 void Engine::Flush(const int /*transportIndex*/) { ThrowUp("Flush"); }
+void Engine::FlushStep(const int /*transportIndex*/) { ThrowUp("FlushStep"); }
 
 size_t Engine::Steps() const { return DoSteps(); }
 

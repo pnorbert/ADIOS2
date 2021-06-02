@@ -370,12 +370,26 @@ public:
     void Close(const int transportIndex = -1);
 
     /**
-     * Flushes data and metadata (if on) to a particular transport, or all if -1
-     * (default).
+     * Flushes data to a particular transport, or all if -1
+     * (default). Only usable by BP* File and FileStream engines. This is a
+     * collective operation! The step will NOT be visible to readers since
+     * metadata is not flushed at this point but only in EndStep().
      * @param transportIndex index returned from IO AddTransport, default (-1) =
      * all
      */
     virtual void Flush(const int transportIndex = -1);
+
+    /**
+     * Flushes data and metadata to a particular transport, or all if -1
+     * (default). Only usable by BP* File engines. This is a collective
+     * operation! The step will be visible to readers as is. The step later will
+     * be finalized and updated in EndStep() and it will look different.
+     * FileStream readers can NOT be used with a producer that calls this
+     * function.
+     * @param transportIndex index returned from IO AddTransport, default (-1) =
+     * all
+     */
+    virtual void FlushStep(const int transportIndex = -1);
 
     /**
      * Extracts all available blocks information for a particular

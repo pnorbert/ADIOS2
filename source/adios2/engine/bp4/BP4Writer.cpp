@@ -103,14 +103,21 @@ void BP4Writer::EndStep()
 
     if (currentStep % flushStepsCount == 0)
     {
-        Flush();
+        FlushStep();
     }
 }
 
 void BP4Writer::Flush(const int transportIndex)
 {
     TAU_SCOPED_TIMER("BP4Writer::Flush");
-    DoFlush(false, transportIndex);
+    FlushData(false, transportIndex);
+    m_BP4Serializer.ResetBuffer(m_BP4Serializer.m_Data, false, false);
+}
+
+void BP4Writer::FlushStep(const int transportIndex)
+{
+    TAU_SCOPED_TIMER("BP4Writer::FlushStep");
+    FlushData(false, transportIndex);
     m_BP4Serializer.ResetBuffer(m_BP4Serializer.m_Data, false, false);
 
     if (m_BP4Serializer.m_Parameters.CollectiveMetadata)
@@ -381,7 +388,7 @@ void BP4Writer::InitBPBuffer()
         m_FileDataManager.GetTransportsTypes());
 }
 
-void BP4Writer::DoFlush(const bool isFinal, const int transportIndex)
+void BP4Writer::FlushData(const bool isFinal, const int transportIndex)
 {
     if (m_BP4Serializer.m_Aggregator.m_IsActive)
     {
@@ -401,7 +408,7 @@ void BP4Writer::DoClose(const int transportIndex)
         PerformPuts();
     }
 
-    DoFlush(true, transportIndex);
+    FlushData(true, transportIndex);
 
     if (m_BP4Serializer.m_Aggregator.m_IsConsumer)
     {

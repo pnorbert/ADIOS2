@@ -46,6 +46,7 @@ public:
     void PerformPuts() final;
     void EndStep() final;
     void Flush(const int transportIndex = -1) final;
+    void FlushStep(const int transportIndex = -1) final;
 
     size_t DebugGetDataBufferSize() const final;
 
@@ -123,7 +124,7 @@ private:
     template <class T>
     void PutDeferredCommon(Variable<T> &variable, const T *data);
 
-    void DoFlush(const bool isFinal = false, const int transportIndex = -1);
+    void FlushData(const bool isFinal = false, const int transportIndex = -1);
 
     void DoClose(const int transportIndex = -1) final;
 

@@ -10,3 +10,6 @@ if(ADIOS2_HAVE_MPI)
   add_executable(globalArray_write_mpi globalArray_write.cpp)
   target_link_libraries(globalArray_write_mpi adios2::cxx11_mpi MPI::MPI_C)
 endif()
+
+add_executable(globalArray_write_flush globalArray_write_flush.cpp)
+target_link_libraries(globalArray_write_flush adios2::cxx11)
