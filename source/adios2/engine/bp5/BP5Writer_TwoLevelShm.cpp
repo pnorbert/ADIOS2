@@ -29,12 +29,21 @@ namespace engine
 
 using namespace adios2::format;
 
-void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data)
+void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data,
+                                      bool CollectMetadata,
+                                      std::vector<char> &LocalMetaData,
+                                      std::vector<char> &AggregatedMetadata,
+                                      std::vector<size_t> &MetadataLocalSizes)
 {
     aggregator::MPIShmChain *a =
         dynamic_cast<aggregator::MPIShmChain *>(m_Aggregator);
 
     format::BufferV::BufferV_iovec DataVec = Data->DataVec();
+
+    /* Two level aggregation of metadata
+     * 1. Gather metadata inside the chain interleaved with data writing */
+    std::vector<size_t> MetadataSizesOnAggregators(a->m_Comm.Size());
+    std::vector<char> MetaDataOnAggregators;
 
     // new step writing starts at offset m_DataPos on master aggregator
     // other aggregators to the same file will need to wait for the position
@@ -132,6 +141,29 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data)
             WriteOthersData(myTotalSize - Data->Size());
         }
 
+        /* Aggregator collects individual metadata blocks */
+        // guess at metadata size to resize as few times as possible
+        size_t mdoffset = LocalMetaData.size();
+        MetaDataOnAggregators.resize(mdoffset * m_Comm.Size());
+        // aggregators own metadata
+        std::memcpy(MetaDataOnAggregators.data(), LocalMetaData.data(),
+                    mdoffset);
+        for (int r = 1; r < m_Comm.Size(); ++r)
+        {
+            a->m_Comm.Recv(&MetadataSizesOnAggregators[r], 1, r, 0,
+                           "local MD size in BP5Writer::WriteData_TwoLevelShm");
+            if (mdoffset + MetadataSizesOnAggregators[r] >
+                MetaDataOnAggregators.size())
+            {
+                MetaDataOnAggregators.resize(mdoffset +
+                                             MetadataSizesOnAggregators[r]);
+            }
+            a->m_Comm.Recv(MetaDataOnAggregators.data() + mdoffset,
+                           MetadataSizesOnAggregators[r], r, 0,
+                           "local MD size in BP5Writer::WriteData_TwoLevelShm");
+            mdoffset += MetadataSizesOnAggregators[r];
+        }
+
         // Master aggregator needs to know where the last writing ended by the
         // last aggregator in the chain, so that it can start from the correct
         // position at the next output step
@@ -145,6 +177,13 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data)
     }
     else
     {
+        // first send my metadata towards the aggregator
+        size_t LocalMetaDataSize = LocalMetaData.size();
+        a->m_Comm.Isend(&LocalMetaDataSize, 1, 0, 0,
+                        "local MD size in BP5Writer::WriteData_TwoLevelShm");
+        a->m_Comm.Isend(LocalMetaData.data(), LocalMetaDataSize, 0, 0,
+                        "local MD in BP5Writer::WriteData_TwoLevelShm");
+
         // non-aggregators fill shared buffer in marching order
         // they also receive their starting offset this way
         a->m_Comm.Recv(&m_StartDataPos, 1, a->m_Comm.Rank() - 1, 0,
@@ -161,6 +200,37 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data)
             uint64_t nextWriterPos = m_StartDataPos + Data->Size();
             a->m_Comm.Isend(&nextWriterPos, 1, a->m_Comm.Rank() + 1, 0,
                             "Shm token in BP5Writer::WriteData_TwoLevelShm");
+        }
+    }
+
+    if (CollectMetadata)
+    {
+        /* Two level aggregation of metadata, so far not interleaved with data
+         * writing */
+        /* 1. Gather metadata inside the chain */
+        size_t LocalSize = LocalMetaData.size();
+        std::vector<size_t> MetadataSizesOnAggregators =
+            a->m_Comm.GatherValues(LocalSize, 0);
+
+        std::vector<char> MetaDataOnAggregators;
+        if (a->m_IsAggregator)
+        {
+            uint64_t TotalSize = 0;
+            for (auto &n : MetadataSizesOnAggregators)
+                TotalSize += n;
+            MetaDataOnAggregators.resize(TotalSize);
+        }
+        m_Comm.GathervArrays(
+            LocalMetaData.data(), LocalSize, MetadataSizesOnAggregators.data(),
+            MetadataSizesOnAggregators.size(), MetaDataOnAggregators.data(), 0);
+
+        /* 2. Gather metadata from the Aggregators */
+        if (a->m_IsAggregator)
+        {
+            GatherMetadataFromAggregators(
+                a->m_AllAggregatorsComm, MetaDataOnAggregators,
+                MetadataSizesOnAggregators, AggregatedMetadata,
+                MetadataLocalSizes);
         }
     }
 

@@ -149,11 +149,30 @@ private:
     WriteMetadata(const std::vector<format::BufferV::iovec> MetaDataBlocks,
                   const std::vector<format::BufferV::iovec> AttributeBlocks);
 
+    /** Write Data to disk, in an aggregator chain AND collect metadata */
+    void WriteDataAndAggregateMetadata(format::BufferV *Data,
+                                       bool CollectMetadata,
+                                       std::vector<char> &LocalMetaData,
+                                       std::vector<char> &AggregatedMetadata,
+                                       std::vector<size_t> &MetadataLocalSizes);
     /** Write Data to disk, in an aggregator chain */
-    void WriteData(format::BufferV *Data);
-    void WriteData_EveryoneWrites(format::BufferV *Data,
-                                  bool SerializedWriters);
-    void WriteData_TwoLevelShm(format::BufferV *Data);
+    // void WriteData(format::BufferV *Data);
+    void WriteData_EveryoneWrites(format::BufferV *Data, bool SerializedWriters,
+                                  bool CollectMetadata,
+                                  std::vector<char> &LocalMetaData,
+                                  std::vector<char> &AggregatedMetadata,
+                                  std::vector<size_t> &MetadataLocalSizes);
+    void WriteData_TwoLevelShm(format::BufferV *Data, bool CollectMetadata,
+                               std::vector<char> &LocalMetaData,
+                               std::vector<char> &AggregatedMetadata,
+                               std::vector<size_t> &MetadataLocalSizes);
+
+    void GatherMetadataFromAggregators(
+        const helper::Comm &acomm,
+        const std::vector<char> &MetaDataOnAggregators,
+        const std::vector<size_t> &MetadataSizesOnAggregators,
+        std::vector<char> &AggregatedMetadata,
+        std::vector<size_t> &MetadataLocalSizes);
 
     void PopulateMetadataIndexFileContent(
         format::BufferSTL &buffer, const uint64_t currentStep,

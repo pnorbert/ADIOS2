@@ -35,6 +35,11 @@ void MPIChain::Init(const size_t numAggregators, const size_t subStreams,
 
     HandshakeLinks();
 
+    /* Communicator for all Aggregators */
+    int color = (m_Rank ? 1 : 0);
+    m_AllAggregatorsComm =
+        parentComm.Split(color, 0, "creating comm of all aggregators at Open");
+
     // add a receiving buffer except for the last rank (only sends)
     if (m_Rank < m_Size)
     {

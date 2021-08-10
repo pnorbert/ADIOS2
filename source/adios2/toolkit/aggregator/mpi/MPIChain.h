@@ -61,6 +61,12 @@ public:
 
     format::Buffer &GetConsumerBuffer(format::Buffer &buffer);
 
+    /* Communicator connecting all aggregators
+    (rank 0 of each aggregator group)
+    Useful only on aggregators themselves
+    */
+    helper::Comm m_AllAggregatorsComm;
+
 private:
     bool m_IsInExchangeAbsolutePosition = false;
     size_t m_SizeSend = 0;

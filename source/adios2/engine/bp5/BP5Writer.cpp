@@ -135,20 +135,27 @@ uint64_t BP5Writer::WriteMetadata(
     return MetaDataSize;
 }
 
-void BP5Writer::WriteData(format::BufferV *Data)
+void BP5Writer::WriteDataAndAggregateMetadata(
+    format::BufferV *Data, bool CollectMetadata,
+    std::vector<char> &LocalMetaData, std::vector<char> &AggregatedMetadata,
+    std::vector<size_t> &MetadataLocalSizes)
 {
-    format::BufferV::BufferV_iovec DataVec = Data->DataVec();
-    (void)DataVec;
+    std::vector<char> MetaDataOnAggregators;
+    std::vector<size_t> MetadataSizesOnAggregators;
+
     switch (m_Parameters.AggregationType)
     {
     case (int)AggregationType::EveryoneWrites:
-        WriteData_EveryoneWrites(Data, false);
+        WriteData_EveryoneWrites(Data, false, CollectMetadata, LocalMetaData,
+                                 AggregatedMetadata, MetadataLocalSizes);
         break;
     case (int)AggregationType::EveryoneWritesSerial:
-        WriteData_EveryoneWrites(Data, true);
+        WriteData_EveryoneWrites(Data, true, CollectMetadata, LocalMetaData,
+                                 AggregatedMetadata, MetadataLocalSizes);
         break;
     case (int)AggregationType::TwoLevelShm:
-        WriteData_TwoLevelShm(Data);
+        WriteData_TwoLevelShm(Data, CollectMetadata, LocalMetaData,
+                              AggregatedMetadata, MetadataLocalSizes);
         break;
     default:
         throw std::invalid_argument(
@@ -158,8 +165,51 @@ void BP5Writer::WriteData(format::BufferV *Data)
     }
 }
 
-void BP5Writer::WriteData_EveryoneWrites(format::BufferV *Data,
-                                         bool SerializedWriters)
+void BP5Writer::GatherMetadataFromAggregators(
+    const helper::Comm &acomm, const std::vector<char> &MetaDataOnAggregators,
+    const std::vector<size_t> &MetadataSizesOnAggregators,
+    std::vector<char> &AggregatedMetadata,
+    std::vector<size_t> &MetadataLocalSizes)
+{
+    /* Collect the small vectors of MetadataSizesOnAggregators
+        into MetadataLocalSizes */
+    {
+        const size_t msize = MetadataSizesOnAggregators.size();
+        std::vector<size_t> msizes = acomm.GatherValues(msize, 0);
+        if (acomm.Rank() == 0)
+        {
+            uint64_t TotalSize = 0;
+            for (auto &n : msizes)
+                TotalSize += n;
+            MetadataLocalSizes.resize(TotalSize);
+        }
+        acomm.GathervArrays(MetadataSizesOnAggregators.data(), msize,
+                            msizes.data(), msizes.size(),
+                            MetadataLocalSizes.data(), 0);
+    }
+
+    /* Collect the metadata buffers from the aggregators MetaDataOnAggregators
+        into AggregatedMetadata */
+    {
+        const size_t mdsize = MetaDataOnAggregators.size();
+        std::vector<size_t> mdsizes = acomm.GatherValues(mdsize, 0);
+        if (acomm.Rank() == 0)
+        {
+            uint64_t TotalSize = 0;
+            for (auto &n : mdsizes)
+                TotalSize += n;
+            AggregatedMetadata.resize(TotalSize);
+        }
+        acomm.GathervArrays(MetaDataOnAggregators.data(), mdsize,
+                            mdsizes.data(), mdsizes.size(),
+                            AggregatedMetadata.data(), 0);
+    }
+}
+
+void BP5Writer::WriteData_EveryoneWrites(
+    format::BufferV *Data, bool SerializedWriters, bool CollectMetadata,
+    std::vector<char> &LocalMetaData, std::vector<char> &AggregatedMetadata,
+    std::vector<size_t> &MetadataLocalSizes)
 {
     const aggregator::MPIChain *a =
         dynamic_cast<aggregator::MPIChain *>(m_Aggregator);
@@ -237,6 +287,38 @@ void BP5Writer::WriteData_EveryoneWrites(format::BufferV *Data,
     }
 
     delete[] DataVec;
+
+    if (CollectMetadata)
+    {
+        /* Two level aggregation of metadata, so far not interleaved with data
+         * writing */
+        /* 1. Gather metadata inside the chain */
+        size_t LocalMetaDataSize = LocalMetaData.size();
+        std::vector<size_t> MetadataSizesOnAggregators =
+            a->m_Comm.GatherValues(LocalMetaDataSize, 0);
+
+        std::vector<char> MetaDataOnAggregators;
+        if (a->m_IsAggregator)
+        {
+            uint64_t TotalSize = 0;
+            for (auto &n : MetadataSizesOnAggregators)
+                TotalSize += n;
+            MetaDataOnAggregators.resize(TotalSize);
+        }
+        m_Comm.GathervArrays(LocalMetaData.data(), LocalMetaDataSize,
+                             MetadataSizesOnAggregators.data(),
+                             MetadataSizesOnAggregators.size(),
+                             MetaDataOnAggregators.data(), 0);
+
+        /* 2. Gather metadata from the Aggregators */
+        if (a->m_IsAggregator)
+        {
+            GatherMetadataFromAggregators(
+                a->m_AllAggregatorsComm, MetaDataOnAggregators,
+                MetadataSizesOnAggregators, AggregatedMetadata,
+                MetadataLocalSizes);
+        }
+    }
 }
 
 void BP5Writer::WriteMetadataFileIndex(uint64_t MetaDataPos,
@@ -360,28 +442,17 @@ void BP5Writer::EndStep()
     /* TSInfo includes NewMetaMetaBlocks, the MetaEncodeBuffer, the
      * AttributeEncodeBuffer and the data encode Vector */
     /* the first */
-
-    WriteData(TSInfo.DataBuffer);
-
     m_ThisTimestepDataSize += TSInfo.DataBuffer->Size();
 
     std::vector<char> MetaBuffer = m_BP5Serializer.CopyMetadataToContiguous(
         TSInfo.NewMetaMetaBlocks, TSInfo.MetaEncodeBuffer,
         TSInfo.AttributeEncodeBuffer, m_ThisTimestepDataSize, m_StartDataPos);
 
-    size_t LocalSize = MetaBuffer.size();
-    std::vector<size_t> RecvCounts = m_Comm.GatherValues(LocalSize, 0);
+    std::vector<size_t> MetadataLocalSizes;
+    std::vector<char> AggregatedMetaBuffer;
 
-    std::vector<char> *RecvBuffer = new std::vector<char>;
-    if (m_Comm.Rank() == 0)
-    {
-        uint64_t TotalSize = 0;
-        for (auto &n : RecvCounts)
-            TotalSize += n;
-        RecvBuffer->resize(TotalSize);
-    }
-    m_Comm.GathervArrays(MetaBuffer.data(), LocalSize, RecvCounts.data(),
-                         RecvCounts.size(), RecvBuffer->data(), 0);
+    WriteDataAndAggregateMetadata(TSInfo.DataBuffer, true, MetaBuffer,
+                                  AggregatedMetaBuffer, MetadataLocalSizes);
 
     if (m_Comm.Rank() == 0)
     {
@@ -389,8 +460,8 @@ void BP5Writer::EndStep()
         std::vector<uint64_t> DataSizes;
         std::vector<BufferV::iovec> AttributeBlocks;
         auto Metadata = m_BP5Serializer.BreakoutContiguousMetadata(
-            RecvBuffer, RecvCounts, UniqueMetaMetaBlocks, AttributeBlocks,
-            DataSizes, m_WriterDataPos);
+            &AggregatedMetaBuffer, MetadataLocalSizes, UniqueMetaMetaBlocks,
+            AttributeBlocks, DataSizes, m_WriterDataPos);
         if (m_MetaDataPos == 0)
         {
             //  First time, write the headers
@@ -412,7 +483,6 @@ void BP5Writer::EndStep()
         uint64_t ThisMetaDataSize = WriteMetadata(Metadata, AttributeBlocks);
         WriteMetadataFileIndex(ThisMetaDataPos, ThisMetaDataSize);
     }
-    delete RecvBuffer;
 }
 
 // PRIVATE
@@ -855,7 +925,10 @@ void BP5Writer::FlushData(const bool isFinal)
                        m_Parameters.BufferChunkSize));
     }
 
-    WriteData(DataBuf);
+    std::vector<char> emptyCharV;
+    std::vector<size_t> emptySizetV;
+    WriteDataAndAggregateMetadata(DataBuf, false, emptyCharV, emptyCharV,
+                                  emptySizetV);
 
     m_ThisTimestepDataSize += DataBuf->Size();
 
