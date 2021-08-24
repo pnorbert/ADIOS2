@@ -18,14 +18,19 @@ namespace core
 namespace compress
 {
 
-int CompressSirius::m_CurrentTier = 0;
-int CompressSirius::m_Tiers = 0;
+std::unordered_map<std::string, int> CompressSirius::m_CurrentTierMap;
+std::vector<std::unordered_map<std::string, std::vector<char>>>
+    CompressSirius::m_TierBuffersMap;
+int CompressSirius::m_CurrentTier;
 std::vector<std::vector<char>> CompressSirius::m_TierBuffers;
+int CompressSirius::m_Tiers = 0;
+bool CompressSirius::m_CurrentReadFinished = false;
 
 CompressSirius::CompressSirius(const Params &parameters)
 : Operator("sirius", parameters)
 {
-    helper::GetParameter(parameters, "tiers", m_Tiers);
+    helper::GetParameter(parameters, "Tiers", m_Tiers);
+    m_TierBuffersMap.resize(m_Tiers);
     m_TierBuffers.resize(m_Tiers);
 }
 
@@ -64,38 +69,65 @@ size_t CompressSirius::Compress(const void *dataIn, const Dims &dimensions,
 }
 
 size_t CompressSirius::Decompress(const void *bufferIn, const size_t sizeIn,
-                                  void *dataOut, const Dims &dimensions,
-                                  DataType type, const Params &parameters)
+                                  void *dataOut, const Dims &start,
+                                  const Dims &count, DataType type)
 {
-    size_t outputBytes = std::accumulate(dimensions.begin(), dimensions.end(),
+    size_t outputBytes = std::accumulate(count.begin(), count.end(),
                                          helper::GetDataTypeSize(type),
                                          std::multiplies<size_t>());
 
+    std::string blockId =
+        helper::DimsToString(start) + helper::DimsToString(count);
+
     // decompress data and copy back to m_TierBuffers
     size_t bytesPerTier = outputBytes / m_Tiers;
-    m_TierBuffers[m_CurrentTier].resize(bytesPerTier);
-    std::memcpy(m_TierBuffers[m_CurrentTier].data(), bufferIn, bytesPerTier);
+    auto &currentBuffer = m_TierBuffersMap[m_CurrentTierMap[blockId]][blockId];
+    auto &currentTier = m_CurrentTierMap[blockId];
+    currentBuffer.resize(bytesPerTier);
+    std::memcpy(currentBuffer.data(), bufferIn, bytesPerTier);
 
     // if called from the final tier, then merge all tier buffers and copy back
     // to dataOut
     size_t accumulatedBytes = 0;
-    if (m_CurrentTier == m_Tiers - 1)
+    // TODO: it currently only copies output data back when the final tier is
+    // read. However, the real Sirius algorithm should instead decide when to
+    // copy back decompressed data based on required acuracy level. Once it's
+    // done, it should set m_CurrentReadFinished to true to inform the MHS
+    // engine that the current read is finished so that it won't read the next
+    // tier.
+    if (currentTier == m_Tiers - 1)
     {
-        for (const auto &b : m_TierBuffers)
+        for (auto &bmap : m_TierBuffersMap)
         {
+            auto &b = bmap[blockId];
             std::memcpy(reinterpret_cast<char *>(dataOut) + accumulatedBytes,
                         b.data(), b.size());
             accumulatedBytes += b.size();
         }
+        // set m_CurrentReadFinished to true if after the current call, the
+        // required acuracy is already satisfied, so that the MHS engine knows
+        // it shouldn't continue reading the next tier.
+        m_CurrentReadFinished = true;
     }
 
-    m_CurrentTier++;
-    if (m_CurrentTier % m_Tiers == 0)
+    // set m_CurrentReadFinished to false if the current tier does not satisfy
+    // the required acuracy, so the MHS engine will read the next tier.
+    m_CurrentReadFinished = false;
+
+    currentTier++;
+    if (currentTier % m_Tiers == 0)
     {
-        m_CurrentTier = 0;
+        currentTier = 0;
     }
 
-    return outputBytes;
+    if (currentTier == 0)
+    {
+        return outputBytes;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 bool CompressSirius::IsDataTypeValid(const DataType type) const

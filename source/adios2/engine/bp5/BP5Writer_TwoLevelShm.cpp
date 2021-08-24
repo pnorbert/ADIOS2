@@ -35,10 +35,9 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data,
                                       std::vector<char> &AggregatedMetadata,
                                       std::vector<size_t> &MetadataLocalSizes)
 {
+    m_Profiler.Start("AWD");
     aggregator::MPIShmChain *a =
         dynamic_cast<aggregator::MPIShmChain *>(m_Aggregator);
-
-    format::BufferV::BufferV_iovec DataVec = Data->DataVec();
 
     /* Two level aggregation of metadata
      * 1. Gather metadata inside the chain interleaved with data writing */
@@ -133,7 +132,7 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data,
                             "Shm token in BP5Writer::WriteData_TwoLevelShm");
         }
 
-        WriteMyOwnData(DataVec);
+        WriteMyOwnData(Data);
 
         /* Write from shm until every non-aggr sent all data */
         if (a->m_Comm.Size() > 1)
@@ -193,7 +192,7 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data,
                   << " non-aggregator recv token to fill shm = "
                   << m_StartDataPos << std::endl;*/
 
-        SendDataToAggregator(DataVec, Data->Size());
+        SendDataToAggregator(Data);
 
         if (a->m_Comm.Rank() < a->m_Comm.Size() - 1)
         {
@@ -202,7 +201,9 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data,
                             "Shm token in BP5Writer::WriteData_TwoLevelShm");
         }
     }
+    m_Profiler.Stop("AWD");
 
+    m_Profiler.Start("meta_gather");
     if (CollectMetadata)
     {
         /* Two level aggregation of metadata, so far not interleaved with data
@@ -233,33 +234,23 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data,
                 MetadataLocalSizes);
         }
     }
+    m_Profiler.Stop("meta_gather");
 
+    m_Profiler.Start("AWD");
     if (a->m_Comm.Size() > 1)
     {
         a->DestroyShm();
     }
-    delete[] DataVec;
+    m_Profiler.Stop("AWD");
 }
 
-void BP5Writer::WriteMyOwnData(format::BufferV::BufferV_iovec DataVec)
+void BP5Writer::WriteMyOwnData(format::BufferV *Data)
 {
+    std::vector<core::iovec> DataVec = Data->DataVec();
     m_StartDataPos = m_DataPos;
-    int i = 0;
-    while (DataVec[i].iov_base != NULL)
-    {
-        if (i == 0)
-        {
-            m_FileDataManager.WriteFileAt((char *)DataVec[i].iov_base,
-                                          DataVec[i].iov_len, m_StartDataPos);
-        }
-        else
-        {
-            m_FileDataManager.WriteFiles((char *)DataVec[i].iov_base,
-                                         DataVec[i].iov_len);
-        }
-        m_DataPos += DataVec[i].iov_len;
-        i++;
-    }
+    m_FileDataManager.WriteFileAt(DataVec.data(), DataVec.size(),
+                                  m_StartDataPos);
+    m_DataPos += Data->Size();
 }
 
 /*std::string DoubleBufferToString(const double *b, int n)
@@ -282,8 +273,7 @@ void BP5Writer::WriteMyOwnData(format::BufferV::BufferV_iovec DataVec)
     return out.str();
 }*/
 
-void BP5Writer::SendDataToAggregator(format::BufferV::BufferV_iovec DataVec,
-                                     const size_t TotalSize)
+void BP5Writer::SendDataToAggregator(format::BufferV *Data)
 {
     /* Only one process is running this function at once
        See shmFillerToken in the caller function
@@ -295,10 +285,13 @@ void BP5Writer::SendDataToAggregator(format::BufferV::BufferV_iovec DataVec,
     aggregator::MPIShmChain *a =
         dynamic_cast<aggregator::MPIShmChain *>(m_Aggregator);
 
+    std::vector<core::iovec> DataVec = Data->DataVec();
+    size_t nBlocks = DataVec.size();
+
     size_t sent = 0;
-    int block = 0;
+    size_t block = 0;
     size_t temp_offset = 0;
-    while (DataVec[block].iov_base != nullptr)
+    while (block < nBlocks)
     {
         // potentially blocking call waiting on Aggregator
         aggregator::MPIShmChain::ShmDataBuffer *b = a->LockProducerBuffer();
@@ -307,10 +300,6 @@ void BP5Writer::SendDataToAggregator(format::BufferV::BufferV_iovec DataVec,
         b->actual_size = 0;
         while (true)
         {
-            if (DataVec[block].iov_base == nullptr)
-            {
-                break;
-            }
             /* Copy n bytes from the current block, current offset to shm
                 making sure to use up to shm_size bytes
             */
@@ -336,6 +325,10 @@ void BP5Writer::SendDataToAggregator(format::BufferV::BufferV_iovec DataVec,
 
             /* Have we reached the max allowed shm size ?*/
             if (b->actual_size >= b->max_size)
+            {
+                break;
+            }
+            if (block >= nBlocks)
             {
                 break;
             }
