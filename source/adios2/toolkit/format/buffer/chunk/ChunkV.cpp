@@ -107,16 +107,43 @@ size_t ChunkV::AddToVec(const size_t size, const void *buf, size_t align,
             (m_TailChunk + m_TailChunkPos - DataV.back().Size ==
              DataV.back().Base);
 
-        if (AppendPossible && (m_TailChunkPos + size > m_ChunkSize))
+        if (AppendPossible &&
+            (m_TailChunkPos + size > m_TailChunkAllocatedSize))
         {
-            // No room in current chunk, close it out
-            // realloc down to used size (helpful?) and set size in array
-            m_Chunks.back() = (char *)realloc(m_Chunks.back(), m_TailChunkPos);
+            // No room in current chunk, 2 options
+            // option 1. If chunk is still small (e.g. 1/4 of max chunk size,
+            // or the total is less than 2x of max chunk size),
+            // try to extend it to accommodate the new data
+            bool option1 = false;
+            if (m_TailChunkPos < m_ChunkSize / 4 ||
+                m_TailChunkPos + size < 2 * m_ChunkSize)
+            {
+                char *p =
+                    (char *)realloc(m_Chunks.back(), m_TailChunkPos + size);
+                if (p != NULL)
+                {
+                    m_Chunks.back() = p;
+                    m_TailChunk = p;
+                    DataV.back().Base = p;
+                    option1 = true;
+                    m_TailChunkAllocatedSize = m_TailChunkPos + size;
+                }
+            }
 
-            m_TailChunkPos = 0;
-            m_TailChunk = NULL;
-            AppendPossible = false;
+            // option 2. current chunk is big enough or realloc failed: close
+            // chunk out, realloc down to used size (helpful?) and set size in
+            // array
+            if (!option1)
+            {
+                m_Chunks.back() =
+                    (char *)realloc(m_Chunks.back(), m_TailChunkPos);
+                m_TailChunkAllocatedSize = m_TailChunkPos;
+                m_TailChunkPos = 0;
+                m_TailChunk = NULL;
+                AppendPossible = false;
+            }
         }
+
         if (AppendPossible)
         {
             // We can use current chunk, just append the data;
@@ -131,6 +158,7 @@ size_t ChunkV::AddToVec(const size_t size, const void *buf, size_t align,
             if (size > m_ChunkSize)
                 NewSize = size;
             m_TailChunk = (char *)malloc(NewSize);
+            m_TailChunkAllocatedSize = NewSize;
             m_Chunks.push_back(m_TailChunk);
             memcpy(m_TailChunk, buf, size);
             m_TailChunkPos = size;

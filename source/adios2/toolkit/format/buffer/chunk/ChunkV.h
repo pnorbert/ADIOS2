@@ -44,6 +44,7 @@ private:
     std::vector<char *> m_Chunks;
     size_t m_TailChunkPos = 0;
     char *m_TailChunk = NULL;
+    size_t m_TailChunkAllocatedSize = 0;
 };
 
 } // end namespace format
