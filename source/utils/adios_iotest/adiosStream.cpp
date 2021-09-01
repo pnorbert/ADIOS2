@@ -82,17 +82,17 @@ void adiosStream::putADIOSArray(const std::shared_ptr<VariableInfo> ov)
     if (ov->type == "double")
     {
         const double *a = reinterpret_cast<const double *>(ov->data.data());
-        engine.Put<double>(ov->name, a);
+        engine.Put<double>(ov->name, a, adios2::Mode::Sync);
     }
     else if (ov->type == "float")
     {
         const float *a = reinterpret_cast<const float *>(ov->data.data());
-        engine.Put<float>(ov->name, a);
+        engine.Put<float>(ov->name, a, adios2::Mode::Sync);
     }
     else if (ov->type == "int")
     {
         const int *a = reinterpret_cast<const int *>(ov->data.data());
-        engine.Put<int>(ov->name, a);
+        engine.Put<int>(ov->name, a, adios2::Mode::Sync);
     }
 }
 

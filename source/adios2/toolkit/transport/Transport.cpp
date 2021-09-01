@@ -31,10 +31,14 @@ void Transport::WriteV(const core::iovec *iov, const int iovcnt, size_t start)
 {
     if (iovcnt > 0)
     {
+        std::cout << "WriteV 0:\tlength = " << iov[0].iov_len
+                  << " offset = " << start << "\n";
         Write(static_cast<const char *>(iov[0].iov_base), iov[0].iov_len,
               start);
         for (int c = 1; c < iovcnt; ++c)
         {
+            std::cout << "       " << c << ":\tlength = " << iov[c].iov_len
+                      << "\n";
             Write(static_cast<const char *>(iov[c].iov_base), iov[c].iov_len);
         }
     }
