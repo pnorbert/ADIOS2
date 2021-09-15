@@ -233,8 +233,8 @@ bool is_eligible_fabric(struct fi_info *info)
         return false;
     }
 
-    if (!(info->domain_attr->mr_mode & FI_MR_LOCAL & FI_MR_VIRT_ADDR &
-          FI_MR_ALLOCATED) &&
+    int flag = (FI_MR_LOCAL | FI_MR_VIRT_ADDR | FI_MR_ALLOCATED);
+    if ((info->domain_attr->mr_mode & flag) != flag &&
         !(info->domain_attr->mr_mode & FI_MR_BASIC))
     {
         std::cout << "     X does not support (FI_MR_LOCAL & FI_MR_VIRT_ADDR & "
@@ -247,7 +247,7 @@ bool is_eligible_fabric(struct fi_info *info)
 
     if (!(info->domain_attr->control_progress & FI_PROGRESS_AUTO))
     {
-        std::cout << "  X does not support FI_PROGRESS_AUTO control progress"
+        std::cout << "     X does not support FI_PROGRESS_AUTO control progress"
                   << "\n    control progress: "
                   << fi_tostr(&info->domain_attr->control_progress,
                               FI_TYPE_PROGRESS)
@@ -257,7 +257,7 @@ bool is_eligible_fabric(struct fi_info *info)
 
     if (!(info->domain_attr->data_progress & FI_PROGRESS_AUTO))
     {
-        std::cout << "  X does not support FI_PROGRESS_AUTO data progress"
+        std::cout << "     X does not support FI_PROGRESS_AUTO data progress"
                   << "\n    data progress: "
                   << fi_tostr(&info->domain_attr->data_progress,
                               FI_TYPE_PROGRESS)
