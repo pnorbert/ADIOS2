@@ -73,8 +73,8 @@ int main(int argc, char *argv[])
             if (v == (unsigned long)wrank)
             {
                 amProducer = true;
-                ++nProducers;
             }
+            ++nProducers;
             ++j;
         }
     }
@@ -85,7 +85,9 @@ int main(int argc, char *argv[])
     }
     nConsumers = wsize - nProducers;
     std::cout << "Rank " << wrank << " is a "
-              << (amProducer ? "Producer" : "Consumer") << std::endl;
+              << (amProducer ? "Producer" : "Consumer")
+              << "  nProducers = " << nProducers
+              << "  nConsumers = " << nConsumers << std::endl;
 
     MPI_Comm_split(MPI_COMM_WORLD, (int)amProducer, 0, &comm);
     MPI_Comm_rank(comm, &mpi_rank);

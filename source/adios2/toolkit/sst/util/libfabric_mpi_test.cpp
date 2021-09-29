@@ -193,22 +193,34 @@ struct fi_info *adios_fabric_hints()
 {
     struct fi_info *hints;
     hints = fi_allocinfo();
-    /*hints->caps = FI_MSG | FI_SEND | FI_RECV | FI_REMOTE_READ |
+    hints->caps = FI_MSG | FI_SEND | FI_RECV | FI_REMOTE_READ |
                   FI_REMOTE_WRITE | FI_RMA | FI_READ | FI_WRITE;
     hints->mode = FI_CONTEXT | FI_LOCAL_MR | FI_CONTEXT2 | FI_MSG_PREFIX |
                   FI_ASYNC_IOV | FI_RX_CQ_DATA;
     hints->domain_attr->mr_mode = FI_MR_BASIC;
     hints->domain_attr->control_progress = FI_PROGRESS_AUTO;
     hints->domain_attr->data_progress = FI_PROGRESS_AUTO;
-    hints->ep_attr->type = FI_EP_RDM;*/
+    hints->ep_attr->type = FI_EP_RDM;
 
     // hints->caps = FI_MSG | FI_RMA;
     // hints->ep_attr->type = FI_EP_RDM;
+
+    // hints->caps = 0;
+    // hints->mode = 0;
     return hints;
 }
 
 bool is_eligible_fabric(struct fi_info *info)
 {
+    /*if (strcmp(info->domain_attr->name,"mlx5_0"))
+    {
+        std::cout << "     X not mlx5_0 domain"
+                  << "\n    domain name: "
+                  << (char*)info->domain_attr->name
+                  << std::endl;
+        return false;
+    }*/
+
     if (!(info->ep_attr->type & FI_EP_RDM))
     {
         std::cout << "     X is not of FI_EP_RDM type"
@@ -284,10 +296,10 @@ std::vector<int> test_level_1_fi_info()
     std::vector<int> fabrics_candidates;
     std::cout << "Level 1: find candidate libfabric interfaces" << std::endl;
 
-    // struct fi_info *hints = adios_fabric_hints();
+    struct fi_info *hints = adios_fabric_hints();
     struct fi_info *info;
-    fi_getinfo(FI_VERSION(1, 5), NULL, NULL, 0, NULL /*hints*/, &info);
-    // fi_freeinfo(hints);
+    fi_getinfo(FI_VERSION(1, 5), NULL, NULL, 0, hints, &info);
+    fi_freeinfo(hints);
     if (!info)
     {
         std::cout << "ERROR: no fabrics detected." << std::endl;
@@ -298,7 +310,8 @@ std::vector<int> test_level_1_fi_info()
     int n = 0;
     while (info)
     {
-        std::cout << "Provider: " << info->fabric_attr->prov_name
+        std::cout << n << ": Provider: " << info->fabric_attr->prov_name
+                  << "    name: " << info->fabric_attr->name
                   << "    domain: " << info->domain_attr->name << std::endl;
         if (is_eligible_fabric(info))
         {
@@ -309,7 +322,8 @@ std::vector<int> test_level_1_fi_info()
     }
 
     std::cout << "Level 1 found " << fabrics_candidates.size()
-              << " candidate libfabric interfaces" << std::endl;
+              << " candidate from " << n << " libfabric interfaces"
+              << std::endl;
 
     info = originfo;
     int candidatepos = 0;
@@ -323,6 +337,7 @@ std::vector<int> test_level_1_fi_info()
         if (fabrics_candidates[candidatepos] == n)
         {
             std::cout << n << ": Provider: " << info->fabric_attr->prov_name
+                      << "    name: " << info->fabric_attr->name
                       << "    domain: " << info->domain_attr->name << std::endl;
         }
         info = info->next;
@@ -427,6 +442,8 @@ int init_fabric(struct fi_info *info, struct fabric_state *fabric)
     std::cout << "    Testing: fi_av_open() with FI_AV_MAP mode...\n";
     struct fi_av_attr av_attr;
     struct fi_cq_attr cq_attr;
+    memset(&av_attr, 0, sizeof(struct fi_av_attr));
+    memset(&cq_attr, 0, sizeof(struct fi_cq_attr));
 
     av_attr.type = FI_AV_MAP;
     av_attr.count = DP_AV_DEF_SIZE;
@@ -560,9 +577,10 @@ std::vector<int> test_level_2_fi_enable(std::vector<int> &fabric_candidates)
         << "Level 2: test candidate libfabric interfaces: create an endpoint "
         << std::endl;
 
-    // struct fi_info *hints = adios_fabric_hints();
+    struct fi_info *hints = adios_fabric_hints();
     struct fi_info *info;
-    fi_getinfo(FI_VERSION(1, 5), NULL, NULL, 0, NULL /*hints*/, &info);
+    fi_getinfo(FI_VERSION(1, 5), NULL, NULL, 0, hints, &info);
+    fi_freeinfo(hints);
     struct fi_info *originfo = info;
 
     int n = 0;
@@ -577,7 +595,12 @@ std::vector<int> test_level_2_fi_enable(std::vector<int> &fabric_candidates)
         if (fabric_candidates[candidatepos] == n)
         {
             std::cout << "Provider: " << info->fabric_attr->prov_name
-                      << "    domain: " << info->domain_attr->name << std::endl;
+                      << "    name: " << info->fabric_attr->name
+                      << "    domain: " << info->domain_attr->name << "    ep: "
+                      << fi_tostr(&info->ep_attr->type, FI_TYPE_EP_TYPE)
+                      << "    protocol: "
+                      << fi_tostr(&info->ep_attr->protocol, FI_TYPE_PROTOCOL)
+                      << std::endl;
             if (init_fabric(info, &fabric) == 0)
             {
                 fini_fabric(&fabric);
