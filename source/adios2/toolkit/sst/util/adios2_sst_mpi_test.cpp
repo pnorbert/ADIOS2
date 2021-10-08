@@ -143,6 +143,8 @@ void producer()
             }
             engine.Put<int>(var, data.data());
             engine.EndStep();
+            // sync producer and consumer every step, no reason, just because
+            MPI_Barrier(MPI_COMM_WORLD); 
         }
 
         engine.Close();
@@ -239,6 +241,8 @@ void consumer()
                     ++idx;
                 }
             }
+            // sync producer and consumer every step, no reason, just because
+            MPI_Barrier(MPI_COMM_WORLD); 
             ++step;
         }
 
