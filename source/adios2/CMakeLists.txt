@@ -163,6 +163,12 @@ if(ADIOS2_HAVE_MPI)
     target_compile_definitions(adios2_core_mpi PUBLIC "$<BUILD_INTERFACE:ADIOS2_USE_MPI>")
 endif()
 
+if (ADIOS2_HAVE_BP5 AND ADIOS2_HAVE_MPI)
+  target_sources(adios2_core_mpi PRIVATE
+    engine/bp5mt/BP5mtWriter.cpp engine/bp5mt/BP5mtWriter.tcc )
+  target_link_libraries(adios2_core_mpi PRIVATE ffs::ffs)
+endif()
+
 if(ADIOS2_HAVE_SysVShMem)
   target_sources(adios2_core PRIVATE toolkit/format/buffer/ipc/BufferSystemV.cpp)
 

@@ -18,7 +18,8 @@
 
 int main(int argc, char *argv[])
 {
-    MPI_Init(&argc, &argv);
+    int thread_level_provided;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &thread_level_provided);
 
     Settings settings;
 

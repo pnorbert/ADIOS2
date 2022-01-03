@@ -8,6 +8,10 @@
 #include "IO.h"
 #include "adios2/engine/ssc/SscReader.h"
 #include "adios2/engine/ssc/SscWriter.h"
+#ifdef ADIOS2_HAVE_BP5
+#include "adios2/engine/bp5/BP5Reader.h"
+#include "adios2/engine/bp5mt/BP5mtWriter.h"
+#endif
 #include "adios2/helper/adiosCommMPI.h"
 
 #ifdef ADIOS2_HAVE_DATASPACES // external dependencies
@@ -56,6 +60,12 @@ void RegisterMPIEngines()
 #endif
 #if defined(ADIOS2_HAVE_HDF5_PARALLEL)
     interop::RegisterHDF5Common_MPI_API();
+#endif
+
+#ifdef ADIOS2_HAVE_BP5
+    IO::RegisterEngine(
+        "bp5mt", IO::EngineFactoryEntry{MakeEngineMPI<engine::BP5Reader>,
+                                        MakeEngineMPI<engine::BP5mtWriter>});
 #endif
 }
 
