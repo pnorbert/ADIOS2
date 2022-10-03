@@ -264,6 +264,8 @@ void BP5Writer::WriteOthersData(size_t TotalSize)
     aggregator::MPIShmChain *a =
         dynamic_cast<aggregator::MPIShmChain *>(m_Aggregator);
 
+    core::iovec DataVec;
+
     size_t wrote = 0;
     while (wrote < TotalSize)
     {
@@ -283,7 +285,10 @@ void BP5Writer::WriteOthersData(size_t TotalSize)
         << (int)b->buf[b->actual_size - 1] << "]" << std::endl;*/
 
         // b->actual_size: how much we need to write
-        m_FileDataManager.WriteFiles(b->buf, b->actual_size);
+        DataVec.iov_base = b->buf;
+        DataVec.iov_len = b->actual_size;
+        // m_FileDataManager.WriteFiles(b->buf, b->actual_size);
+        m_FileDataManager.WriteFiles(&DataVec, 1);
 
         wrote += b->actual_size;
 
