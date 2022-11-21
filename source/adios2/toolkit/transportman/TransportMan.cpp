@@ -18,8 +18,8 @@
 
 /// transports
 #ifndef _WIN32
+#include "adios2/toolkit/transport/file/FileFlexNVME.h"
 #include "adios2/toolkit/transport/file/FilePOSIX.h"
-#include "adios2/toolkit/transport/file/FileSmartNVME.h"
 #endif
 #ifdef ADIOS2_HAVE_DAOS
 #include "adios2/toolkit/transport/file/FileDaos.h"
@@ -573,14 +573,14 @@ std::shared_ptr<Transport> TransportMan::OpenFileTransport(
                     library + " transport does not support buffered I/O.");
             }
         }
-        else if (library == "SMARTNVME" || library == "smartnvme")
+        else if (library == "FlexNVME" || library == "flexnvme")
         {
-            transport = std::make_shared<transport::FileSmartNVME>(m_Comm);
+            transport = std::make_shared<transport::FileFlexNVME>(m_Comm);
             if (lf_GetBuffered("false"))
             {
                 helper::Throw<std::invalid_argument>(
                     "Toolkit", "TransportMan", "OpenFileTransport",
-                    library + " transport does not support Smart NVME.");
+                    library + " transport does not support FLEXNVME.");
             }
         }
 #endif

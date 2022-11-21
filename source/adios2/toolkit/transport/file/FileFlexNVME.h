@@ -2,7 +2,7 @@
  * Distributed under the OSI-approved Apache License, Version 2.0.  See
  * accompanying file Copyright.txt for details.
  *
- * SmaertNVME.h wrapper of SmartNVME library functions for file I/O
+ * SmaertNVME.h wrapper of FlexNVME library functions for file I/O
  *
  *  Created on: Oct 3, 2022
  *      Author: Norbert Podhorszki <pnorbert@ornl.gov>
@@ -25,14 +25,14 @@ class Comm;
 namespace transport
 {
 
-/** File descriptor transport using the SmartNVME IO library */
-class FileSmartNVME : public Transport
+/** File descriptor transport using the FlexNVME IO library */
+class FileFlexNVME : public Transport
 {
 
 public:
-    FileSmartNVME(helper::Comm const &comm);
+    FileFlexNVME(helper::Comm const &comm);
 
-    ~FileSmartNVME();
+    ~FileFlexNVME();
 
     void Open(const std::string &name, const Mode openMode,
               const bool async = false, const bool directio = false) final;
@@ -70,7 +70,7 @@ public:
     void MkDir(const std::string &fileName) final;
 
 private:
-    /** SmartNVME file handle returned by Open */
+    /** FlexNVME file handle returned by Open */
     int m_FileDescriptor = -1;
     int m_Errno = 0;
     bool m_IsOpening = false;

@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
         io.SetEngine("BP5");
         io.SetParameter("AggregationType", "TwoLevelShm");
         io.SetParameter("AggregatorRatio", "4");
-        io.AddTransport("File", {{"Library", "smartnvme"}});
+        io.AddTransport("File", {{"Library", "flexnvme"}});
 
         /*
          * Define global array: type, name, global dimensions
