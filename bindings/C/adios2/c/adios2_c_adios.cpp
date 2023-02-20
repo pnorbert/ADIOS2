@@ -276,6 +276,23 @@ adios2_error adios2_exit_computation_block(adios2_adios *adios)
     }
 }
 
+double adios2_prime_the_filesystem(adios2_adios *adios)
+{
+    double ret = 0.0;
+    try
+    {
+        adios2::helper::CheckForNullptr(
+            adios, "for adios2_adios, in call to adios2_prime_the_filesystem");
+        ret = reinterpret_cast<adios2::core::ADIOS *>(adios)
+                  ->PrimeTheFileSystem();
+    }
+    catch (...)
+    {
+        adios2::helper::ExceptionToError("adios2_prime_the_filesystem");
+    }
+    return ret;
+}
+
 #ifdef __cplusplus
 }
 // end extern C

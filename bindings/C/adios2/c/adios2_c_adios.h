@@ -170,6 +170,12 @@ adios2_error adios2_enter_computation_block(adios2_adios *adios);
  * in main thread. Useful when using Async IO */
 adios2_error adios2_exit_computation_block(adios2_adios *adios);
 
+/** Prime the file system. Useful on GPFS on Summit@OLC.
+ * @param adios main adios object
+ * @return The execution time in seconds
+ */
+double adios2_prime_the_filesystem(adios2_adios *adios);
+
 #ifdef __cplusplus
 } // end extern C
 #endif

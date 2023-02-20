@@ -119,6 +119,12 @@ void FC_GLOBAL(adios2_exit_computation_block_f2c,
     *ierr = static_cast<int>(adios2_exit_computation_block(*adios));
 }
 
+void FC_GLOBAL(adios2_prime_the_filesystem_f2c,
+               ADIOS2_PRIME_THE_FILESYSTEM_F2C)(adios2_adios **adios, int *ierr)
+{
+    *ierr = static_cast<int>(adios2_prime_the_filesystem(*adios));
+}
+
 #ifdef __cplusplus
 }
 #endif

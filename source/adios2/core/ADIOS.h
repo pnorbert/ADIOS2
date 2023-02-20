@@ -162,6 +162,13 @@ public:
      * in main thread. Useful when using Async IO */
     void ExitComputationBlock() noexcept;
 
+    /** Prime the file system. Useful on GPFS on Summit@OLC.
+     * Creates a small file written from one process per node, to prime the file
+     * system.
+     * @return The execution time in seconds
+     */
+    double PrimeTheFileSystem();
+
 private:
     /** Communicator given to parallel constructor. */
     helper::Comm m_Comm;

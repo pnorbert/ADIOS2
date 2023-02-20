@@ -20,6 +20,7 @@
 #include "adios2/helper/adiosCommDummy.h"
 #include "adios2/helper/adiosFunctions.h" //InquireKey, BroadcastFile
 #include "adios2/operator/OperatorFactory.h"
+#include "adios2/toolkit/transportman/TransportMan.h"
 #include <adios2sys/SystemTools.hxx>
 
 #include <adios2-perfstubs-interface.h>
@@ -67,6 +68,11 @@ public:
             isAWSInitialized = false;
         }
 #endif
+        if (PrimeFileManager)
+        {
+            PrimeFileManager->DeleteFiles();
+            delete PrimeFileManager;
+        }
         wasGlobalShutdown = true;
     }
 
@@ -84,6 +90,15 @@ public:
     Aws::SDKOptions options;
     bool isAWSInitialized = false;
 #endif
+
+    /*
+        Prime The File System function
+    */
+    void Init_Prime_FileSystem(IO &io, helper::Comm &m_Comm)
+    {
+        PrimeFileManager = new adios2::transportman::TransportMan(io, m_Comm);
+    }
+    adios2::transportman::TransportMan *PrimeFileManager = nullptr;
 
     bool wasGlobalShutdown = false;
 };
@@ -300,6 +315,51 @@ void ADIOS::Global_init_AWS_API()
 #ifdef ADIOS2_HAVE_AWSSDK
     m_GlobalServices.Init_AWS_API();
 #endif
+}
+
+double ADIOS::PrimeTheFileSystem()
+{
+    m_GlobalServices.CheckStatus();
+    if (m_GlobalServices.PrimeFileManager)
+    {
+        return 0.0;
+    }
+    constexpr size_t BLOCKSIZE = 4096;
+    const TimePoint ts = Now();
+    /* Communicator connecting ranks on each Compute Node */
+    helper::Comm NodeComm = m_Comm.GroupByShm("creating per-node comm at Open");
+    const int NodeRank = NodeComm.Rank();
+    /*  Communicators connecting rank N of each node
+     *  We are only interested in the chain of rank 0s
+     */
+    const int color = (NodeRank ? 1 : 0);
+    helper::Comm OnePerNodeComm =
+        m_Comm.Split(color, 0, "creating chain of nodes at Open");
+
+    if (!NodeRank)
+    {
+        const int ChainRank = OnePerNodeComm.Rank();
+        IO &io =
+            DeclareIO("ADIOSPrimesTheFileSystem", adios2::ArrayOrdering::Auto);
+        m_GlobalServices.Init_Prime_FileSystem(io, OnePerNodeComm);
+
+        Params defaultTransportParameters;
+        defaultTransportParameters["transport"] = "File";
+        defaultTransportParameters["asyncopen"] = "true";
+        io.m_TransportsParameters.push_back(defaultTransportParameters);
+
+        m_GlobalServices.PrimeFileManager->OpenFiles(
+            {"ADIOSPrimesTheFileSystem.bin"}, adios2::Mode::Write,
+            io.m_TransportsParameters, false, OnePerNodeComm);
+        char value = static_cast<char>(ChainRank % 256);
+        std::vector<char> buf(BLOCKSIZE, value);
+        m_GlobalServices.PrimeFileManager->WriteFileAt(buf.data(), BLOCKSIZE,
+                                                       ChainRank * BLOCKSIZE);
+        m_GlobalServices.PrimeFileManager->CloseFiles();
+    }
+    m_Comm.Barrier();
+    const Seconds d = Now() - ts;
+    return d.count();
 }
 
 } // end namespace core

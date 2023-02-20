@@ -94,6 +94,8 @@ void ADIOS::RemoveAllIOs() noexcept
     m_ADIOS->RemoveAllIOs();
 }
 
+double ADIOS::PrimeTheFileSystem() { return m_ADIOS->PrimeTheFileSystem(); }
+
 // PRIVATE
 void ADIOS::CheckPointer(const std::string hint)
 {

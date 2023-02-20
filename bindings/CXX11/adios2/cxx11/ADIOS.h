@@ -259,6 +259,11 @@ public:
      * in main thread. Useful when using Async IO */
     void ExitComputationBlock() noexcept;
 
+    /** Prime the file system. Useful on GPFS on Summit@OLC.
+     * @return The execution time in seconds
+     */
+    double PrimeTheFileSystem();
+
 protected:
     std::shared_ptr<core::ADIOS> m_ADIOS;
 
