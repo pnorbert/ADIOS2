@@ -154,6 +154,11 @@ void BP5Writer::WriteData_TwoLevelShm(format::BufferV *Data)
 
 void BP5Writer::WriteMyOwnData(format::BufferV *Data)
 {
+    std::cout << "WriteMyOwnData(): Data = " << static_cast<void*>(Data) << std::endl;
+    std::cout << "  m_MemAlign = " << Data->m_MemAlign << std::endl;
+    std::cout << "  m_MemBlockSize = " << Data->m_MemBlockSize << std::endl;
+    std::cout << "  size = " << Data->Size() << std::endl;
+    std::cout << "  type = " << Data->m_Type << std::endl;
     std::vector<core::iovec> DataVec = Data->DataVec();
     m_StartDataPos = m_DataPos;
     m_FileDataManager.WriteFileAt(DataVec.data(), DataVec.size(),

@@ -540,6 +540,22 @@ void BP5Writer::EndStep()
 
     /* TSInfo includes NewMetaMetaBlocks, the MetaEncodeBuffer, the
      * AttributeEncodeBuffer and the data encode Vector */
+    std::cout << "EndStep(): NewMetaMetaBlocks  = " << static_cast<const void*>(TSInfo.NewMetaMetaBlocks.data()) << std::endl;
+    std::cout << "  size = " << TSInfo.NewMetaMetaBlocks.size() << std::endl;
+    std::cout << "EndStep(): MetaEncodeBuffer  = " << static_cast<const void*>(TSInfo.MetaEncodeBuffer) << std::endl;
+    std::cout << "  m_Position = " << TSInfo.MetaEncodeBuffer->m_Position << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(TSInfo.MetaEncodeBuffer->m_Type.data()) << std::endl;
+    std::cout << "  type = " << TSInfo.MetaEncodeBuffer->m_Type.c_str() << std::endl;
+    std::cout << "EndStep(): AttributeEncodeBuffer  = " << static_cast<const void*>(TSInfo.AttributeEncodeBuffer) << std::endl;
+    std::cout << "  m_Position = " << TSInfo.AttributeEncodeBuffer->m_Position << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(TSInfo.AttributeEncodeBuffer->m_Type.data()) << std::endl;
+    std::cout << "  type = " << TSInfo.AttributeEncodeBuffer->m_Type << std::endl;
+    std::cout << "EndStep(): Data = " << static_cast<const void*>(TSInfo.DataBuffer) << std::endl;
+    std::cout << "  m_MemAlign = " << TSInfo.DataBuffer->m_MemAlign << std::endl;
+    std::cout << "  m_MemBlockSize = " << TSInfo.DataBuffer->m_MemBlockSize << std::endl;
+    std::cout << "  size = " << TSInfo.DataBuffer->Size() << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(TSInfo.DataBuffer->m_Type.data()) << std::endl;
+    std::cout << "  type = " << TSInfo.DataBuffer->m_Type << std::endl;
 
     m_ThisTimestepDataSize += TSInfo.DataBuffer->Size();
     m_Profiler.Stop("close_ts");

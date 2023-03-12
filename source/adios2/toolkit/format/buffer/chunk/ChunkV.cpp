@@ -263,9 +263,13 @@ void *ChunkV::GetPtr(int bufferIdx, size_t posInBuffer)
 
 std::vector<core::iovec> ChunkV::DataVec() noexcept
 {
+    auto n = DataV.size();
+    std::cout << "ChunkV::DataVec(): DataV size = " << n << std::endl;
     std::vector<core::iovec> iov(DataV.size());
     for (std::size_t i = 0; i < DataV.size(); ++i)
     {
+        std::cout << "ChunkV::DataVec(): iov " << i 
+        << " base = " << DataV[i].Base << " len = " << DataV[i].Size << std::endl;
         // For ChunkV, all entries in DataV are actual iov entries.
         iov[i].iov_base = DataV[i].Base;
         iov[i].iov_len = DataV[i].Size;

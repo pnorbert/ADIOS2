@@ -1270,6 +1270,24 @@ BP5Serializer::TimestepInfo BP5Serializer::CloseTimestep(int timestep,
     MBase->BitField = tmp;
     NewAttribute = false;
 
+
+    std::cout << "CloseTimestep(): Formats  = " << static_cast<const void*>(Formats.data()) << std::endl;
+    std::cout << "  size = " << Formats.size() << std::endl;
+    std::cout << "CloseTimestep(): MetaEncodeBuffer  = " << static_cast<const void*>(Metadata) << std::endl;
+    std::cout << "  m_Position = " << Metadata->m_Position << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(Metadata->m_Type.data()) << std::endl;
+    std::cout << "  type = " << Metadata->m_Type << std::endl;
+    std::cout << "CloseTimestep(): AttributeEncodeBuffer  = " << static_cast<const void*>(AttrData) << std::endl;
+    std::cout << "  m_Position = " << AttrData->m_Position << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(AttrData->m_Type.data()) << std::endl;
+    std::cout << "  type = " << AttrData->m_Type << std::endl;
+    std::cout << "CloseTimestep(): Data = " << static_cast<const void*>(CurDataBuffer) << std::endl;
+    std::cout << "  m_MemAlign = " << CurDataBuffer->m_MemAlign << std::endl;
+    std::cout << "  m_MemBlockSize = " << CurDataBuffer->m_MemBlockSize << std::endl;
+    std::cout << "  size = " << CurDataBuffer->Size() << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(CurDataBuffer->m_Type.data()) << std::endl;
+    std::cout << "  type = " << CurDataBuffer->m_Type << std::endl;
+
     struct TimestepInfo Ret
     {
         Formats, Metadata, AttrData, CurDataBuffer
@@ -1283,6 +1301,22 @@ BP5Serializer::TimestepInfo BP5Serializer::CloseTimestep(int timestep,
         free(Info.AttributeData);
     Info.AttributeData = NULL;
     Info.AttributeSize = 0;
+    std::cout << "CloseTimestep(): Ret.NewMetaMetaBlocks  = " << static_cast<const void*>(Ret.NewMetaMetaBlocks.data()) << std::endl;
+    std::cout << "  size = " << Ret.NewMetaMetaBlocks.size() << std::endl;
+    std::cout << "CloseTimestep(): Ret.MetaEncodeBuffer  = " << static_cast<const void*>(Ret.MetaEncodeBuffer) << std::endl;
+    std::cout << "  m_Position = " << Ret.MetaEncodeBuffer->m_Position << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(Ret.MetaEncodeBuffer->m_Type.data()) << std::endl;
+    std::cout << "  type = " << Ret.MetaEncodeBuffer->m_Type << std::endl;
+    std::cout << "CloseTimestep(): Ret.AttributeEncodeBuffer  = " << static_cast<const void*>(Ret.AttributeEncodeBuffer) << std::endl;
+    std::cout << "  m_Position = " << Ret.AttributeEncodeBuffer->m_Position << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(Ret.AttributeEncodeBuffer->m_Type.data()) << std::endl;
+    std::cout << "  type = " << Ret.AttributeEncodeBuffer->m_Type << std::endl;
+    std::cout << "CloseTimestep(): Ret.Data = " << static_cast<const void*>(Ret.DataBuffer) << std::endl;
+    std::cout << "  m_MemAlign = " << Ret.DataBuffer->m_MemAlign << std::endl;
+    std::cout << "  m_MemBlockSize = " << Ret.DataBuffer->m_MemBlockSize << std::endl;
+    std::cout << "  size = " << Ret.DataBuffer->Size() << std::endl;
+    std::cout << "  type ptr = " << static_cast<const void*>(Ret.DataBuffer->m_Type.data()) << std::endl;
+    std::cout << "  type = " << Ret.DataBuffer->m_Type << std::endl;
     return Ret;
 }
 
