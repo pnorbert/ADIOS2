@@ -126,6 +126,19 @@ if(ZFP_FOUND)
   endif()
 endif()
 
+# CUSZ
+if(ADIOS2_USE_CUSZ STREQUAL AUTO)
+  find_package(CUSZ)
+elseif(ADIOS2_USE_CUSZ)
+  find_package(CUSZ REQUIRED)
+endif()
+if(CUSZ_FOUND)
+  set(ADIOS2_HAVE_CUSZ TRUE)
+  set(SZ_FOUND TRUE)
+  set(ADIOS2_HAVE_SZ TRUE)
+  set(ADIOS2_HAVE_SZ_CUDA TRUE)
+endif()
+
 # SZ
 if(ADIOS2_USE_SZ STREQUAL AUTO)
   find_package(SZ)
