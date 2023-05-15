@@ -34,13 +34,11 @@ public:
      * @param openMode w (supported), r, a from OpenMode in ADIOSTypes.h
      * @param comm multi-process communicator
      */
-    BP3Writer(IO &io, const std::string &name, const Mode mode,
-              helper::Comm comm);
+    BP3Writer(IO &io, const std::string &name, const Mode mode, helper::Comm comm);
 
     ~BP3Writer();
 
-    StepStatus BeginStep(StepMode mode,
-                         const float timeoutSeconds = -1.0) final;
+    StepStatus BeginStep(StepMode mode, const float timeoutSeconds = -1.0) final;
     size_t CurrentStep() const final;
     void PerformPuts() final;
     void EndStep() final;
@@ -61,6 +59,9 @@ private:
     /** Manages the optional collective metadata files */
     transportman::TransportMan m_FileMetadataManager;
 
+    // true if BeginStep was ever called
+    bool m_DidBeginStep = false;
+
     void Init() final;
 
     /** Parses parameters from IO SetParameters */
@@ -70,27 +71,26 @@ private:
     /** Allocates memory and starts a PG group */
     void InitBPBuffer();
 
-#define declare_type(T)                                                        \
-    void DoPut(Variable<T> &variable, typename Variable<T>::Span &span,        \
-               const bool initialize, const T &value) final;
+#define declare_type(T)                                                                            \
+    void DoPut(Variable<T> &variable, typename Variable<T>::Span &span, const bool initialize,     \
+               const T &value) final;
 
     ADIOS2_FOREACH_PRIMITIVE_STDTYPE_1ARG(declare_type)
 #undef declare_type
 
-#define declare_type(T)                                                        \
-    void DoPutSync(Variable<T> &, const T *) final;                            \
+#define declare_type(T)                                                                            \
+    void DoPutSync(Variable<T> &, const T *) final;                                                \
     void DoPutDeferred(Variable<T> &, const T *) final;
 
     ADIOS2_FOREACH_STDTYPE_1ARG(declare_type)
 #undef declare_type
 
     template <class T>
-    void PutCommon(Variable<T> &variable, typename Variable<T>::Span &span,
-                   const size_t bufferID, const T &value);
+    void PutCommon(Variable<T> &variable, typename Variable<T>::Span &span, const size_t bufferID,
+                   const T &value);
 
     template <class T>
-    void PutSyncCommon(Variable<T> &variable,
-                       const typename Variable<T>::BPInfo &blockInfo,
+    void PutSyncCommon(Variable<T> &variable, const typename Variable<T>::BPInfo &blockInfo,
                        const bool resize = true);
 
     template <class T>
@@ -118,8 +118,8 @@ private:
      */
     void AggregateWriteData(const bool isFinal, const int transportIndex = -1);
 
-#define declare_type(T, L)                                                     \
-    T *DoBufferData_##L(const int bufferIdx, const size_t payloadPosition,     \
+#define declare_type(T, L)                                                                         \
+    T *DoBufferData_##L(const int bufferIdx, const size_t payloadPosition,                         \
                         const size_t bufferID = 0) noexcept final;
 
     ADIOS2_FOREACH_PRIMITVE_STDTYPE_2ARGS(declare_type)

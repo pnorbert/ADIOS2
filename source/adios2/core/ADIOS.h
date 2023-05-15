@@ -25,6 +25,9 @@
 #include "adios2/core/VariableStruct.h"
 #include "adios2/helper/adiosComm.h"
 
+// Campaign Manager as Global Service
+#include <adios2/engine/campaign/CampaignManager.h>
+
 namespace adios2
 {
 namespace core
@@ -49,8 +52,7 @@ public:
      * @param mpiComm MPI communicator from application, make sure is valid
      * through the scope of adios2 calls
      */
-    ADIOS(const std::string configFile, helper::Comm comm,
-          const std::string hostLanguage);
+    ADIOS(const std::string configFile, helper::Comm comm, const std::string hostLanguage);
 
     /**
      * @brief Constructor for non-MPI applications WITH a XML config file (it
@@ -87,8 +89,7 @@ public:
      * @exception std::invalid_argument if IO with unique name is already
      * declared
      */
-    IO &DeclareIO(const std::string name,
-                  const ArrayOrdering ArrayOrder = ArrayOrdering::Auto);
+    IO &DeclareIO(const std::string name, const ArrayOrdering ArrayOrder = ArrayOrdering::Auto);
 
     /**
      * Retrieve a reference to an existing IO object created with DeclareIO.
@@ -120,17 +121,15 @@ public:
      * @exception std::invalid_argument if Operator with unique name is already
      * defined
      */
-    std::pair<std::string, Params> &
-    DefineOperator(const std::string &name, const std::string type,
-                   const Params &parameters = Params());
+    std::pair<std::string, Params> &DefineOperator(const std::string &name, const std::string type,
+                                                   const Params &parameters = Params());
     /**
      * Retrieve a reference pointer to an existing Operator object
      * created with DefineOperator.
      * @return if IO exists returns a reference to existing IO object inside
      * ADIOS, otherwise a nullptr
      */
-    std::pair<std::string, Params> *
-    InquireOperator(const std::string &name) noexcept;
+    std::pair<std::string, Params> *InquireOperator(const std::string &name) noexcept;
 
     /*
      * StructDefinitions are defined using the operators in the IO,
@@ -162,6 +161,9 @@ public:
      * in main thread. Useful when using Async IO */
     void ExitComputationBlock() noexcept;
 
+    void RecordOutputStep(const std::string &name, const size_t step = UnknownStep,
+                          const double time = UnknownTime);
+
 private:
     /** Communicator given to parallel constructor. */
     helper::Comm m_Comm;
@@ -182,6 +184,9 @@ private:
 
     /** operators created with DefineOperator */
     std::unordered_map<std::string, std::pair<std::string, Params>> m_Operators;
+
+    /** campaign manager */
+    engine::CampaignManager m_CampaignManager;
 
     /** Flag for Enter/ExitComputationBlock */
     bool enteredComputationBlock = false;

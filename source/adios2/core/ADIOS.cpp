@@ -75,8 +75,7 @@ public:
     {
         if (!isAWSInitialized)
         {
-            options.loggingOptions.logLevel =
-                Aws::Utils::Logging::LogLevel::Debug;
+            options.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Debug;
             Aws::InitAPI(options);
             isAWSInitialized = true;
         }
@@ -104,14 +103,15 @@ public:
 ADIOS::GlobalServices ADIOS::m_GlobalServices;
 
 std::mutex PerfStubsMutex;
-static std::atomic_uint adios_refcount(0);
+static std::atomic_uint adios_refcount(0); // adios objects at the same time
+static std::atomic_uint adios_count(0);    // total adios objects during runtime
 
-ADIOS::ADIOS(const std::string configFile, helper::Comm comm,
-             const std::string hostLanguage)
-: m_HostLanguage(hostLanguage), m_Comm(std::move(comm)),
-  m_ConfigFile(configFile)
+ADIOS::ADIOS(const std::string configFile, helper::Comm comm, const std::string hostLanguage)
+: m_HostLanguage(hostLanguage), m_Comm(std::move(comm)), m_ConfigFile(configFile),
+  m_CampaignManager(m_Comm)
 {
     ++adios_refcount;
+    ++adios_count;
 #ifdef PERFSTUBS_USE_TIMERS
     {
         std::lock_guard<std::mutex> lck(PerfStubsMutex);
@@ -129,15 +129,13 @@ ADIOS::ADIOS(const std::string configFile, helper::Comm comm,
         if (!adios2sys::SystemTools::FileExists(configFile))
         {
             helper::Throw<std::logic_error>("Core", "ADIOS", "ADIOS",
-                                            "config file " + configFile +
-                                                " not found");
+                                            "config file " + configFile + " not found");
         }
         if (helper::EndsWith(configFile, ".xml"))
         {
             XMLInit(configFile);
         }
-        else if (helper::EndsWith(configFile, ".yaml") ||
-                 helper::EndsWith(configFile, ".yml"))
+        else if (helper::EndsWith(configFile, ".yaml") || helper::EndsWith(configFile, ".yml"))
         {
             YAMLInit(configFile);
         }
@@ -145,6 +143,8 @@ ADIOS::ADIOS(const std::string configFile, helper::Comm comm,
 #ifdef ADIOS2_HAVE_KOKKOS
     m_GlobalServices.Init_Kokkos_API();
 #endif
+    std::string campaignName = "campaign_" + std::to_string(adios_count);
+    m_CampaignManager.Open(campaignName);
 }
 
 ADIOS::ADIOS(const std::string configFile, const std::string hostLanguage)
@@ -157,10 +157,7 @@ ADIOS::ADIOS(helper::Comm comm, const std::string hostLanguage)
 {
 }
 
-ADIOS::ADIOS(const std::string hostLanguage)
-: ADIOS("", helper::CommDummy(), hostLanguage)
-{
-}
+ADIOS::ADIOS(const std::string hostLanguage) : ADIOS("", helper::CommDummy(), hostLanguage) {}
 
 ADIOS::~ADIOS()
 {
@@ -169,6 +166,7 @@ ADIOS::~ADIOS()
     {
         m_GlobalServices.Finalize();
     }
+    m_CampaignManager.Close();
 }
 
 IO &ADIOS::DeclareIO(const std::string name, const ArrayOrdering ArrayOrder)
@@ -187,14 +185,13 @@ IO &ADIOS::DeclareIO(const std::string name, const ArrayOrdering ArrayOrder)
         }
         else
         {
-            helper::Throw<std::invalid_argument>(
-                "Core", "ADIOS", "DeclareIO", "IO " + name + " declared twice");
+            helper::Throw<std::invalid_argument>("Core", "ADIOS", "DeclareIO",
+                                                 "IO " + name + " declared twice");
         }
     }
 
-    auto ioPair = m_IOs.emplace(
-        std::piecewise_construct, std::forward_as_tuple(name),
-        std::forward_as_tuple(*this, name, false, m_HostLanguage));
+    auto ioPair = m_IOs.emplace(std::piecewise_construct, std::forward_as_tuple(name),
+                                std::forward_as_tuple(*this, name, false, m_HostLanguage));
     IO &io = ioPair.first->second;
     io.SetDeclared();
     io.SetArrayOrder(ArrayOrder);
@@ -208,16 +205,14 @@ IO &ADIOS::AtIO(const std::string name)
     if (itIO == m_IOs.end())
     {
         helper::Throw<std::invalid_argument>("Core", "ADIOS", "AtIO",
-                                             "IO " + name +
-                                                 " being used is not declared");
+                                             "IO " + name + " being used is not declared");
     }
     else
     {
         if (!itIO->second.IsDeclared())
         {
-            helper::Throw<std::invalid_argument>(
-                "Core", "ADIOS", "AtIO",
-                "IO " + name + " being used is not declared");
+            helper::Throw<std::invalid_argument>("Core", "ADIOS", "AtIO",
+                                                 "IO " + name + " being used is not declared");
         }
     }
 
@@ -253,9 +248,8 @@ void ADIOS::ExitComputationBlock() noexcept
     }
 }
 
-std::pair<std::string, Params> &ADIOS::DefineOperator(const std::string &name,
-                                                      const std::string type,
-                                                      const Params &parameters)
+std::pair<std::string, Params> &
+ADIOS::DefineOperator(const std::string &name, const std::string type, const Params &parameters)
 {
     CheckOperator(name);
     MakeOperator(type, parameters);
@@ -263,8 +257,7 @@ std::pair<std::string, Params> &ADIOS::DefineOperator(const std::string &name,
     return m_Operators[name];
 }
 
-std::pair<std::string, Params> *
-ADIOS::InquireOperator(const std::string &name) noexcept
+std::pair<std::string, Params> *ADIOS::InquireOperator(const std::string &name) noexcept
 {
     auto it = m_Operators.find(name);
     if (it == m_Operators.end())
@@ -295,8 +288,7 @@ void ADIOS::CheckOperator(const std::string name) const
     if (m_Operators.count(name) == 1)
     {
         helper::Throw<std::invalid_argument>("Core", "ADIOS", "CheckOperator",
-                                             "Operator " + name +
-                                                 " defined twice");
+                                             "Operator " + name + " defined twice");
     }
 }
 
@@ -308,6 +300,11 @@ void ADIOS::XMLInit(const std::string &configFileXML)
 void ADIOS::YAMLInit(const std::string &configFileYAML)
 {
     helper::ParseConfigYAML(*this, configFileYAML, m_IOs);
+}
+
+void ADIOS::RecordOutputStep(const std::string &name, const size_t step, const double time)
+{
+    m_CampaignManager.Record(name, step, time);
 }
 
 void ADIOS::Global_init_AWS_API()
