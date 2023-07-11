@@ -14,6 +14,7 @@ namespace adios2
 
 Remote::Remote() {}
 
+#ifdef ADIOS2_HAVE_SST
 void OpenResponseHandler(CManager cm, CMConnection conn, void *vevent,
                          void *client_data, attr_list attrs)
 {
@@ -112,5 +113,25 @@ bool Remote::WaitForGet(GetHandle handle)
 {
     return CMCondition_wait(ev_state.cm, (int)handle);
 }
+#else
+Remote::Remote(){};
+void Remote::Open(const std::string hostname, const int32_t port,
+                  const std::string filename, const Mode mode){};
 
+void Remote::OpenSimpleFile(const std::string hostname, const int32_t port,
+                            const std::string filename){};
+
+GetHandle Remote::Get(char *VarName, size_t Step, Dims &Count, Dims &Start,
+                      void *dest)
+{
+    return static_cast<GetHandle>(0);
+};
+
+bool Remote::WaitForGet(GetHandle handle) { return false; };
+
+GetHandle Remote::Read(size_t Start, size_t Size, void *Dest)
+{
+    return static_cast<GetHandle>(0);
+};
+#endif
 } // end namespace adios2
