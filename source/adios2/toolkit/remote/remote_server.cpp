@@ -51,13 +51,28 @@ public:
     }
     ~AnonADIOSFile()
     {
-        std::cout << "Destroying file " << std::endl;
         m_engine->Close();
         adios.RemoveIO(m_IOname);
     }
 };
 
 std::unordered_map<uint64_t, AnonADIOSFile *> FileMap;
+std::unordered_multimap<void *, uint64_t> ConnToFileMap;
+
+static void ConnCloseHandler(CManager cm, CMConnection conn, void *client_data)
+{
+    auto it = ConnToFileMap.equal_range(conn);
+    for (auto it1 = it.first; it1 != it.second; it1++)
+    {
+        AnonADIOSFile *file = FileMap[it1->second];
+        if (file)
+        {
+            FileMap.erase(it1->second);
+            delete file;
+        }
+    }
+    ConnToFileMap.erase(conn);
+}
 
 static void OpenHandler(CManager cm, CMConnection conn, void *vevent,
                         void *client_data, attr_list attrs)
@@ -73,7 +88,9 @@ static void OpenHandler(CManager cm, CMConnection conn, void *vevent,
     open_response_msg.FileHandle = f->m_ID;
     open_response_msg.OpenResponseCondition = open_msg->OpenResponseCondition;
     CMwrite(conn, ev_state->OpenResponseFormat, &open_response_msg);
+    CMconn_register_close_handler(conn, ConnCloseHandler, NULL);
     FileMap[f->m_ID] = f;
+    ConnToFileMap.emplace(conn, f->m_ID);
 }
 
 static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
