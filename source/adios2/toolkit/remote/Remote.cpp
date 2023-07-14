@@ -30,6 +30,22 @@ void OpenResponseHandler(CManager cm, CMConnection conn, void *vevent,
     return;
 };
 
+void OpenSimpleResponseHandler(CManager cm, CMConnection conn, void *vevent,
+                               void *client_data, attr_list attrs)
+{
+    RemoteCommon::OpenSimpleResponseMsg open_response_msg =
+        static_cast<RemoteCommon::OpenSimpleResponseMsg>(vevent);
+    std::cout << "Got an open simpleresponse for file "
+              << open_response_msg->FileHandle << std::endl;
+
+    void *obj = CMCondition_get_client_data(
+        cm, open_response_msg->OpenResponseCondition);
+    static_cast<Remote *>(obj)->m_ID = open_response_msg->FileHandle;
+    static_cast<Remote *>(obj)->m_Size = open_response_msg->FileSize;
+    CMCondition_signal(cm, open_response_msg->OpenResponseCondition);
+    return;
+};
+
 void ReadResponseHandler(CManager cm, CMConnection conn, void *vevent,
                          void *client_data, attr_list attrs)
 {
@@ -37,6 +53,8 @@ void ReadResponseHandler(CManager cm, CMConnection conn, void *vevent,
         static_cast<RemoteCommon::ReadResponseMsg>(vevent);
     memcpy(read_response_msg->Dest, read_response_msg->ReadData,
            read_response_msg->Size);
+    std::cout << "Got " << read_response_msg->Size << " Bytes, signalling "
+              << std::endl;
     CMCondition_signal(cm, read_response_msg->ReadResponseCondition);
     return;
 };
@@ -73,6 +91,41 @@ void Remote::Open(const std::string hostname, const int32_t port,
     CMCondition_set_client_data(m_cm, open_msg.OpenResponseCondition,
                                 (void *)this);
     CMwrite(m_conn, ev_state.OpenFileFormat, &open_msg);
+    CMCondition_wait(m_cm, open_msg.OpenResponseCondition);
+    m_Active = true;
+}
+
+void Remote::OpenSimpleFile(const std::string hostname, const int32_t port,
+                            const std::string filename)
+{
+
+    RemoteCommon::_OpenSimpleFileMsg open_msg;
+    ev_state.cm = CManager_create();
+    CMfork_comm_thread(ev_state.cm);
+    attr_list contact_list = create_attr_list();
+    atom_t CM_IP_PORT = -1;
+    atom_t CM_IP_HOSTNAME = -1;
+    CM_IP_HOSTNAME = attr_atom_from_string("IP_HOST");
+    CM_IP_PORT = attr_atom_from_string("IP_PORT");
+    add_attr(contact_list, CM_IP_HOSTNAME, Attr_String,
+             (attr_value)hostname.c_str());
+    add_attr(contact_list, CM_IP_PORT, Attr_Int4, (attr_value)port);
+    RegisterFormats(ev_state);
+    CMregister_handler(ev_state.OpenSimpleResponseFormat,
+                       (CMHandlerFunc)OpenSimpleResponseHandler, &ev_state);
+    CMregister_handler(ev_state.ReadResponseFormat,
+                       (CMHandlerFunc)ReadResponseHandler, &ev_state);
+    m_conn = CMinitiate_conn(ev_state.cm, contact_list);
+    m_cm = ev_state.cm;
+    if (!m_conn)
+        return;
+
+    memset(&open_msg, 0, sizeof(open_msg));
+    open_msg.FileName = (char *)filename.c_str();
+    open_msg.OpenResponseCondition = CMCondition_get(m_cm, m_conn);
+    CMCondition_set_client_data(m_cm, open_msg.OpenResponseCondition,
+                                (void *)this);
+    CMwrite(m_conn, ev_state.OpenSimpleFileFormat, &open_msg);
     CMCondition_wait(m_cm, open_msg.OpenResponseCondition);
     m_Active = true;
 }
@@ -121,8 +174,8 @@ void Remote::Open(const std::string hostname, const int32_t port,
 void Remote::OpenSimpleFile(const std::string hostname, const int32_t port,
                             const std::string filename){};
 
-Remote::GetHandle Remote::Get(char *VarName, size_t Step, Dims &Count, Dims &Start,
-                      void *dest)
+Remote::GetHandle Remote::Get(char *VarName, size_t Step, Dims &Count,
+                              Dims &Start, void *dest)
 {
     return static_cast<GetHandle>(0);
 };

@@ -25,9 +25,21 @@ typedef struct _OpenResponseMsg
 {
     int OpenResponseCondition;
     int64_t FileHandle;
+} * OpenResponseMsg;
+
+typedef struct _OpenSimpleFileMsg
+{
+    int OpenResponseCondition;
+    char *FileName;
+} * OpenSimpleFileMsg;
+
+typedef struct _OpenSimpleResponseMsg
+{
+    int OpenResponseCondition;
+    int64_t FileHandle;
     size_t FileSize;    // may be used for Contents size
     char *FileContents; // used for OpenReadComplete mode
-} * OpenResponseMsg;
+} * OpenSimpleResponseMsg;
 
 /*
  */
@@ -92,7 +104,9 @@ struct Remote_evpath_state
 {
     CManager cm;
     CMFormat OpenFileFormat;
+    CMFormat OpenSimpleFileFormat;
     CMFormat OpenResponseFormat;
+    CMFormat OpenSimpleResponseFormat;
     CMFormat GetRequestFormat;
     CMFormat ReadRequestFormat;
     CMFormat ReadResponseFormat;
