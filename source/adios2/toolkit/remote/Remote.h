@@ -52,6 +52,7 @@ public:
     GetHandle Read(size_t Start, size_t Size, void *Dest);
 
     int64_t m_ID;
+    size_t m_Size;
 
 private:
 #ifdef ADIOS2_HAVE_SST

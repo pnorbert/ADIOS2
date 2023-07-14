@@ -11,6 +11,15 @@
 #include "adios2/helper/adiosFunctions.h"
 #include <evpath.h>
 
+#include <cstdio>  // remove
+#include <cstring> // strerror
+#include <errno.h> // errno
+#include <fcntl.h> // open
+#include <regex>
+#include <sys/stat.h>  // open, fstat
+#include <sys/types.h> // open
+#include <unistd.h>    // write, close, ftruncate
+
 #include "remote_common.h"
 
 using namespace adios2::RemoteCommon;
@@ -42,8 +51,10 @@ public:
     int64_t m_ID;
     int64_t currentStep = -1;
     std::string m_IOname;
+    std::string m_FileName;
     AnonADIOSFile(std::string FileName)
     {
+        m_FileName = FileName;
         m_IOname = lf_random_string();
         m_io = &adios.DeclareIO(m_IOname);
         m_engine = &m_io->Open(FileName, adios2::Mode::Read);
@@ -56,7 +67,36 @@ public:
     }
 };
 
-std::unordered_map<uint64_t, AnonADIOSFile *> FileMap;
+class AnonSimpleFile
+{
+public:
+    int64_t m_ID;
+    int m_FileDescriptor;
+    int m_Errno = 0;
+    size_t m_Size = -1;
+    size_t m_CurrentOffset = 0;
+    std::string m_FileName;
+    AnonSimpleFile(std::string FileName)
+    {
+        m_FileName = FileName;
+        std::string tmpname = lf_random_string();
+        struct stat fileStat;
+
+        memcpy(&m_ID, tmpname.c_str(), sizeof(m_ID));
+        errno = 0;
+        m_FileDescriptor = open(FileName.c_str(), O_RDONLY);
+        m_Errno = errno;
+        if (fstat(m_FileDescriptor, &fileStat) == -1)
+        {
+            m_Errno = errno;
+        }
+        m_Size = static_cast<size_t>(fileStat.st_size);
+    }
+    ~AnonSimpleFile() { close(m_FileDescriptor); }
+};
+
+std::unordered_map<uint64_t, AnonADIOSFile *> ADIOSFileMap;
+std::unordered_map<uint64_t, AnonSimpleFile *> SimpleFileMap;
 std::unordered_multimap<void *, uint64_t> ConnToFileMap;
 
 static void ConnCloseHandler(CManager cm, CMConnection conn, void *client_data)
@@ -64,10 +104,19 @@ static void ConnCloseHandler(CManager cm, CMConnection conn, void *client_data)
     auto it = ConnToFileMap.equal_range(conn);
     for (auto it1 = it.first; it1 != it.second; it1++)
     {
-        AnonADIOSFile *file = FileMap[it1->second];
+        AnonADIOSFile *file = ADIOSFileMap[it1->second];
         if (file)
         {
-            FileMap.erase(it1->second);
+            std::cout << "closing ADIOS file " << file->m_FileName << std::endl;
+            ADIOSFileMap.erase(it1->second);
+            delete file;
+        }
+        AnonSimpleFile *sfile = SimpleFileMap[it1->second];
+        if (sfile)
+        {
+            std::cout << "closing simple file " << sfile->m_FileName
+                      << std::endl;
+            SimpleFileMap.erase(it1->second);
             delete file;
         }
     }
@@ -89,7 +138,29 @@ static void OpenHandler(CManager cm, CMConnection conn, void *vevent,
     open_response_msg.OpenResponseCondition = open_msg->OpenResponseCondition;
     CMwrite(conn, ev_state->OpenResponseFormat, &open_response_msg);
     CMconn_register_close_handler(conn, ConnCloseHandler, NULL);
-    FileMap[f->m_ID] = f;
+    ADIOSFileMap[f->m_ID] = f;
+    ConnToFileMap.emplace(conn, f->m_ID);
+}
+
+static void OpenSimpleHandler(CManager cm, CMConnection conn, void *vevent,
+                              void *client_data, attr_list attrs)
+{
+    OpenSimpleFileMsg open_msg = static_cast<OpenSimpleFileMsg>(vevent);
+    struct Remote_evpath_state *ev_state =
+        static_cast<struct Remote_evpath_state *>(client_data);
+    _OpenSimpleResponseMsg open_response_msg;
+    std::cout << "Got an open simple request for file " << open_msg->FileName
+              << std::endl;
+    AnonSimpleFile *f = new AnonSimpleFile(open_msg->FileName);
+    f->m_FileName = open_msg->FileName;
+    memset(&open_response_msg, 0, sizeof(open_response_msg));
+    open_response_msg.FileHandle = f->m_ID;
+    open_response_msg.FileSize = f->m_Size;
+    open_response_msg.OpenResponseCondition = open_msg->OpenResponseCondition;
+
+    CMwrite(conn, ev_state->OpenSimpleResponseFormat, &open_response_msg);
+    CMconn_register_close_handler(conn, ConnCloseHandler, NULL);
+    SimpleFileMap[f->m_ID] = f;
     ConnToFileMap.emplace(conn, f->m_ID);
 }
 
@@ -97,7 +168,7 @@ static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
                               void *client_data, attr_list attrs)
 {
     GetRequestMsg GetMsg = static_cast<GetRequestMsg>(vevent);
-    AnonADIOSFile *f = FileMap[GetMsg->FileHandle];
+    AnonADIOSFile *f = ADIOSFileMap[GetMsg->FileHandle];
     struct Remote_evpath_state *ev_state =
         static_cast<struct Remote_evpath_state *>(client_data);
     if (f->currentStep == -1)
@@ -148,10 +219,41 @@ static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
 #undef GET
 }
 
+static void ReadRequestHandler(CManager cm, CMConnection conn, void *vevent,
+                               void *client_data, attr_list attrs)
+{
+    ReadRequestMsg ReadMsg = static_cast<ReadRequestMsg>(vevent);
+    AnonSimpleFile *f = SimpleFileMap[ReadMsg->FileHandle];
+    struct Remote_evpath_state *ev_state =
+        static_cast<struct Remote_evpath_state *>(client_data);
+    if (f->m_CurrentOffset != ReadMsg->Offset)
+    {
+        lseek(f->m_FileDescriptor, ReadMsg->Offset, SEEK_SET);
+        f->m_CurrentOffset = ReadMsg->Offset;
+    }
+    char *tmp = (char *)malloc(ReadMsg->Size);
+    read(f->m_FileDescriptor, tmp, ReadMsg->Size);
+    f->m_CurrentOffset += ReadMsg->Size;
+    _ReadResponseMsg Response;
+    memset(&Response, 0, sizeof(Response));
+    Response.Size = ReadMsg->Size;
+    Response.ReadData = (char *)tmp;
+    Response.ReadResponseCondition = ReadMsg->ReadResponseCondition;
+    Response.Dest = ReadMsg->Dest;
+    std::cout << "Returning " << Response.Size << " bytes for Read "
+              << std::endl;
+    CMwrite(conn, ev_state->ReadResponseFormat, &Response);
+    free(tmp);
+}
+
 void REVPServerRegisterHandlers(struct Remote_evpath_state &ev_state)
 {
     CMregister_handler(ev_state.OpenFileFormat, OpenHandler, &ev_state);
+    CMregister_handler(ev_state.OpenSimpleFileFormat, OpenSimpleHandler,
+                       &ev_state);
     CMregister_handler(ev_state.GetRequestFormat, GetRequestHandler, &ev_state);
+    CMregister_handler(ev_state.ReadRequestFormat, ReadRequestHandler,
+                       &ev_state);
 }
 
 static atom_t CM_IP_PORT = -1;
