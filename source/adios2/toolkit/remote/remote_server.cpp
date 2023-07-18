@@ -27,7 +27,7 @@ using namespace adios2::RemoteCommon;
 using namespace adios2::core;
 using namespace adios2;
 
-int quiet = 1;
+int verbose = 1;
 ADIOS adios("C++");
 
 std::string lf_random_string()
@@ -52,6 +52,7 @@ public:
     int64_t currentStep = -1;
     std::string m_IOname;
     std::string m_FileName;
+    size_t m_BytesSent = 0;
     AnonADIOSFile(std::string FileName)
     {
         m_FileName = FileName;
@@ -76,6 +77,7 @@ public:
     size_t m_Size = -1;
     size_t m_CurrentOffset = 0;
     std::string m_FileName;
+    size_t m_BytesSent = 0;
     AnonSimpleFile(std::string FileName)
     {
         m_FileName = FileName;
@@ -107,15 +109,14 @@ static void ConnCloseHandler(CManager cm, CMConnection conn, void *client_data)
         AnonADIOSFile *file = ADIOSFileMap[it1->second];
         if (file)
         {
-            std::cout << "closing ADIOS file " << file->m_FileName << std::endl;
+	    if (verbose >= 1) std::cout << "closing ADIOS file \"" << file->m_FileName << "\" total bytes sent " << file->m_BytesSent <<std::endl;
             ADIOSFileMap.erase(it1->second);
             delete file;
         }
         AnonSimpleFile *sfile = SimpleFileMap[it1->second];
         if (sfile)
         {
-            std::cout << "closing simple file " << sfile->m_FileName
-                      << std::endl;
+	    if (verbose >= 1) std::cout << "closing simple file " << sfile->m_FileName << "\" total bytes sent " << sfile->m_BytesSent <<std::endl;
             SimpleFileMap.erase(it1->second);
             delete file;
         }
@@ -178,7 +179,7 @@ static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
     }
     while (f->m_engine->CurrentStep() < GetMsg->Step)
     {
-        std::cout << "Advancing a step" << std::endl;
+      if (verbose >= 2) std::cout << "Advancing a step" << std::endl;
         f->m_engine->EndStep();
         f->m_engine->BeginStep();
         f->currentStep++;
@@ -211,8 +212,9 @@ static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
         Response.ReadResponseCondition = GetMsg->GetResponseCondition;         \
         Response.Dest =                                                        \
             GetMsg->Dest; /* final data destination in client memory space */  \
-        std::cout << "Returning " << Response.Size << " bytes for Get<"        \
+        if (verbose >= 2) std::cout << "Returning " << Response.Size << " bytes for Get<" \
                   << TypeOfVar << ">(" << VarName << ")" << std::endl;         \
+	f->m_BytesSent += Response.Size;					\
         CMwrite(conn, ev_state->ReadResponseFormat, &Response);                \
     }
     ADIOS2_FOREACH_PRIMITIVE_STDTYPE_1ARG(GET)
@@ -240,8 +242,9 @@ static void ReadRequestHandler(CManager cm, CMConnection conn, void *vevent,
     Response.ReadData = (char *)tmp;
     Response.ReadResponseCondition = ReadMsg->ReadResponseCondition;
     Response.Dest = ReadMsg->Dest;
-    std::cout << "Returning " << Response.Size << " bytes for Read "
+    if (verbose >= 2) std::cout << "Returning " << Response.Size << " bytes for Read "
               << std::endl;
+    f->m_BytesSent += Response.Size;				\
     CMwrite(conn, ev_state->ReadResponseFormat, &Response);
     free(tmp);
 }
@@ -285,22 +288,20 @@ int main(int argc, char **argv)
 
     while (argv[1] && (argv[1][0] == '-'))
     {
-        if (argv[1][1] == 'v')
-        {
-            quiet--;
-        }
-        else if (argv[1][1] == 'q')
-        {
-            quiet++;
-        }
-        else if (argv[1][1] == '-')
-        {
-            argv++;
-            argc--;
-            break;
-        }
-        argv++;
-        argc--;
+        size_t i = 1;
+	while(argv[1][i] != 0) {
+	    if (argv[1][i] == 'v')
+	    {
+	        verbose++;
+	    }
+	    else if (argv[1][i] == 'q')
+	    {
+	        verbose--;
+	    }
+	    i++;
+	}
+	argv++;
+	argc--;
     }
 
     RegisterFormats(ev_state);
