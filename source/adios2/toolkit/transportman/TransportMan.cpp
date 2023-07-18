@@ -671,7 +671,10 @@ std::shared_ptr<Transport> TransportMan::OpenFileTransport(
     std::shared_ptr<Transport> transport;
     const std::string library =
         helper::LowerCase(lf_GetLibrary(DefaultFileLibrary, parameters));
-    lf_SetFileTransport(library, transport);
+    if (getenv("DoFileRemote") && (openMode == Mode::Read))
+        lf_SetFileTransport("remote", transport);
+    else
+        lf_SetFileTransport(library, transport);
 
     // Default or user ProfileUnits in parameters
     if (profile)
