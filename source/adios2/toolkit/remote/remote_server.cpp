@@ -30,6 +30,27 @@ using namespace adios2;
 int verbose = 1;
 ADIOS adios("C++");
 
+std::string readable_size(uint64_t size)
+{
+    constexpr const char FILE_SIZE_UNITS[8][3]{
+        "B ", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"
+    };
+    uint64_t s = size, r = 0;
+    int idx = 0;
+    while (s / 1024 > 0)
+    {
+        r = s % 1024;
+        s = s / 1024;
+        idx++;
+    }
+    int point = r / 100;
+    std::ostringstream out;
+    out << "" << s;
+    if (point != 0) out << "." << point;
+    out << " " << std::string(FILE_SIZE_UNITS[idx]);
+    return out.str();
+}
+
 std::string lf_random_string()
 {
     std::string str(
@@ -53,6 +74,7 @@ public:
     std::string m_IOname;
     std::string m_FileName;
     size_t m_BytesSent = 0;
+    size_t m_OperationCount = 0;
     AnonADIOSFile(std::string FileName)
     {
         m_FileName = FileName;
@@ -78,6 +100,7 @@ public:
     size_t m_CurrentOffset = 0;
     std::string m_FileName;
     size_t m_BytesSent = 0;
+    size_t m_OperationCount = 0;
     AnonSimpleFile(std::string FileName)
     {
         m_FileName = FileName;
@@ -111,7 +134,8 @@ static void ConnCloseHandler(CManager cm, CMConnection conn, void *client_data)
         {
             if (verbose >= 1)
                 std::cout << "closing ADIOS file \"" << file->m_FileName
-                          << "\" total bytes sent " << file->m_BytesSent
+                          << "\" total sent " << readable_size(file->m_BytesSent)
+			  << " in " << file->m_OperationCount << " Get()s"
                           << std::endl;
             ADIOSFileMap.erase(it1->second);
             delete file;
@@ -121,7 +145,8 @@ static void ConnCloseHandler(CManager cm, CMConnection conn, void *client_data)
         {
             if (verbose >= 1)
                 std::cout << "closing simple file " << sfile->m_FileName
-                          << "\" total bytes sent " << sfile->m_BytesSent
+                          << "\" total sent " << readable_size(sfile->m_BytesSent)
+			  << " in " << sfile->m_OperationCount << " Read()s"
                           << std::endl;
             SimpleFileMap.erase(it1->second);
             delete file;
@@ -194,13 +219,13 @@ static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
 
     std::string VarName = std::string(GetMsg->VarName);
     adios2::DataType TypeOfVar = f->m_io->InquireVariableType(VarName);
+    Box<Dims> b;
     if (GetMsg->Count)
     {
-        // set count
-    }
-    if (GetMsg->Start)
-    {
-        // set start
+      for(int i = 0; i < GetMsg->DimCount; i++) {
+	b.first.push_back(GetMsg->Start[i]);
+	b.second.push_back(GetMsg->Count[i]);
+      }
     }
 
     if (TypeOfVar == adios2::DataType::None)
@@ -213,6 +238,7 @@ static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
         memset(&Response, 0, sizeof(Response));                                \
         std::vector<T> RetData;                                                \
         auto var = f->m_io->InquireVariable<T>(VarName);                       \
+	var->SetSelection(b);							\
         f->m_engine->Get(*var, RetData, Mode::Sync);                           \
         Response.Size = RetData.size() * sizeof(T);                            \
         Response.ReadData = (char *)RetData.data();                            \
@@ -220,9 +246,10 @@ static void GetRequestHandler(CManager cm, CMConnection conn, void *vevent,
         Response.Dest =                                                        \
             GetMsg->Dest; /* final data destination in client memory space */  \
         if (verbose >= 2)                                                      \
-            std::cout << "Returning " << Response.Size << " bytes for Get<"    \
-                      << TypeOfVar << ">(" << VarName << ")" << std::endl;     \
+	  std::cout << "Returning " << Response.Size << " " << readable_size(Response.Size) << " for Get<" \
+                      << TypeOfVar << ">(" << VarName << ")" << b << std::endl; \
         f->m_BytesSent += Response.Size;                                       \
+	f->m_OperationCount++;							\
         CMwrite(conn, ev_state->ReadResponseFormat, &Response);                \
     }
     ADIOS2_FOREACH_PRIMITIVE_STDTYPE_1ARG(GET)
@@ -251,9 +278,10 @@ static void ReadRequestHandler(CManager cm, CMConnection conn, void *vevent,
     Response.ReadResponseCondition = ReadMsg->ReadResponseCondition;
     Response.Dest = ReadMsg->Dest;
     if (verbose >= 2)
-        std::cout << "Returning " << Response.Size << " bytes for Read "
+      std::cout << "Returning " << readable_size(Response.Size) << " for Read "
                   << std::endl;
     f->m_BytesSent += Response.Size;
+    f->m_OperationCount++;
     CMwrite(conn, ev_state->ReadResponseFormat, &Response);
     free(tmp);
 }
