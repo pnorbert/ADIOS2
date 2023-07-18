@@ -288,8 +288,6 @@ void BP5Reader::PerformGets()
 
 void BP5Reader::PerformRemoteGets()
 {
-    std::cout << "Perform all remote Gets" << std::endl;
-
     // TP startGenerate = NOW();
     auto GetRequests = m_BP5Deserializer->PendingGetRequests;
     for (auto &Req : GetRequests)

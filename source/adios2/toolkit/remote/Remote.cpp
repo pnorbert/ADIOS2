@@ -20,8 +20,6 @@ void OpenResponseHandler(CManager cm, CMConnection conn, void *vevent,
 {
     RemoteCommon::OpenResponseMsg open_response_msg =
         static_cast<RemoteCommon::OpenResponseMsg>(vevent);
-    std::cout << "Got an open response for file "
-              << open_response_msg->FileHandle << std::endl;
 
     void *obj = CMCondition_get_client_data(
         cm, open_response_msg->OpenResponseCondition);
@@ -35,8 +33,6 @@ void OpenSimpleResponseHandler(CManager cm, CMConnection conn, void *vevent,
 {
     RemoteCommon::OpenSimpleResponseMsg open_response_msg =
         static_cast<RemoteCommon::OpenSimpleResponseMsg>(vevent);
-    std::cout << "Got an open simpleresponse for file "
-              << open_response_msg->FileHandle << std::endl;
 
     void *obj = CMCondition_get_client_data(
         cm, open_response_msg->OpenResponseCondition);
@@ -53,8 +49,6 @@ void ReadResponseHandler(CManager cm, CMConnection conn, void *vevent,
         static_cast<RemoteCommon::ReadResponseMsg>(vevent);
     memcpy(read_response_msg->Dest, read_response_msg->ReadData,
            read_response_msg->Size);
-    std::cout << "Got " << read_response_msg->Size << " Bytes, signalling "
-              << std::endl;
     CMCondition_signal(cm, read_response_msg->ReadResponseCondition);
     return;
 };

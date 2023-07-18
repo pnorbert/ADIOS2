@@ -75,7 +75,6 @@ void FileRemote::Open(const std::string &name, const Mode openMode,
                       const bool async, const bool directio)
 {
     m_Name = name;
-    std::cout << "In FileRemote Open" << std::endl;
     size_t pos = name.find(PathSeparator);
     if (pos == std::string::npos)
     {
@@ -189,7 +188,6 @@ void FileRemote::Flush() {}
 void FileRemote::Close()
 {
     WaitForOpen();
-    std::cout << "FileRemote::Close(" << m_Name << ") Enter" << std::endl;
     ProfilerStart("close");
     errno = 0;
     m_Errno = errno;
