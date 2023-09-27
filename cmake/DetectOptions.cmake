@@ -554,6 +554,16 @@ if(AWSSDK_FOUND)
     set(ADIOS2_HAVE_AWSSDK TRUE)
 endif()
 
+# XRootD C++ interface
+if(ADIOS2_USE_XRootD STREQUAL AUTO)
+    find_package(XRootD QUIET COMPONENTS CLIENT)
+elseif(ADIOS2_USE_XRootD)
+    find_package(XRootD REQUIRED COMPONENTS CLIENT)
+endif()
+if(XRootD_FOUND)
+    set(ADIOS2_HAVE_XRootD TRUE)
+endif()
+
 # Multithreading
 find_package(Threads REQUIRED)
 
