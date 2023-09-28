@@ -72,11 +72,15 @@ public:
 
 private:
     /** XRootD file handle returned by Open */
-    int m_FileDescriptor = -1;
-    int m_Errno = 0;
+    XrdCl::File m_File;
+    XrdCl::XRootDStatus m_FileStatus;
+
     bool m_IsOpening = false;
-    std::future<int> m_OpenFuture;
-    bool m_DirectIO = false;
+    std::future<XrdCl::XRootDStatus> m_OpenFuture;
+
+    /** need to handle position locally */
+    size_t m_Size = 0;
+    size_t m_SeekPos = 0;
 
     /**
      * Check if m_FileDescriptor is -1 after an operation
@@ -84,7 +88,7 @@ private:
      */
     void CheckFile(const std::string hint) const;
     void WaitForOpen();
-    std::string SysErrMsg() const;
+    XrdCl::OpenFlags::Flags ModeToOpenFlags(const Mode mode);
 };
 
 } // end namespace transport

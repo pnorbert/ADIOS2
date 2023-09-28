@@ -13,6 +13,7 @@
 #include <cstdio>  // remove
 #include <cstring> // strerror
 #include <errno.h> // errno
+#include <fstream>
 
 /// \cond EXCLUDE_FROM_DOXYGEN
 #include <ios> //std::ios_base::failure
@@ -29,7 +30,7 @@ FileXRootD::~FileXRootD()
 {
     if (m_IsOpen)
     {
-        close(m_FileDescriptor);
+        Close();
     }
 }
 
@@ -39,7 +40,7 @@ void FileXRootD::WaitForOpen()
     {
         if (m_OpenFuture.valid())
         {
-            m_FileDescriptor = m_OpenFuture.get();
+            m_FileStatus = m_OpenFuture.get();
         }
         m_IsOpening = false;
         CheckFile("couldn't open file " + m_Name + ", in call to XRootD open");
@@ -47,27 +48,50 @@ void FileXRootD::WaitForOpen()
     }
 }
 
+XrdCl::OpenFlags::Flags FileXRootD::ModeToOpenFlags(const Mode mode)
+{
+
+    switch (mode)
+    {
+    case Mode::Write:
+        return XrdCl::OpenFlags::Flags::Write | XrdCl::OpenFlags::Flags::Delete;
+        break;
+
+    case Mode::Append:
+        return XrdCl::OpenFlags::Flags::Write;
+        break;
+
+    case Mode::Read:
+    case Mode::ReadRandomAccess:
+        return XrdCl::OpenFlags::Flags::Read;
+        break;
+
+    default:
+        break;
+    }
+    return XrdCl::OpenFlags::Flags::None;
+}
+
 void FileXRootD::Open(const std::string &name, const Mode openMode, const bool async,
                       const bool directio)
 {
-    auto lf_AsyncOpenWrite = [&](const std::string &name, const bool directio) -> int {
+    auto lf_AsyncOpenWrite = [&](const std::string &name,
+                                 XrdCl::OpenFlags::Flags flags) -> XrdCl::XRootDStatus {
         ProfilerStart("open");
-        errno = 0;
-        const char *url;
-        XrdCl::OpenFlags::Flags flags = XrdCl::OpenFlags::None;
         XrdCl::Access::Mode mode = XrdCl::Access::None;
         uint16_t timeout = 0;
-        int flag = __GetOpenFlag(O_WRONLY | O_CREAT | O_TRUNC, directio);
-        int FD = open(m_Name.c_str(), flag, 0666);
-        m_Errno = errno;
+        XrdCl::XRootDStatus status;
+        status = m_File.Open(name, flags, mode, timeout);
         ProfilerStop("open");
-        return FD;
+        std::cout << "FileXRootD::Open::AsyncOpenWrite " << name << " status = " << status.ToStr()
+                  << std::endl;
+        return status;
     };
 
     m_Name = name;
     CheckName();
-    m_DirectIO = directio;
     m_OpenMode = openMode;
+    XrdCl::OpenFlags::Flags flags = ModeToOpenFlags(m_OpenMode);
     switch (m_OpenMode)
     {
 
@@ -75,33 +99,34 @@ void FileXRootD::Open(const std::string &name, const Mode openMode, const bool a
         if (async)
         {
             m_IsOpening = true;
-            m_OpenFuture = std::async(std::launch::async, lf_AsyncOpenWrite, name, directio);
+            m_OpenFuture = std::async(std::launch::async, lf_AsyncOpenWrite, name, flags);
         }
         else
         {
             ProfilerStart("open");
-            errno = 0;
-            m_FileDescriptor =
-                open(m_Name.c_str(), __GetOpenFlag(O_WRONLY | O_CREAT | O_TRUNC, directio), 0666);
-            m_Errno = errno;
+            m_FileStatus = m_File.Open(name, flags, XrdCl::Access::None, (uint16_t)0U);
+            std::cout << "FileXRootD::Open for Write" << name
+                      << " status = " << m_FileStatus.ToStr() << std::endl;
             ProfilerStop("open");
         }
         break;
 
     case Mode::Append:
         ProfilerStart("open");
-        errno = 0;
-        m_FileDescriptor = open(m_Name.c_str(), __GetOpenFlag(O_RDWR | O_CREAT, directio), 0777);
-        lseek(m_FileDescriptor, 0, SEEK_END);
-        m_Errno = errno;
+        m_FileStatus = m_File.Open(name, flags, XrdCl::Access::None, (uint16_t)0U);
+        std::cout << "FileXRootD::Open for Append" << name << " status = " << m_FileStatus.ToStr()
+                  << std::endl;
+        GetSize();
+        Seek(m_Size); // append at end of file
         ProfilerStop("open");
         break;
 
     case Mode::Read:
         ProfilerStart("open");
-        errno = 0;
-        m_FileDescriptor = open(m_Name.c_str(), O_RDONLY);
-        m_Errno = errno;
+        m_FileStatus = m_File.Open(name, flags, XrdCl::Access::None, (uint16_t)0U);
+        std::cout << "FileXRootD::Open for Read" << name << " status = " << m_FileStatus.ToStr()
+                  << std::endl;
+        GetSize();
         ProfilerStop("open");
         break;
 
@@ -119,91 +144,17 @@ void FileXRootD::Open(const std::string &name, const Mode openMode, const bool a
 void FileXRootD::OpenChain(const std::string &name, Mode openMode, const helper::Comm &chainComm,
                            const bool async, const bool directio)
 {
-    auto lf_AsyncOpenWrite = [&](const std::string &name, const bool directio) -> int {
-        ProfilerStart("open");
-        errno = 0;
-        int flag = __GetOpenFlag(O_WRONLY | O_CREAT | O_TRUNC, directio);
-        int FD = open(m_Name.c_str(), flag, 0666);
-        m_Errno = errno;
-        ProfilerStop("open");
-        return FD;
-    };
+    // only when process is a single writer, can create the file
+    // asynchronously, otherwise other processes are waiting on it
+    bool doAsync = (async && chainComm.Size() == 1);
 
-    int token = 1;
-    m_Name = name;
-    CheckName();
-
+    int token = 0;
     if (chainComm.Rank() > 0)
     {
         chainComm.Recv(&token, 1, chainComm.Rank() - 1, 0, "Chain token in FileXRootD::OpenChain");
     }
 
-    m_DirectIO = directio;
-    m_OpenMode = openMode;
-    switch (m_OpenMode)
-    {
-
-    case Mode::Write:
-        if (async && chainComm.Size() == 1)
-        {
-            // only when process is a single writer, can create the file
-            // asynchronously, otherwise other processes are waiting on it
-            m_IsOpening = true;
-            m_OpenFuture = std::async(std::launch::async, lf_AsyncOpenWrite, name, directio);
-        }
-        else
-        {
-            ProfilerStart("open");
-            errno = 0;
-            if (chainComm.Rank() == 0)
-            {
-                m_FileDescriptor = open(
-                    m_Name.c_str(), __GetOpenFlag(O_WRONLY | O_CREAT | O_TRUNC, directio), 0666);
-            }
-            else
-            {
-                m_FileDescriptor = open(m_Name.c_str(), __GetOpenFlag(O_WRONLY, directio), 0666);
-                lseek(m_FileDescriptor, 0, SEEK_SET);
-            }
-            m_Errno = errno;
-            ProfilerStop("open");
-        }
-        break;
-
-    case Mode::Append:
-        ProfilerStart("open");
-        errno = 0;
-        if (chainComm.Rank() == 0)
-        {
-            m_FileDescriptor =
-                open(m_Name.c_str(), __GetOpenFlag(O_RDWR | O_CREAT, directio), 0666);
-        }
-        else
-        {
-            m_FileDescriptor = open(m_Name.c_str(), __GetOpenFlag(O_RDWR, directio));
-        }
-        lseek(m_FileDescriptor, 0, SEEK_END);
-        m_Errno = errno;
-        ProfilerStop("open");
-        break;
-
-    case Mode::Read:
-        ProfilerStart("open");
-        errno = 0;
-        m_FileDescriptor = open(m_Name.c_str(), O_RDONLY);
-        m_Errno = errno;
-        ProfilerStop("open");
-        break;
-
-    default:
-        CheckFile("unknown open mode for file " + m_Name + ", in call to XRootD open");
-    }
-
-    if (!m_IsOpening)
-    {
-        CheckFile("couldn't open file " + m_Name + ", in call to XRootD open");
-        m_IsOpen = true;
-    }
+    Open(name, openMode, doAsync, directio);
 
     if (chainComm.Rank() < chainComm.Size() - 1)
     {
@@ -214,52 +165,38 @@ void FileXRootD::OpenChain(const std::string &name, Mode openMode, const helper:
 
 void FileXRootD::Write(const char *buffer, size_t size, size_t start)
 {
-    auto lf_Write = [&](const char *buffer, size_t size) {
-        while (size > 0)
+    auto lf_Write = [&](const char *buffer, size_t size, size_t start) {
+        ProfilerStart("write");
+        ProfilerWriteBytes(size);
+        uint32_t size32 = static_cast<uint32_t>(size);
+        XrdCl::XRootDStatus status;
+        status = m_File.Write(start, size32, buffer, (uint16_t)0U);
+        std::cout << "FileXRootD::Write " << m_Name << " start = " << start << " size = " << size32
+                  << " status = " << status.ToStr() << std::endl;
+        ProfilerStop("write");
+
+        if (status.IsError())
         {
-            ProfilerStart("write");
-            ProfilerWriteBytes(size);
-            errno = 0;
-            const auto writtenSize = write(m_FileDescriptor, buffer, size);
-            m_Errno = errno;
-            ProfilerStop("write");
-
-            if (writtenSize == -1)
-            {
-                if (errno == EINTR)
-                {
-                    continue;
-                }
-
-                helper::Throw<std::ios_base::failure>(
-                    "Toolkit", "transport::file::FileXRootD", "Write",
-                    "couldn't write to file " + m_Name + " " + SysErrMsg());
-            }
-
-            buffer += writtenSize;
-            size -= writtenSize;
+            helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Write",
+                                                  "couldn't write to file " + m_Name + " " +
+                                                      status.ToStr());
         }
     };
 
-    WaitForOpen();
-    if (start != MaxSizeT)
+    if (size == 0)
     {
-        errno = 0;
-        const auto newPosition = lseek(m_FileDescriptor, start, SEEK_SET);
-        m_Errno = errno;
+        return;
+    }
 
-        if (static_cast<size_t>(newPosition) != start)
-        {
-            helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Write",
-                                                  "couldn't move to start position " +
-                                                      std::to_string(start) + " in file " + m_Name +
-                                                      " " + SysErrMsg());
-        }
+    WaitForOpen();
+    if (start == MaxSizeT)
+    {
+        // use current position to write
+        start = m_SeekPos;
     }
     else
     {
-        const auto pos = lseek(m_FileDescriptor, 0, SEEK_CUR);
-        start = static_cast<size_t>(pos);
+        Seek(start);
     }
 
     if (size > DefaultMaxFileBatchSize)
@@ -270,155 +207,47 @@ void FileXRootD::Write(const char *buffer, size_t size, size_t start)
         size_t position = 0;
         for (size_t b = 0; b < batches; ++b)
         {
-            lf_Write(&buffer[position], DefaultMaxFileBatchSize);
+            lf_Write(&buffer[position], DefaultMaxFileBatchSize, start + position);
             position += DefaultMaxFileBatchSize;
         }
-        lf_Write(&buffer[position], remainder);
+        lf_Write(&buffer[position], remainder, start + position);
     }
     else
     {
-        lf_Write(buffer, size);
+        lf_Write(buffer, size, start);
+    }
+
+    m_SeekPos += size;
+    if (m_SeekPos > m_Size)
+    {
+        m_Size = m_SeekPos;
     }
 }
-
-#ifdef REALLY_WANT_WRITEV
-void FileXRootD::WriteV(const core::iovec *iov, const int iovcnt, size_t start)
-{
-    auto lf_Write = [&](const core::iovec *iov, const int iovcnt) {
-        ProfilerStart("write");
-        errno = 0;
-        size_t nBytesExpected = 0;
-        for (int i = 0; i < iovcnt; ++i)
-        {
-            nBytesExpected += iov[i].iov_len;
-        }
-        const iovec *v = reinterpret_cast<const iovec *>(iov);
-        const auto ret = writev(m_FileDescriptor, v, iovcnt);
-        m_Errno = errno;
-        ProfilerStop("write");
-
-        size_t written;
-        if (ret == -1)
-        {
-            if (errno != EINTR)
-            {
-                helper::Throw<std::ios_base::failure>(
-                    "Toolkit", "transport::file::FileXRootD", "WriteV",
-                    "couldn't write to file " + m_Name + " " + SysErrMsg());
-            }
-            written = 0;
-        }
-        else
-        {
-            written = static_cast<size_t>(ret);
-        }
-
-        ProfilerWriteBytes(written);
-
-        if (written < nBytesExpected)
-        {
-            /* Fall back to write calls with individual buffers */
-            // find where the writing has ended
-            int c = 0;
-            size_t n = 0;
-            size_t pos = 0;
-            while (n < written)
-            {
-                if (n + iov[c].iov_len <= written)
-                {
-                    n += iov[c].iov_len;
-                    ++c;
-                }
-                else
-                {
-                    pos = written - n;
-                    n = written;
-                }
-            }
-
-            // write the rest one by one
-            Write(static_cast<const char *>(iov[c].iov_base) + pos, iov[c].iov_len - pos);
-            for (; c < iovcnt; ++c)
-            {
-                Write(static_cast<const char *>(iov[c].iov_base), iov[c].iov_len);
-            }
-        }
-    };
-
-    WaitForOpen();
-    if (start != MaxSizeT)
-    {
-        errno = 0;
-        const auto newPosition = lseek(m_FileDescriptor, start, SEEK_SET);
-        m_Errno = errno;
-
-        if (static_cast<size_t>(newPosition) != start)
-        {
-            helper::Throw<std::ios_base::failure>(
-                "Toolkit", "transport::file::FileXRootD", "WriteV",
-                "couldn't move to start position " + std::to_string(start) + " in file " + m_Name +
-                    " " + SysErrMsg());
-        }
-    }
-
-    int cntTotal = 0;
-    while (cntTotal < iovcnt)
-    {
-        int cnt = iovcnt - cntTotal;
-        if (cnt > 8)
-        {
-            cnt = 8;
-        }
-        lf_Write(iov + cntTotal, cnt);
-        cntTotal += cnt;
-    }
-}
-#endif
 
 void FileXRootD::Read(char *buffer, size_t size, size_t start)
 {
     auto lf_Read = [&](char *buffer, size_t size) {
-        while (size > 0)
+        ProfilerStart("read");
+        errno = 0;
+        XrdCl::XRootDStatus status;
+        uint32_t size32 = static_cast<uint32_t>(size);
+        uint32_t bytesRead;
+        status = m_File.Read(start, size32, buffer, bytesRead, (uint16_t)0U);
+        std::cout << "FileXRootD::Read " << m_Name << " start = " << start << " size = " << size32
+                  << " status = " << status.ToStr() << " bytes read = " << bytesRead << std::endl;
+        ProfilerStop("read");
+
+        if (status.IsError())
         {
-            ProfilerStart("read");
-            errno = 0;
-            const auto readSize = read(m_FileDescriptor, buffer, size);
-            m_Errno = errno;
-            ProfilerStop("read");
 
-            if (readSize == -1)
-            {
-                if (errno == EINTR)
-                {
-                    continue;
-                }
-
-                helper::Throw<std::ios_base::failure>(
-                    "Toolkit", "transport::file::FileXRootD", "Read",
-                    "couldn't read from file " + m_Name + " " + SysErrMsg());
-            }
-
-            buffer += readSize;
-            size -= readSize;
+            helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Read",
+                                                  "couldn't read from file " + m_Name + " " +
+                                                      status.ToStr());
         }
     };
 
     WaitForOpen();
-
-    if (start != MaxSizeT)
-    {
-        errno = 0;
-        const auto newPosition = lseek(m_FileDescriptor, start, SEEK_SET);
-        m_Errno = errno;
-
-        if (static_cast<size_t>(newPosition) != start)
-        {
-            helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Read",
-                                                  "couldn't move to start position " +
-                                                      std::to_string(start) + " in file " + m_Name +
-                                                      " " + SysErrMsg());
-        }
-    }
+    std::memset(buffer, 1, size);
 
     if (size > DefaultMaxFileBatchSize)
     {
@@ -437,21 +266,35 @@ void FileXRootD::Read(char *buffer, size_t size, size_t start)
     {
         lf_Read(buffer, size);
     }
+    std::ofstream outf;
+    std::string nm =
+        "readblock." + m_Name.substr(m_Name.rfind('/') + 1) + "." + std::to_string(start);
+    outf.open(nm, std::ios::out | std::ios::trunc | std::ios::binary);
+    std::cout << "Write data to " << nm << "  status = " << outf.fail() << std::endl;
+    outf.write(buffer, size);
+    outf.close();
 }
 
 size_t FileXRootD::GetSize()
 {
-    struct stat fileStat;
     WaitForOpen();
-    errno = 0;
-    if (fstat(m_FileDescriptor, &fileStat) == -1)
+    XrdCl::StatInfo *fileStat = nullptr;
+    XrdCl::XRootDStatus status;
+    status = m_File.Stat(true, fileStat, (uint16_t)0U);
+
+    if (status.IsError())
     {
-        m_Errno = errno;
         helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "GetSize",
-                                              "couldn't get size of file " + m_Name + SysErrMsg());
+                                              "couldn't get size of file " + m_Name +
+                                                  status.ToStr());
     }
-    m_Errno = errno;
-    return static_cast<size_t>(fileStat.st_size);
+    if (fileStat)
+    {
+        m_Size = static_cast<size_t>(fileStat->GetSize());
+        std::cout << "FileXRootD::GetSize " << m_Name << " size = " << m_Size << std::endl;
+        delete fileStat;
+    }
+    return m_Size;
 }
 
 void FileXRootD::Flush()
@@ -459,11 +302,7 @@ void FileXRootD::Flush()
     /* Turn this off now because BP3/BP4 calls manager Flush and this syncing
      * slows down IO performance */
 #if 0
-#if (_XRootD_C_SOURCE >= 199309L || _XOPEN_SOURCE >= 500)
-    fdatasync(m_FileDescriptor);
-#else
-    fsync(m_FileDescriptor)
-#endif
+    m_FileStatus = m_File.Sync();
 #endif
 }
 
@@ -471,15 +310,25 @@ void FileXRootD::Close()
 {
     WaitForOpen();
     ProfilerStart("close");
-    errno = 0;
-    const int status = close(m_FileDescriptor);
-    m_Errno = errno;
+    if (m_OpenMode == Mode::Write || m_OpenMode == Mode::Append)
+    {
+        m_FileStatus = m_File.Sync();
+        if (m_FileStatus.IsError())
+        {
+            helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Close",
+                                                  "couldn't sync before closing file" + m_Name +
+                                                      ": " + m_FileStatus.ToStr());
+        }
+    }
+    m_FileStatus = m_File.Close();
+    m_IsOpen = false;
     ProfilerStop("close");
 
-    if (status == -1)
+    if (m_FileStatus.IsError())
     {
         helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Close",
-                                              "couldn't close file " + m_Name + " " + SysErrMsg());
+                                              "couldn't close file " + m_Name + ": " +
+                                                  m_FileStatus.ToStr());
     }
 
     m_IsOpen = false;
@@ -492,66 +341,28 @@ void FileXRootD::Delete()
     {
         Close();
     }
-    std::remove(m_Name.c_str());
+    helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Delete",
+                                          "does not support deleting " + m_Name);
 }
 
 void FileXRootD::CheckFile(const std::string hint) const
 {
-    if (m_FileDescriptor == -1)
+    if (m_FileStatus.IsError())
     {
         helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "CheckFile",
-                                              hint + SysErrMsg());
+                                              hint + m_FileStatus.ToStr());
     }
 }
 
-std::string FileXRootD::SysErrMsg() const
-{
-    return std::string(": errno = " + std::to_string(m_Errno) + ": " + strerror(m_Errno));
-}
+void FileXRootD::SeekToEnd() { m_SeekPos = m_Size; }
 
-void FileXRootD::SeekToEnd()
-{
-    WaitForOpen();
-    errno = 0;
-    const int status = lseek(m_FileDescriptor, 0, SEEK_END);
-    m_Errno = 0;
-    if (status == -1)
-    {
-        helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "SeekToEnd",
-                                              "couldn't seek to the end of file " + m_Name + " " +
-                                                  SysErrMsg());
-    }
-}
-
-void FileXRootD::SeekToBegin()
-{
-    WaitForOpen();
-    errno = 0;
-    const int status = lseek(m_FileDescriptor, 0, SEEK_SET);
-    m_Errno = errno;
-    if (status == -1)
-    {
-        helper::Throw<std::ios_base::failure>(
-            "Toolkit", "transport::file::FileXRootD", "SeekToBegin",
-            "couldn't seek to the begin of file " + m_Name + " " + SysErrMsg());
-    }
-}
+void FileXRootD::SeekToBegin() { m_SeekPos = 0; }
 
 void FileXRootD::Seek(const size_t start)
 {
     if (start != MaxSizeT)
     {
-        WaitForOpen();
-        errno = 0;
-        const int status = lseek(m_FileDescriptor, start, SEEK_SET);
-        m_Errno = errno;
-        if (status == -1)
-        {
-            helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Seek",
-                                                  "couldn't seek to offset " +
-                                                      std::to_string(start) + " of file " + m_Name +
-                                                      " " + SysErrMsg());
-        }
+        m_SeekPos = start; // this can point beyond current m_Size
     }
     else
     {
@@ -562,15 +373,16 @@ void FileXRootD::Seek(const size_t start)
 void FileXRootD::Truncate(const size_t length)
 {
     WaitForOpen();
-    errno = 0;
-    const int status = ftruncate(m_FileDescriptor, static_cast<off_t>(length));
-    m_Errno = errno;
-    if (status == -1)
+    m_FileStatus = m_File.Truncate(length);
+    if (m_FileStatus.IsError())
     {
         helper::Throw<std::ios_base::failure>("Toolkit", "transport::file::FileXRootD", "Truncate",
                                               "couldn't truncate to " + std::to_string(length) +
-                                                  " bytes of file " + m_Name + " " + SysErrMsg());
+                                                  " bytes of file " + m_Name + " " +
+                                                  m_FileStatus.ToStr());
     }
+    GetSize();
+    Seek(m_Size);
 }
 
 void FileXRootD::MkDir(const std::string &fileName) {}
