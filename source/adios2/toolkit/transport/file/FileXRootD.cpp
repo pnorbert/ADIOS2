@@ -54,16 +54,17 @@ XrdCl::OpenFlags::Flags FileXRootD::ModeToOpenFlags(const Mode mode)
     switch (mode)
     {
     case Mode::Write:
-        return XrdCl::OpenFlags::Flags::Write | XrdCl::OpenFlags::Flags::Delete;
+        return XrdCl::OpenFlags::Flags::Write | XrdCl::OpenFlags::Flags::Delete |
+               XrdCl::OpenFlags::Flags::Force;
         break;
 
     case Mode::Append:
-        return XrdCl::OpenFlags::Flags::Write;
+        return XrdCl::OpenFlags::Flags::Write | XrdCl::OpenFlags::Flags::Force;
         break;
 
     case Mode::Read:
     case Mode::ReadRandomAccess:
-        return XrdCl::OpenFlags::Flags::Read;
+        return XrdCl::OpenFlags::Flags::Read | XrdCl::OpenFlags::Flags::Force;
         break;
 
     default:
@@ -266,13 +267,6 @@ void FileXRootD::Read(char *buffer, size_t size, size_t start)
     {
         lf_Read(buffer, size);
     }
-    std::ofstream outf;
-    std::string nm =
-        "readblock." + m_Name.substr(m_Name.rfind('/') + 1) + "." + std::to_string(start);
-    outf.open(nm, std::ios::out | std::ios::trunc | std::ios::binary);
-    std::cout << "Write data to " << nm << "  status = " << outf.fail() << std::endl;
-    outf.write(buffer, size);
-    outf.close();
 }
 
 size_t FileXRootD::GetSize()
