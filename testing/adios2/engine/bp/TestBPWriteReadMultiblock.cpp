@@ -2205,7 +2205,8 @@ TEST_F(BPWriteReadMultiblockTest, MultiblockNullBlocks)
                 SmallTestData currentTestData =
                     generateNewSmallTestData(m_TestData, t, mpiRank, mpiSize);
 
-                const adios2::Box<adios2::Dims> sel({(size_t)mpiRank, b * Nx}, {1, Nx});
+                // Block 0 was not written so all blocks are shifted back
+                const adios2::Box<adios2::Dims> sel({(size_t)mpiRank, (b - 1) * Nx}, {1, Nx});
                 var_i32.SetSelection(sel);
                 bpReader.Get(var_i32, I32.data(), adios2::Mode::Sync);
 
@@ -2214,8 +2215,6 @@ TEST_F(BPWriteReadMultiblockTest, MultiblockNullBlocks)
                     std::stringstream ss;
                     ss << "step=" << step << " block=" << b << " i=" << i << " rank=" << mpiRank;
                     std::string msg = ss.str();
-                    std::cout << mpiRank << " received: " << I32[i] << " : "
-                              << currentTestData.I32[i] << std::endl;
                     EXPECT_EQ(I32[i], currentTestData.I32[i]) << msg;
                 }
             }
