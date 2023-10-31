@@ -2125,9 +2125,9 @@ TEST_F(BPWriteReadMultiblockTest, MultiblockNullBlocks)
     /* Write */
     {
         adios2::IO io = adios.DeclareIO("TestIO");
-        const adios2::Dims shape{static_cast<size_t>(mpiSize), static_cast<size_t>(Nx * Nblocks)};
-        const adios2::Dims start{static_cast<size_t>(mpiRank), 0};
-        const adios2::Dims count{1, Nx};
+        adios2::Dims shape{static_cast<size_t>(mpiSize), static_cast<size_t>(Nx * (Nblocks))};
+        adios2::Dims start{static_cast<size_t>(mpiRank), 0};
+        adios2::Dims count{1, Nx};
 
         auto var_i32 = io.DefineVariable<int32_t>("i32", shape, start, count);
 
@@ -2142,6 +2142,7 @@ TEST_F(BPWriteReadMultiblockTest, MultiblockNullBlocks)
         {
             bpWriter.BeginStep();
 
+            size_t nb = 0;
             for (size_t b = 0; b < Nblocks; ++b)
             {
                 // Generate test data for each process / block uniquely
@@ -2160,7 +2161,12 @@ TEST_F(BPWriteReadMultiblockTest, MultiblockNullBlocks)
                 }
                 else
                 {
-                    var_i32.SetSelection(sel);
+                    ++nb;
+                    shape = {static_cast<size_t>(mpiSize), static_cast<size_t>(Nx * nb)};
+                    start = {static_cast<size_t>(mpiRank), static_cast<size_t>(Nx * (nb - 1))};
+                    count = {1, Nx};
+                    var_i32.SetShape(shape);
+                    var_i32.SetSelection({start, count});
                     bpWriter.Put(var_i32, currentTestData.I32.data());
                 }
 
@@ -2186,7 +2192,7 @@ TEST_F(BPWriteReadMultiblockTest, MultiblockNullBlocks)
         EXPECT_EQ(var_i32.ShapeID(), adios2::ShapeID::GlobalArray);
         EXPECT_EQ(var_i32.Steps(), NSteps);
         EXPECT_EQ(var_i32.Shape()[0], mpiSize);
-        EXPECT_EQ(var_i32.Shape()[1], Nx * Nblocks);
+        EXPECT_EQ(var_i32.Shape()[1], Nx * (Nblocks - 1));
 
         SmallTestData testData;
         std::array<int32_t, Nx> I32;
