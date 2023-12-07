@@ -111,6 +111,12 @@ void CampaignManager::Record(const std::string &name, const size_t step, const d
         // new entry
         CampaignRecord r(step, time);
         cmap.emplace(name, r);
+        {
+            std::ofstream ofs;
+            ofs.open(m_CampaignDir + "/streams.txt", std::ofstream::out | std::ofstream::app);
+            ofs << name << std::endl;
+            ofs.close();
+        }
     }
 }
 
