@@ -339,8 +339,7 @@ class Stream:
                 resulting array from selection
         """
         dtype = type_adios_to_numpy(variable.type())
-        count = variable.count()
-
+        count = variable.selection()[1]
         if count != []:
             # array
             # steps = variable.get_steps_from_step_selection()
@@ -375,7 +374,15 @@ class Stream:
         return output
 
     @singledispatchmethod
-    def read(self, variable: Variable, start=[], count=[], block_id=None, step_selection=None):
+    def read(
+        self,
+        variable: Variable,
+        start=[],
+        count=[],
+        block_id=None,
+        step_selection=None,
+        stride=None,
+    ):
         """
         Read a variable.
         Random access read allowed to select steps.
@@ -417,10 +424,13 @@ class Stream:
         if start != [] and count != []:
             variable.set_selection([start, count])
 
+        if stride:
+            variable.set_stride(stride)
+
         return self._read_var(variable)
 
     @read.register(str)
-    def _(self, name: str, start=[], count=[], block_id=None, step_selection=None):
+    def _(self, name: str, start=[], count=[], block_id=None, step_selection=None, stride=None):
         """
         Read a variable.
         Random access read allowed to select steps.
@@ -449,7 +459,7 @@ class Stream:
         if not variable:
             raise ValueError()
 
-        return self.read(variable, start, count, block_id, step_selection)
+        return self.read(variable, start, count, block_id, step_selection, stride)
 
     def write_attribute(self, name, content, variable_name="", separator="/"):
         """
