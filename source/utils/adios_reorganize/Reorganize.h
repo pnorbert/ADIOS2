@@ -15,6 +15,8 @@
 #include "adios2/helper/adiosComm.h"
 #include "utils/Utils.h"
 
+#include "vector"
+
 namespace adios2
 {
 namespace utils
@@ -58,7 +60,7 @@ private:
     std::string VectorToString(const T &v);
 
     size_t Decompose(int numproc, int rank, VarInfo &vi,
-                     const int *np // number of processes in each dimension
+                     const std::vector<int> &np // number of processes in each dimension
     );
     int ProcessMetadata(core::Engine &rStream, core::IO &io, const core::VarMap &variables,
                         const core::AttrMap &attributes, int step);
@@ -98,7 +100,7 @@ private:
     // for stream termination
     bool handleAsStream = true;
 
-    int decomp_values[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    std::vector<int> decomp_nproc;
 
     template <typename Arg, typename... Args>
     void print0(Arg &&arg, Args &&...args);

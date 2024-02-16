@@ -76,10 +76,11 @@ Reorganize::Reorganize(int argc, char *argv[]) : Utils("adios_reorganize", argc,
     int nd = 0;
     int j = 7;
     char *end;
-    while (argc > j && j < 13)
+    int dv[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    while (argc > j && j < 17)
     { // get max 6 dimensions
         errno = 0;
-        decomp_values[nd] = std::strtol(argv[j], &end, 10);
+        dv[nd] = std::strtol(argv[j], &end, 10);
         if (errno || (end != 0 && *end != '\0'))
         {
             std::string errmsg("ERROR: Invalid decomposition number in argument " +
@@ -94,13 +95,17 @@ Reorganize::Reorganize(int argc, char *argv[]) : Utils("adios_reorganize", argc,
     if (argc > j)
     {
         helper::Throw<std::invalid_argument>("Utils", "AdiosReorganize", "Reorganize",
-                                             "Up to 6 decomposition arguments are supported");
+                                             "Up to 10 decomposition arguments are supported");
     }
 
+    // prepare decomp array, putting the user arguments to the back
+    decomp_nproc.resize(10 - nd, 1);
+    // also check if prod(nd) is not bigger than the number of processes
     int prod = 1;
     for (int i = 0; i < nd; i++)
     {
-        prod *= decomp_values[i];
+        prod *= dv[i];
+        decomp_nproc.push_back(dv[i]);
     }
 
     if (prod > m_Size)
@@ -113,6 +118,13 @@ Reorganize::Reorganize(int argc, char *argv[]) : Utils("adios_reorganize", argc,
         PrintUsage();
         helper::Throw<std::invalid_argument>("Utils", "AdiosReorganize", "Reorganize", errmsg);
     }
+
+    std::cout << "Process decomposition vector = { ";
+    for (auto n : decomp_nproc)
+    {
+        std::cout << n << " ";
+    }
+    std::cout << "}" << std::endl;
 }
 
 void Reorganize::Run()
@@ -345,8 +357,9 @@ std::string Reorganize::VectorToString(const T &v)
     return s;
 }
 
-size_t Reorganize::Decompose(int numproc, int rank, VarInfo &vi,
-                             const int *np // number of processes in each dimension
+size_t
+Reorganize::Decompose(int numproc, int rank, VarInfo &vi,
+                      const std::vector<int> &decomp_vector // number of processes in each dimension
 )
 {
     size_t writesize = 0;
@@ -410,6 +423,7 @@ size_t Reorganize::Decompose(int numproc, int rank, VarInfo &vi,
     with npx first)
     posz = rank/(npx*npy)     ! 3rd dim: npx*npy processes belong into one dim
     */
+    const int *np = decomp_vector.data() + (decomp_vector.size() - ndim);
     int nps = 1;
     std::vector<int> pos(ndim); // rank's position in each dimensions
     vi.start.reserve(ndim);
@@ -554,7 +568,7 @@ int Reorganize::ProcessMetadata(core::Engine &rStream, core::IO &io, const core:
             }
 
             // determine subset we will write
-            size_t sum_count = Decompose(m_Size, m_Rank, varinfo[varidx], decomp_values);
+            size_t sum_count = Decompose(m_Size, m_Rank, varinfo[varidx], decomp_nproc);
             varinfo[varidx].writesize = sum_count * variable->m_ElementSize;
 
             if (varinfo[varidx].writesize != 0)
