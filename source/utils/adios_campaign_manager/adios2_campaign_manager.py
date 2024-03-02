@@ -13,7 +13,7 @@ from time import time
 
 # from adios2.adios2_campaign_manager import *
 
-ADIOS_ACA_VERSION = "1.0"
+ADIOS_ACA_VERSION = "1.1"
 
 def SetupArgs():
     parser = argparse.ArgumentParser()
@@ -230,9 +230,9 @@ def Update(args: dict, cur: sqlite3.Cursor):
 
 
 def Create(args: dict, cur: sqlite3.Cursor):
-    epoch = int(time())
+    epoch = time()
     cur.execute(
-        "create table info(id TEXT, name TEXT, version TEXT, ctime INT)")
+        "create table info(id TEXT, name TEXT, version TEXT, ctime REAL)")
     cur.execute('insert into info values (?, ?, ?, ?)',
                 ("ACA", "ADIOS Campaign Archive", ADIOS_ACA_VERSION, epoch))
     cur.execute("create table host" +
@@ -240,11 +240,11 @@ def Create(args: dict, cur: sqlite3.Cursor):
     cur.execute("create table directory" +
                 "(hostid INT, name TEXT, PRIMARY KEY (hostid, name))")
     cur.execute("create table bpdataset" +
-                "(hostid INT, dirid INT, name TEXT, ctime INT" +
+                "(hostid INT, dirid INT, name TEXT, ctime REAL" +
                 ", PRIMARY KEY (hostid, dirid, name))")
     cur.execute("create table bpfile" +
                 "(bpdatasetid INT, name TEXT, compression INT, lenorig INT" +
-                ", lencompressed INT, ctime INT, data BLOB" +
+                ", lencompressed INT, ctime REAL, data BLOB" +
                 ", PRIMARY KEY (bpdatasetid, name))")
     Update(args, cur)
 
@@ -260,7 +260,7 @@ def MergeDBFiles(dbfiles: list):
 
         cur = con.cursor()
         try:
-            cur.execute("select  * from bpfiles")
+            cur.execute("select  * from bpdataset")
         except sqlite3.Error as e:
             print(e)
         record = cur.fetchall()

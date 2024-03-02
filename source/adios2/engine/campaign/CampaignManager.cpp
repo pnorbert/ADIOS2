@@ -26,62 +26,16 @@ namespace core
 namespace engine
 {
 
-int CMapToSqlite(const CampaignRecordMap &cmap, const int rank, std::string name)
-{
-    sqlite3 *db;
-    int rc;
-    char *zErrMsg = nullptr;
-    std::string sqlcmd;
-    std::string db_name = name + ".db";
-    rc = sqlite3_open(db_name.c_str(), &db);
-
-    if (rc != SQLITE_OK)
-    {
-        std::cout << "SQL error: " << zErrMsg << std::endl;
-        std::string m(zErrMsg);
-        helper::Throw<std::invalid_argument>("Engine", "CampaignReader", "WriteCampaignData",
-                                             "SQL error on writing records:");
-        sqlite3_free(zErrMsg);
-    }
-    sqlcmd = "CREATE TABLE if not exists bpfiles (name);";
-    rc = sqlite3_exec(db, sqlcmd.c_str(), 0, 0, &zErrMsg);
-    if (rc != SQLITE_OK)
-    {
-        std::cout << "SQL error: " << zErrMsg << std::endl;
-        std::string m(zErrMsg);
-        helper::Throw<std::invalid_argument>("Engine", "CampaignReader", "WriteCampaignData",
-                                             "SQL error on writing records:");
-        sqlite3_free(zErrMsg);
-    }
-
-    for (auto &r : cmap)
-    {
-        sqlcmd = "INSERT INTO bpfiles (name)\n";
-        sqlcmd += "VALUES('" + r.first + "');";
-        rc = sqlite3_exec(db, sqlcmd.c_str(), 0, 0, &zErrMsg);
-        if (rc != SQLITE_OK)
-        {
-            std::cout << "SQL error: " << zErrMsg << std::endl;
-            std::string m(zErrMsg);
-            helper::Throw<std::invalid_argument>("Engine", "CampaignReader", "WriteCampaignData",
-                                                 "SQL error on writing records:");
-            sqlite3_free(zErrMsg);
-        }
-    }
-
-    sqlite3_close(db);
-
-    return 0;
-}
-
 CampaignManager::CampaignManager(adios2::helper::Comm &comm)
 {
-    m_WriterRank = comm.Rank();
+    // Note: ADIOS::adios_refcount() + comm.Rank() is still not unique
+    // There could be a split communicator used for two ADIOS object
+    // with same refcount and same (local) 0 rank
+    m_WriterRank = comm.World().Rank();
     if (m_Verbosity == 5)
     {
         std::cout << "Campaign Manager " << m_WriterRank << " constructor called" << std::endl;
     }
-    helper::CreateDirectory(m_CampaignDir);
 }
 
 CampaignManager::~CampaignManager()
@@ -90,7 +44,7 @@ CampaignManager::~CampaignManager()
     {
         std::cout << "Campaign Manager " << m_WriterRank << " desctructor called\n";
     }
-    if (m_Opened)
+    if (m_CampaignDB)
     {
         Close();
     }
@@ -98,11 +52,12 @@ CampaignManager::~CampaignManager()
 
 void CampaignManager::Open(const std::string &name)
 {
-    m_Name = m_CampaignDir + "/" + name + "_" + std::to_string(m_WriterRank);
+    m_Name = m_CampaignDir + "/" + name + "_" + std::to_string(m_WriterRank) + ".db";
     if (m_Verbosity == 5)
     {
         std::cout << "Campaign Manager " << m_WriterRank << " Open(" << m_Name << ")\n";
     }
+    // postpone creating directory and creating database until there is something to record
 }
 
 void CampaignManager::Record(const std::string &name, const size_t step, const double time)
@@ -112,6 +67,14 @@ void CampaignManager::Record(const std::string &name, const size_t step, const d
         std::cout << "Campaign Manager " << m_WriterRank << "   Record name = " << name
                   << " step = " << step << " time = " << time << "\n";
     }
+
+    if (m_FirstEvent)
+    {
+        helper::CreateDirectory(m_CampaignDir);
+        m_CampaignDB.Open(m_Name);
+        m_FirstEvent = false;
+    }
+
     auto r = cmap.find(name);
     if (r != cmap.end())
     {
@@ -142,16 +105,25 @@ void CampaignManager::Record(const std::string &name, const size_t step, const d
     else
     {
         // new entry
-        CampaignRecord r(step, time);
-        cmap.emplace(name, r);
+
+        if (m_CampaignDB)
+        {
+            int64_t dbFileID = m_CampaignDB.AddFile(name);
+            CampaignRecord r(dbFileID, step, time);
+            cmap.emplace(name, r);
+        }
     }
 }
 
 void CampaignManager::Close()
 {
-    if (!cmap.empty())
+    if (m_Verbosity == 5)
     {
-        CMapToSqlite(cmap, m_WriterRank, m_Name);
+        std::cout << "Campaign Manager " << m_WriterRank << " Close()\n";
+    }
+    if (m_CampaignDB)
+    {
+        m_CampaignDB.Close();
     }
 }
 

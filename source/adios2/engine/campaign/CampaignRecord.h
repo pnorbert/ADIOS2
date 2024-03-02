@@ -34,10 +34,12 @@ struct CampaignRecord
     std::vector<double> times;
     double delta_time;
     bool varying_deltas;
+    int64_t fileID;
 
-    CampaignRecord() : delta_step(0), delta_time(0.0), varying_deltas(false){};
+    CampaignRecord() : delta_step(0), delta_time(0.0), varying_deltas(false), fileID(0){};
 
-    CampaignRecord(size_t step, double time) : delta_step(0), delta_time(0.0), varying_deltas(false)
+    CampaignRecord(int64_t fileID, size_t step, double time)
+    : delta_step(0), delta_time(0.0), varying_deltas(false), fileID(fileID)
     {
         steps.push_back(step);
         times.push_back(time);

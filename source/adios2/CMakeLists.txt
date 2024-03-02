@@ -211,7 +211,9 @@ if(ADIOS2_HAVE_Campaign)
           engine/campaign/CampaignReader.cpp 
           engine/campaign/CampaignReader.tcc 
           engine/campaign/CampaignData.cpp
-          engine/campaign/CampaignManager.cpp)
+          engine/campaign/CampaignManager.cpp
+          engine/campaign/CampaignDB.cpp
+          )
   target_link_libraries(adios2_core PRIVATE SQLite::SQLite3 ZLIB::ZLIB)
 endif()
 

@@ -92,8 +92,8 @@ static int sqlcb_bpfile(void *p, int argc, char **argv, char **azColName)
         helper::StringToSizeT(std::string(argv[3]), "SQL callback convert text to int");
     cf.lengthCompressed =
         helper::StringToSizeT(std::string(argv[4]), "SQL callback convert text to int");
-    cf.ctime = static_cast<long>(
-        helper::StringTo<int64_t>(std::string(argv[5]), "SQL callback convert ctime to int"));
+    cf.ctime =
+        helper::StringTo<double>(std::string(argv[5]), "SQL callback convert ctime to double");
 
     CampaignBPDataset &cds = cdp->bpdatasets[cf.bpDatasetIdx];
     cds.files.push_back(cf);
@@ -258,7 +258,7 @@ static long timeToSec(long ct)
     return t;
 }
 
-static bool isFileNewer(const std::string path, long ctime)
+static bool isFileNewer(const std::string path, double ctime)
 {
     int result;
 #ifdef _WIN32
@@ -275,7 +275,7 @@ static bool isFileNewer(const std::string path, long ctime)
 
     long ct = s.st_ctime;
     long ctSec = timeToSec(ct);
-    long ctimeSec = timeToSec(ctime);
+    long ctimeSec = timeToSec(long(ctime));
 
     /*std::cout << "   Stat(" << path << "): size = " << s.st_size
               << " ct = " << ctSec << " ctime = " << ctimeSec << "\n";*/

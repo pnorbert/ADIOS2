@@ -19,6 +19,7 @@
 #include "adios2/helper/adiosComm.h"
 
 #ifdef ADIOS2_HAVE_CAMPAIGN
+#include "CampaignDB.h"
 #include "CampaignRecord.h"
 
 #include <fstream>
@@ -31,7 +32,6 @@ namespace core
 
 namespace engine
 {
-
 class CampaignManager
 {
 #ifdef ADIOS2_HAVE_CAMPAIGN
@@ -44,10 +44,11 @@ public:
     void Close();
 
 private:
-    bool m_Opened = false;
+    bool m_FirstEvent = true;
     std::string m_Name;
     int m_WriterRank;
     int m_Verbosity = 0;
+    CampaignDB m_CampaignDB;
     CampaignRecordMap cmap;
     std::ofstream m_Output;
     const std::string m_CampaignDir = "adios-campaign";
