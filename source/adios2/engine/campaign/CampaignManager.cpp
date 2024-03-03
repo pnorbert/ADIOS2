@@ -60,7 +60,35 @@ void CampaignManager::Open(const std::string &name)
     // postpone creating directory and creating database until there is something to record
 }
 
-void CampaignManager::Record(const std::string &name, const size_t step, const double time)
+void CampaignManager::FirstEvent()
+{
+    if (m_FirstEvent)
+    {
+        helper::CreateDirectory(m_CampaignDir);
+        m_CampaignDB.Open(m_Name);
+        m_FirstEvent = false;
+    }
+}
+
+int64_t CampaignManager::RecordOutput(const std::string &name, const bool newOutput)
+{
+    if (m_Verbosity == 5)
+    {
+        std::cout << "Campaign Manager " << m_WriterRank << "   Record name = " << name
+                  << " new file = " << adios2::helper::ValueToString(newOutput) << "\n";
+    }
+    FirstEvent();
+    // new entry
+    int64_t dbFileID = -1;
+    if (m_CampaignDB)
+    {
+        dbFileID = m_CampaignDB.AddFile(name);
+    }
+    return dbFileID;
+}
+
+void CampaignManager::RecordOutputStep(const std::string &name, const size_t step,
+                                       const double time)
 {
     if (m_Verbosity == 5)
     {
@@ -68,12 +96,7 @@ void CampaignManager::Record(const std::string &name, const size_t step, const d
                   << " step = " << step << " time = " << time << "\n";
     }
 
-    if (m_FirstEvent)
-    {
-        helper::CreateDirectory(m_CampaignDir);
-        m_CampaignDB.Open(m_Name);
-        m_FirstEvent = false;
-    }
+    FirstEvent();
 
     auto r = cmap.find(name);
     if (r != cmap.end())
@@ -104,14 +127,9 @@ void CampaignManager::Record(const std::string &name, const size_t step, const d
     }
     else
     {
-        // new entry
-
-        if (m_CampaignDB)
-        {
-            int64_t dbFileID = m_CampaignDB.AddFile(name);
-            CampaignRecord r(dbFileID, step, time);
-            cmap.emplace(name, r);
-        }
+        int dbFileID = RecordOutput(name, true);
+        CampaignRecord r(dbFileID, step, time);
+        cmap.emplace(name, r);
     }
 }
 

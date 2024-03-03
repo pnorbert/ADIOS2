@@ -242,17 +242,29 @@ int main(int argc, char *argv[])
         writerAll = ioAll.Open("dataAll.bp", mode);
 
         adios2::Variable<double> varXFirstRank;
+        adios2::Variable<size_t> varStepFirstRank;
+        adios2::Variable<size_t> varPhysStepFirstRank;
+        adios2::Variable<double> varPhysTimeFirstRank;
         if (rank == 0)
         {
             varXFirstRank = ioFirstRank.DefineVariable<double>("x", {Nx}, {0}, {Nx});
+            varStepFirstRank = ioFirstRank.DefineVariable<size_t>("AdiosStep");
+            varPhysStepFirstRank = ioFirstRank.DefineVariable<size_t>("iteration");
+            varPhysTimeFirstRank = ioFirstRank.DefineVariable<double>("time");
             ioFirstRank.DefineAttribute<std::string>("comment", "Written by rank 0");
             writerFirstRank = ioFirstRank.Open("dataFirstRank.bp", mode, commFirstRank);
         }
 
         adios2::Variable<double> varXLastRank;
+        adios2::Variable<size_t> varStepLastRank;
+        adios2::Variable<size_t> varPhysStepLastRank;
+        adios2::Variable<double> varPhysTimeLastRank;
         if (rank == nproc - 1)
         {
             varXLastRank = ioLastRank.DefineVariable<double>("x", {Nx}, {0}, {Nx});
+            varStepLastRank = ioLastRank.DefineVariable<size_t>("AdiosStep");
+            varPhysStepLastRank = ioLastRank.DefineVariable<size_t>("iteration");
+            varPhysTimeLastRank = ioLastRank.DefineVariable<double>("time");
             ioLastRank.DefineAttribute<std::string>("comment",
                                                     "Written by rank " + std::to_string(nproc - 1));
             writerLastRank = ioLastRank.Open("dataLastRank.bp", mode, commLastRank);
@@ -260,10 +272,16 @@ int main(int argc, char *argv[])
 
         // the other ADIOS object (valid on rank 1..N, not on rank 0)
         adios2::Variable<double> varXAnother;
+        adios2::Variable<size_t> varStepAnother;
+        adios2::Variable<size_t> varPhysStepAnother;
+        adios2::Variable<double> varPhysTimeAnother;
         if (rank > 0)
         {
             varXAnother =
                 ioAnother.DefineVariable<double>("x", {static_cast<size_t>(nproc - 1), Nx});
+            varStepAnother = ioAnother.DefineVariable<size_t>("AdiosStep");
+            varPhysStepAnother = ioAnother.DefineVariable<size_t>("iteration");
+            varPhysTimeAnother = ioAnother.DefineVariable<double>("time");
             ioAnother.DefineAttribute<std::string>("comment", "Written by ranks 1.." +
                                                                   std::to_string(nproc - 1));
             writerAnother = ioAnother.Open("dataAnother.bp", mode);
@@ -311,6 +329,9 @@ int main(int argc, char *argv[])
                 varXAnother.SetSelection(adios2::Box<adios2::Dims>(
                     {static_cast<size_t>(rank - 1), 0}, {1, static_cast<size_t>(Nx)}));
                 writerAnother.Put(varXAnother, x.data());
+                writerAnother.Put(varStepAnother, step);
+                writerAnother.Put(varPhysStepAnother, (size_t)physicalStep);
+                writerAnother.Put(varPhysTimeAnother, physicalTime);
                 writerAnother.EndStep();
             }
 
@@ -318,6 +339,9 @@ int main(int argc, char *argv[])
             {
                 writerFirstRank.BeginStep();
                 writerFirstRank.Put(varXFirstRank, x.data());
+                writerFirstRank.Put(varStepFirstRank, step);
+                writerFirstRank.Put(varPhysStepFirstRank, (size_t)physicalStep);
+                writerFirstRank.Put(varPhysTimeFirstRank, physicalTime);
                 writerFirstRank.EndStep();
             }
 
@@ -325,6 +349,9 @@ int main(int argc, char *argv[])
             {
                 writerLastRank.BeginStep();
                 writerLastRank.Put(varXLastRank, x.data());
+                writerLastRank.Put(varStepLastRank, step);
+                writerLastRank.Put(varPhysStepLastRank, (size_t)physicalStep);
+                writerLastRank.Put(varPhysTimeLastRank, physicalTime);
                 writerLastRank.EndStep();
             }
 

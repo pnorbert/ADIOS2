@@ -25,6 +25,10 @@ HDF5WriterP::HDF5WriterP(IO &io, const std::string &name, const Mode mode, helpe
     m_IO.m_ReadStreaming = false;
     Init();
     m_IsOpen = true;
+    if (!m_Comm.Rank())
+    {
+        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+    }
 }
 
 HDF5WriterP::~HDF5WriterP() { DoClose(); }

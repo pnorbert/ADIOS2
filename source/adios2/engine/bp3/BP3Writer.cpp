@@ -33,6 +33,10 @@ BP3Writer::BP3Writer(IO &io, const std::string &name, const Mode mode, helper::C
     m_IO.m_ReadStreaming = false;
     Init();
     m_IsOpen = true;
+    if (m_BP3Serializer.m_RankMPI == 0)
+    {
+        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+    }
 }
 
 BP3Writer::~BP3Writer()

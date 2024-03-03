@@ -161,6 +161,10 @@ public:
      * in main thread. Useful when using Async IO */
     void ExitComputationBlock() noexcept;
 
+    /*
+     * Campaign management functions
+     */
+    void RecordOutput(const std::string &name, const bool newOutput);
     void RecordOutputStep(const std::string &name, const size_t step = UnknownStep,
                           const double time = UnknownTime);
 

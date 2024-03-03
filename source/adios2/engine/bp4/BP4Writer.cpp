@@ -42,6 +42,10 @@ BP4Writer::BP4Writer(IO &io, const std::string &name, const Mode mode, helper::C
     Init();
 
     m_IsOpen = true;
+    if (m_BP4Serializer.m_RankMPI == 0)
+    {
+        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+    }
 }
 
 BP4Writer::~BP4Writer()

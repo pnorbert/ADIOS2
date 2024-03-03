@@ -40,11 +40,17 @@ public:
     ~CampaignManager();
 
     void Open(const std::string &name);
-    void Record(const std::string &name, const size_t step, const double time);
+    /** Add a new output to the record, newOutput true if this output is created anew
+     *  @return an integer ID of the inserted record to the database (for internal use only)
+     */
+    int64_t RecordOutput(const std::string &name, const bool newOutput);
+    /** Add a new step to an output */
+    void RecordOutputStep(const std::string &name, const size_t step, const double time);
     void Close();
 
 private:
     bool m_FirstEvent = true;
+    void FirstEvent();
     std::string m_Name;
     int m_WriterRank;
     int m_Verbosity = 0;

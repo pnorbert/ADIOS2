@@ -44,6 +44,10 @@ BP5Writer::BP5Writer(IO &io, const std::string &name, const Mode mode, helper::C
 
     Init();
     m_IsOpen = true;
+    if (!m_RankMPI)
+    {
+        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+    }
 }
 
 StepStatus BP5Writer::BeginStep(StepMode mode, const float timeoutSeconds)
