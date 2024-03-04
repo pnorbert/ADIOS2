@@ -37,10 +37,10 @@ CampaignDB::~CampaignDB()
 
 CampaignDB::operator bool() const noexcept { return (m_DB == nullptr) ? false : true; }
 
-static std::string oldversion;
 static int sqlcb_info(void *p, int argc, char **argv, char **azColName)
 {
-    oldversion = std::string(argv[0]);
+    std::string *oldversion = (std::string *)p;
+    *oldversion = std::string(argv[0]);
     return 0;
 };
 
@@ -71,7 +71,7 @@ bool CampaignDB::Open(const std::string &name)
                                                  m_Name + ": " + m);
     }
 
-    sqlcmd = "CREATE TABLE if not exists info (id, name, version, ctime REAL);";
+    sqlcmd = "CREATE TABLE if not exists info (id, name, version, ctime INT);";
     rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
     if (rc != SQLITE_OK)
     {
@@ -82,37 +82,48 @@ bool CampaignDB::Open(const std::string &name)
                                                  ": " + m);
     }
 
+    sqlcmd = "CREATE TABLE if not exists step (bpdatasetid INT, enginestep INT, physstep INT, "
+             "phystime INT, ctime INT);";
+    rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
+    if (rc != SQLITE_OK)
+    {
+        std::string m(zErrMsg);
+        sqlite3_free(zErrMsg);
+        helper::Throw<std::invalid_argument>("Engine", "CampaignManager", "Open",
+                                             "SQL error when creating table step in " + m_Name +
+                                                 ": " + m);
+    }
+
+    std::string oldversion;
     sqlcmd = "SELECT version FROM info";
-    rc = sqlite3_exec(m_DB, sqlcmd.c_str(), sqlcb_info, 0, &zErrMsg);
+    rc = sqlite3_exec(m_DB, sqlcmd.c_str(), sqlcb_info, &oldversion, &zErrMsg);
     if (rc != SQLITE_OK)
     {
         std::cout << "SQL error: " << zErrMsg << std::endl;
         std::string m(zErrMsg);
+        sqlite3_free(zErrMsg);
         helper::Throw<std::invalid_argument>("Engine", "CampaignManager", "Open",
                                              "SQL error when reading table info in " + m_Name +
                                                  ": " + m);
-        sqlite3_free(zErrMsg);
     }
 
     if (oldversion.empty())
     {
-        const auto p1 = std::chrono::system_clock::now();
-        auto itime =
-            std::chrono::duration_cast<std::chrono::microseconds>(p1.time_since_epoch()).count();
-        double ctime = itime / 1000000.0;
+        int64_t wallclockTime_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                       std::chrono::system_clock::now().time_since_epoch())
+                                       .count();
         sqlcmd = "INSERT INTO info (id, name, version, ctime) VALUES ('ACR', 'ADIOS "
                  "Campaign Recording', '" +
-                 CampaignDBVersion + "', " + std::to_string(ctime) + ")";
-        std::cout << "SQL command: " << sqlcmd << std::endl;
+                 CampaignDBVersion + "', " + std::to_string(wallclockTime_us) + ")";
         rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
         if (rc != SQLITE_OK)
         {
             std::cout << "SQL error: " << zErrMsg << std::endl;
             std::string m(zErrMsg);
+            sqlite3_free(zErrMsg);
             helper::Throw<std::invalid_argument>("Engine", "CampaignManager", "Open",
                                                  "SQL error when inserting into table info in " +
                                                      m_Name + ": " + m);
-            sqlite3_free(zErrMsg);
         }
     }
     else if (oldversion != CampaignDBVersion)
@@ -142,19 +153,82 @@ void CampaignDB::Close()
     }
 }
 
-int64_t CampaignDB::AddFile(const std::string &name)
+static int sqlcb_bpdataset(void *p, int argc, char **argv, char **azColName)
 {
-    std::string sqlcmd = "INSERT OR IGNORE INTO bpdataset (name)\n";
+    int64_t *oldFileID = (int64_t *)p;
+    *oldFileID = helper::StringTo<int64_t>(argv[0], "Converting SQL rowid from table bpdataset");
+    return 0;
+};
+
+int64_t CampaignDB::AddFile(const std::string &name, const size_t startStep)
+{
+    int64_t fileID;
     char *zErrMsg = nullptr;
-    sqlcmd += "VALUES('" + name + "');";
+    int64_t oldFileID = -1;
+    std::string sqlcmd = "SELECT rowid FROM bpdataset WHERE name = '" + name + "'";
+    int rc = sqlite3_exec(m_DB, sqlcmd.c_str(), sqlcb_bpdataset, &oldFileID, &zErrMsg);
+    if (rc != SQLITE_OK)
+    {
+        std::cout << "SQL error: " << zErrMsg << std::endl;
+        std::string m(zErrMsg);
+        sqlite3_free(zErrMsg);
+        helper::Throw<std::invalid_argument>("Engine", "CampaignManager", "RecordOutput",
+                                             "SQL error when reading table bpdataset in " + m_Name +
+                                                 ": " + m);
+    }
+
+    if (oldFileID >= 0)
+    {
+        // remove all existing steps from startStep for this file
+        std::string sqlcmd = "DELETE FROM step WHERE bpdatasetid = " + std::to_string(oldFileID) +
+                             " AND enginestep >= " + std::to_string(startStep);
+        int rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
+        if (rc != SQLITE_OK)
+        {
+            std::cout << "SQL error: " << zErrMsg << std::endl;
+            std::string m(zErrMsg);
+            sqlite3_free(zErrMsg);
+            helper::Throw<std::invalid_argument>("Engine", "CampaignManager", "RecordOutput",
+                                                 "SQL error when reading table bpdataset in " +
+                                                     m_Name + ": " + m);
+        }
+        fileID = oldFileID;
+    }
+    else
+    {
+        sqlcmd = "INSERT INTO bpdataset (name)\n";
+        sqlcmd += "VALUES('" + name + "');";
+        rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
+        if (rc != SQLITE_OK)
+        {
+            std::string m(zErrMsg);
+            sqlite3_free(zErrMsg);
+            helper::Throw<std::invalid_argument>("Engine", "CampaignManager", "RecordOutput",
+                                                 "SQL error when recording a new filename in " +
+                                                     m_Name + ": " + m);
+        }
+        fileID = (int64_t)sqlite3_last_insert_rowid(m_DB);
+    }
+
+    return fileID;
+}
+
+int64_t CampaignDB::AddFileStep(int64_t fileID, size_t engineStep, size_t physStep, double physTime,
+                                int64_t ctime)
+{
+    std::string sqlcmd = "INSERT INTO step (bpdatasetid, enginestep, physstep, phystime, ctime)\n";
+    char *zErrMsg = nullptr;
+    sqlcmd += "VALUES(" + std::to_string(fileID) + ", " + std::to_string(engineStep) + ", " +
+              std::to_string(physStep) + ", " + std::to_string(physTime) + ", " +
+              std::to_string(ctime) + ");";
     int rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
     if (rc != SQLITE_OK)
     {
         std::string m(zErrMsg);
         sqlite3_free(zErrMsg);
         helper::Throw<std::invalid_argument>("Engine", "CampaignManager", "Record",
-                                             "SQL error when recording a new filename in " +
-                                                 m_Name + ": " + m);
+                                             "SQL error when recording a new step in " + m_Name +
+                                                 ": " + m);
     }
     return (int64_t)sqlite3_last_insert_rowid(m_DB);
 }

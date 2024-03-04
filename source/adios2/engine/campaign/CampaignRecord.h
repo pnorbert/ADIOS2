@@ -27,6 +27,9 @@ namespace engine
  * Data from processes to be recorded
  */
 
+using CampaignRecordMap = std::unordered_map<std::string, int64_t>;
+
+/*
 struct CampaignRecord
 {
     std::vector<size_t> steps;
@@ -47,6 +50,7 @@ struct CampaignRecord
 };
 
 using CampaignRecordMap = std::unordered_map<std::string, CampaignRecord>;
+*/
 
 } // end namespace engine
 } // end namespace core

@@ -44,7 +44,7 @@ BP4Writer::BP4Writer(IO &io, const std::string &name, const Mode mode, helper::C
     m_IsOpen = true;
     if (m_BP4Serializer.m_RankMPI == 0)
     {
-        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+        m_IO.m_ADIOS.RecordOutput(m_Name, m_BP4Serializer.m_MetadataSet.CurrentStep);
     }
 }
 
@@ -132,7 +132,9 @@ void BP4Writer::EndStep()
 
     if (m_BP4Serializer.m_RankMPI == 0)
     {
-        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime);
+        // currentStep already moved forward in SerializeData. campaign step is 0-based
+        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime,
+                                      m_BP4Serializer.m_MetadataSet.CurrentStep - 1);
     }
 }
 
@@ -521,7 +523,8 @@ void BP4Writer::DoClose(const int transportIndex)
 
     if (!m_DidBeginStep && m_BP4Serializer.m_RankMPI == 0)
     {
-        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime);
+        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime,
+                                      m_BP4Serializer.m_MetadataSet.CurrentStep);
     }
     // m_BP4Serializer.DeleteBuffers();
 }

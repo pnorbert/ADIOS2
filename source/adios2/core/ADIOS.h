@@ -164,9 +164,9 @@ public:
     /*
      * Campaign management functions
      */
-    void RecordOutput(const std::string &name, const bool newOutput);
-    void RecordOutputStep(const std::string &name, const size_t step = UnknownStep,
-                          const double time = UnknownTime);
+    void RecordOutput(const std::string &name, const size_t startStep);
+    void RecordOutputStep(const std::string &name, const size_t physStep, const double physTime,
+                          const size_t engineStep);
 
 private:
     /** Communicator given to parallel constructor. */

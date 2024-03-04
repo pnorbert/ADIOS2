@@ -40,12 +40,13 @@ public:
     ~CampaignManager();
 
     void Open(const std::string &name);
-    /** Add a new output to the record, newOutput true if this output is created anew
+    /** Add a new output to the record, startStep = 0 if this output is created anew
      *  @return an integer ID of the inserted record to the database (for internal use only)
      */
-    int64_t RecordOutput(const std::string &name, const bool newOutput);
+    int64_t RecordOutput(const std::string &name, const size_t startStep);
     /** Add a new step to an output */
-    void RecordOutputStep(const std::string &name, const size_t step, const double time);
+    void RecordOutputStep(const std::string &name, const size_t physStep, const double physTime,
+                          const size_t engineStep);
     void Close();
 
 private:

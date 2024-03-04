@@ -63,8 +63,21 @@ def CheckLocalCampaignDir(args):
               "' does not exist. Run this command where the code was executed.", flush=True)
         exit(1)
 
+def IsHDF5File(dataset: str):
+    if not exists(dataset):
+        return False
+    answer = False
+    HDF5Header = [137, 72, 68, 70, 13, 10, 26, 10]
+    with open(dataset, "rb") as f:
+        header = f.read(len(HDF5Header))
+        if len(header) == len(HDF5Header):
+            answer = True
+            for i in range(len(HDF5Header)):
+                if header[i] != HDF5Header[i]:
+                    answer = False
+    return answer
 
-def IsADIOSDataset(dataset):
+def IsADIOSDataset(dataset: str):
     if not isdir(dataset):
         return False
     if not exists(dataset + "/" + "md.idx"):
@@ -73,8 +86,7 @@ def IsADIOSDataset(dataset):
         return False
     return True
 
-
-def compressFile(f):
+def CompressFile(f):
     compObj = zlib.compressobj()
     compressed = bytearray()
     blocksize = 1073741824  # 1GB #1024*1048576
@@ -93,24 +105,23 @@ def compressFile(f):
 
     return compressed, len_orig, len_compressed
 
-
-def decompressBuffer(buf: bytearray):
-    data = zlib.decompress(buf)
-    return data
+#def DecompressBuffer(buf: bytearray):
+#    data = zlib.decompress(buf)
+#    return data
 
 
 def AddFileToArchive(args: dict, filename: str, cur: sqlite3.Cursor, dsID: int):
     compressed = 1
     try:
         f = open(filename, 'rb')
-        compressed_data, len_orig, len_compressed = compressFile(f)
+        compressed_data, len_orig, len_compressed = CompressFile(f)
 
     except IOError:
         print(f"ERROR While reading file {filename}")
         return
 
     statres = stat(filename)
-    ct = statres.st_ctime
+    ct = int(statres.st_ctime_ns / 1000)
 
     cur.execute('insert into bpfile values (?, ?, ?, ?, ?, ?, ?)',
                 (dsID, filename, compressed, len_orig, len_compressed, ct, compressed_data))
@@ -118,17 +129,17 @@ def AddFileToArchive(args: dict, filename: str, cur: sqlite3.Cursor, dsID: int):
 
     # test
     # if (filename == "dataAll.bp/md.0"):
-    #    data = decompressBuffer(compressed_data)
+    #    data = DecompressBuffer(compressed_data)
     #    of = open("dataAll.bp-md.0", "wb")
     #    of.write(data)
     #    of.close()
 
 
 def AddDatasetToArchive(args: dict, dataset: str, cur: sqlite3.Cursor, hostID: int, dirID: int):
-    if (IsADIOSDataset(dataset)):
+    if IsADIOSDataset(dataset):
         print(f"Add dataset {dataset} to archive")
         statres = stat(dataset)
-        ct = statres.st_ctime
+        ct = int(statres.st_ctime_ns / 1000)
         curDS = cur.execute('insert into bpdataset values (?, ?, ?, ?)',
                             (hostID, dirID, dataset, ct))
         dsID = curDS.lastrowid
@@ -140,8 +151,14 @@ def AddDatasetToArchive(args: dict, dataset: str, cur: sqlite3.Cursor, hostID: i
         for f in files:
             AddFileToArchive(args, f, cur, dsID)
         chdir(cwd)
+    elif IsHDF5File(dataset):
+        print(f"Add HDF5 file {dataset} to archive")
+        statres = stat(dataset)
+        ct = int(statres.st_ctime_ns / 1000)
+        curDS = cur.execute('insert into h5dataset values (?, ?, ?, ?)',
+                            (hostID, dirID, dataset, ct))
     else:
-        print(f"WARNING: Dataset {dataset} is not an ADIOS dataset. Skip")
+        print(f"WARNING: Dataset {dataset} is not an ADIOS dataset nor an HDF5 file. Skip")
 
 
 def ProcessDBFile(args: dict, jsonlist: list, cur: sqlite3.Cursor, hostID: int, dirID: int):
@@ -200,8 +217,16 @@ def Info(args: dict, cur: sqlite3.Cursor):
                 '" and dirid = "' + str(dir[0]) + '"')
             bpdatasets = res3.fetchall()
             for bpdataset in bpdatasets:
-                t = datetime.fromtimestamp(float(bpdataset[2]))
+                t = datetime.fromtimestamp(float(bpdataset[2] / 1000000))
                 print(f"        dataset = {bpdataset[1]}     created on {t}")
+
+            res4 = cur.execute(
+                'select rowid, name, ctime from h5dataset where hostid = "' + str(host[0]) +
+                '" and dirid = "' + str(dir[0]) + '"')
+            h5datasets = res4.fetchall()
+            for h5dataset in h5datasets:
+                t = datetime.fromtimestamp(float(h5dataset[2] / 1000000))
+                print(f"        dataset = {h5dataset[1]}     created on {t}")
 
 
 def Update(args: dict, cur: sqlite3.Cursor):
@@ -232,7 +257,7 @@ def Update(args: dict, cur: sqlite3.Cursor):
 def Create(args: dict, cur: sqlite3.Cursor):
     epoch = time()
     cur.execute(
-        "create table info(id TEXT, name TEXT, version TEXT, ctime REAL)")
+        "create table info(id TEXT, name TEXT, version TEXT, ctime INT)")
     cur.execute('insert into info values (?, ?, ?, ?)',
                 ("ACA", "ADIOS Campaign Archive", ADIOS_ACA_VERSION, epoch))
     cur.execute("create table host" +
@@ -240,12 +265,15 @@ def Create(args: dict, cur: sqlite3.Cursor):
     cur.execute("create table directory" +
                 "(hostid INT, name TEXT, PRIMARY KEY (hostid, name))")
     cur.execute("create table bpdataset" +
-                "(hostid INT, dirid INT, name TEXT, ctime REAL" +
+                "(hostid INT, dirid INT, name TEXT, ctime INT" +
                 ", PRIMARY KEY (hostid, dirid, name))")
     cur.execute("create table bpfile" +
                 "(bpdatasetid INT, name TEXT, compression INT, lenorig INT" +
-                ", lencompressed INT, ctime REAL, data BLOB" +
+                ", lencompressed INT, ctime INT, data BLOB" +
                 ", PRIMARY KEY (bpdatasetid, name))")
+    cur.execute("create table h5dataset" +
+                "(hostid INT, dirid INT, name TEXT, ctime INT" +
+                ", PRIMARY KEY (hostid, dirid, name))")
     Update(args, cur)
 
 
@@ -303,7 +331,7 @@ if __name__ == "__main__":
     else:
         CheckLocalCampaignDir(args)
         # List the local campaign directory
-        dbFileList = glob.glob(args.LocalCampaignDir + '/*.db')
+        dbFileList = glob.glob(args.LocalCampaignDir + '/*.acr')
         if len(dbFileList) == 0:
             print("There are no campaign data files in  " + args.LocalCampaignDir)
             exit(2)

@@ -27,7 +27,7 @@ HDF5WriterP::HDF5WriterP(IO &io, const std::string &name, const Mode mode, helpe
     m_IsOpen = true;
     if (!m_Comm.Rank())
     {
-        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+        m_IO.m_ADIOS.RecordOutput(m_Name, m_H5File.m_CurrentAdiosStep);
     }
 }
 
@@ -52,7 +52,8 @@ void HDF5WriterP::EndStep()
     m_H5File.WriteAttrFromIO(m_IO);
     if (!m_Comm.Rank())
     {
-        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime);
+        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime,
+                                      m_H5File.m_CurrentAdiosStep);
     }
 }
 

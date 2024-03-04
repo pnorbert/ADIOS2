@@ -46,7 +46,7 @@ BP5Writer::BP5Writer(IO &io, const std::string &name, const Mode mode, helper::C
     m_IsOpen = true;
     if (!m_RankMPI)
     {
-        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+        m_IO.m_ADIOS.RecordOutput(m_Name, m_WriterStep);
     }
 }
 
@@ -725,13 +725,14 @@ void BP5Writer::EndStep()
     m_FileMetaMetadataManager.FlushFiles();
     m_FileDataManager.FlushFiles();
 
+    if (!m_RankMPI)
+    {
+        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime, m_WriterStep);
+    }
+
     m_Profiler.Stop("ES");
     m_WriterStep++;
     m_EndStepEnd = Now();
-    if (!m_RankMPI)
-    {
-        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime);
-    }
     /* Seconds ts2 = Now() - m_EngineStart;
      std::cout << "END STEP ended at: " << ts2.count() << std::endl;*/
 }

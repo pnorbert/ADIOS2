@@ -45,7 +45,7 @@
 #include <vector>
 
 #include <adios2.h>
-#include <adios2/common/ADIOSConfig.h> // ADIOS2_USE_HDF5 macro
+#include <adios2/common/ADIOSConfig.h> // ADIOS2_HAVE_HDF5 macro
 #include <adios2/helper/adiosString.h> // StringToSizeT()
 #include <mpi.h>
 
@@ -180,16 +180,12 @@ int main(int argc, char *argv[])
         ioStep.SetEngine("BP4");
 
         ioNew = adiosAll.DeclareIO("OutputNew");
-#ifdef ADIOS2_USE_HDF5
-        ioNew.SetEngine("HDF5");
-#else
         ioNew.SetEngine("BP5");
-#endif
 
         if (rank > 0)
         {
             ioAnother = adiosAnother.DeclareIO("OutputAnother");
-#ifdef ADIOS2_USE_HDF5
+#ifdef ADIOS2_HAVE_HDF5
             ioAnother.SetEngine("HDF5");
 #else
             ioAnother.SetEngine("BP5");
@@ -284,7 +280,13 @@ int main(int argc, char *argv[])
             varPhysTimeAnother = ioAnother.DefineVariable<double>("time");
             ioAnother.DefineAttribute<std::string>("comment", "Written by ranks 1.." +
                                                                   std::to_string(nproc - 1));
-            writerAnother = ioAnother.Open("dataAnother.bp", mode);
+            const std::string FILEEXTENSION =
+#ifdef ADIOS2_HAVE_HDF5
+                "h5";
+#else
+                "bp";
+#endif
+            writerAnother = ioAnother.Open("dataAnother." + FILEEXTENSION, mode);
         }
 
         physicalStep = physicalStep_dt * startStep;

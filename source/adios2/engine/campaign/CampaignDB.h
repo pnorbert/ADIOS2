@@ -38,13 +38,19 @@ public:
     bool Open(const std::string &name);
     void Close();
 
+    // check if open was successful
+    explicit operator bool() const noexcept;
+
     /** Add new entry to list of files
      *  return: an id in the database table (rowidx)
      */
-    int64_t AddFile(const std::string &name);
+    int64_t AddFile(const std::string &name, const size_t startStep);
 
-    // check if open was successful
-    explicit operator bool() const noexcept;
+    /** Add new entry to list of steps
+     *  return: an id in the database table (rowidx)
+     */
+    int64_t AddFileStep(int64_t fileID, size_t engineStep, size_t physStep, double physTime,
+                        int64_t ctime);
 
 private:
     std::string m_Name;

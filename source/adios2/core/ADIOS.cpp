@@ -328,20 +328,15 @@ void ADIOS::YAMLInitIO(const std::string &configFileYAML, const std::string &con
     helper::ParseConfigYAMLIO(*this, configFileYAML, configFileContents, io);
 }
 
-void ADIOS::RecordOutput(const std::string &name, const bool newOutput)
+void ADIOS::RecordOutput(const std::string &name, const size_t startStep)
 {
-    m_CampaignManager.RecordOutput(name, newOutput);
+    m_CampaignManager.RecordOutput(name, startStep);
 }
 
-void ADIOS::RecordOutputStep(const std::string &name, const size_t step, const double time)
+void ADIOS::RecordOutputStep(const std::string &name, const size_t physStep, const double physTime,
+                             const size_t engineStep)
 {
-    double t = time;
-    if (time == UnknownTime)
-    {
-        t = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch())
-                .count();
-    }
-    m_CampaignManager.RecordOutputStep(name, step, t);
+    m_CampaignManager.RecordOutputStep(name, physStep, physTime, engineStep);
 }
 
 void ADIOS::Global_init_AWS_API()

@@ -35,7 +35,7 @@ BP3Writer::BP3Writer(IO &io, const std::string &name, const Mode mode, helper::C
     m_IsOpen = true;
     if (m_BP3Serializer.m_RankMPI == 0)
     {
-        m_IO.m_ADIOS.RecordOutput(m_Name, (mode == Mode::Write));
+        m_IO.m_ADIOS.RecordOutput(m_Name, m_BP3Serializer.m_MetadataSet.CurrentStep);
     }
 }
 
@@ -114,7 +114,8 @@ void BP3Writer::EndStep()
 
     if (m_BP3Serializer.m_RankMPI == 0)
     {
-        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime);
+        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime,
+                                      m_BP3Serializer.m_MetadataSet.CurrentStep);
     }
 }
 
@@ -279,7 +280,8 @@ void BP3Writer::DoClose(const int transportIndex)
 
     if (!m_DidBeginStep && m_BP3Serializer.m_RankMPI == 0)
     {
-        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime);
+        m_IO.m_ADIOS.RecordOutputStep(m_Name, UnknownStep, UnknownTime,
+                                      m_BP3Serializer.m_MetadataSet.CurrentStep);
     }
 }
 

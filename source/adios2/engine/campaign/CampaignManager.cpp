@@ -27,6 +27,7 @@ namespace engine
 {
 
 CampaignManager::CampaignManager(adios2::helper::Comm &comm)
+
 {
     // Note: ADIOS::adios_refcount() + comm.Rank() is still not unique
     // There could be a split communicator used for two ADIOS object
@@ -52,7 +53,7 @@ CampaignManager::~CampaignManager()
 
 void CampaignManager::Open(const std::string &name)
 {
-    m_Name = m_CampaignDir + "/" + name + "_" + std::to_string(m_WriterRank) + ".db";
+    m_Name = m_CampaignDir + "/" + name + "_" + std::to_string(m_WriterRank) + ".acr";
     if (m_Verbosity == 5)
     {
         std::cout << "Campaign Manager " << m_WriterRank << " Open(" << m_Name << ")\n";
@@ -70,67 +71,51 @@ void CampaignManager::FirstEvent()
     }
 }
 
-int64_t CampaignManager::RecordOutput(const std::string &name, const bool newOutput)
+int64_t CampaignManager::RecordOutput(const std::string &name, const size_t startStep)
 {
     if (m_Verbosity == 5)
     {
-        std::cout << "Campaign Manager " << m_WriterRank << "   Record name = " << name
-                  << " new file = " << adios2::helper::ValueToString(newOutput) << "\n";
+        std::cout << "Campaign Manager " << m_WriterRank << "   Record Output, name = " << name
+                  << " start step = " << adios2::helper::ValueToString(startStep) << "\n";
     }
     FirstEvent();
     // new entry
     int64_t dbFileID = -1;
     if (m_CampaignDB)
     {
-        dbFileID = m_CampaignDB.AddFile(name);
+        dbFileID = m_CampaignDB.AddFile(name, startStep);
+        cmap.emplace(name, dbFileID);
     }
     return dbFileID;
 }
 
-void CampaignManager::RecordOutputStep(const std::string &name, const size_t step,
-                                       const double time)
+void CampaignManager::RecordOutputStep(const std::string &name, const size_t physStep,
+                                       const double physTime, const size_t engineStep)
 {
+    int64_t wallclockTime_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                   std::chrono::system_clock::now().time_since_epoch())
+                                   .count();
+
     if (m_Verbosity == 5)
     {
-        std::cout << "Campaign Manager " << m_WriterRank << "   Record name = " << name
-                  << " step = " << step << " time = " << time << "\n";
+        std::cout << "Campaign Manager " << m_WriterRank << "   Record Step, name = " << name
+                  << " physStep = " << physStep << " time = " << physTime
+                  << " engineStep = " << engineStep << " clock = " << wallclockTime_us << " us\n";
     }
 
     FirstEvent();
 
+    int dbFileID;
     auto r = cmap.find(name);
-    if (r != cmap.end())
+    if (r == cmap.end())
     {
-        // update record
-        size_t last_step = r->second.steps.back();
-        size_t delta_step = step - last_step;
-        double last_time = r->second.times.back();
-        double delta_time = time - last_time;
-        auto nsteps = r->second.steps.size();
-        if (nsteps == 1)
-        {
-            r->second.delta_step = delta_step;
-            r->second.delta_time = delta_time;
-        }
-        else
-        {
-            size_t old_delta_step = r->second.steps.back() - r->second.steps.rbegin()[1];
-            if (old_delta_step != delta_step)
-            {
-                r->second.delta_step = 0;
-                r->second.delta_time = 0.0;
-                r->second.varying_deltas = true;
-            }
-        }
-        r->second.steps.push_back(step);
-        r->second.times.push_back(time);
+        dbFileID = RecordOutput(name, true);
     }
     else
     {
-        int dbFileID = RecordOutput(name, true);
-        CampaignRecord r(dbFileID, step, time);
-        cmap.emplace(name, r);
+        dbFileID = r->second;
     }
+    m_CampaignDB.AddFileStep(dbFileID, engineStep, physStep, physTime, wallclockTime_us);
 }
 
 void CampaignManager::Close()
