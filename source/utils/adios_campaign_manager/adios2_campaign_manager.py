@@ -6,7 +6,7 @@ import sqlite3
 import zlib
 from datetime import datetime
 from os import chdir, getcwd, remove, stat
-from os.path import exists, isdir
+from os.path import exists, isdir, expanduser
 from re import sub
 from socket import getfqdn
 from time import time
@@ -15,25 +15,29 @@ from time import time
 
 ADIOS_ACA_VERSION = "1.1"
 
+def ReadConfig():
+    path = expanduser("~/.config/adios2/campaign.cfg")
+    try:
+        with open(path) as f:
+            lines = f.readlines()
+            for line in lines:
+                lst = line.split()
+                if lst[0] == "campaignstorepath":
+                    adios_campaign_store = expanduser(lst[1])
+    except FileNotFoundError:
+        adios_campaign_store = None
+    return adios_campaign_store
+
 def SetupArgs():
     parser = argparse.ArgumentParser()
+    parser.add_argument("campaign", help="Campaign name or path, with .aca or without")
     parser.add_argument(
         "command", help="Command: create/update/delete",
         choices=['create', 'update', 'delete', 'info'])
     parser.add_argument("--verbose", "-v",
                         help="More verbosity", action="count")
-    parser.add_argument("--project", "-p",
-                        help="Project name",
-                        required=True)
-    parser.add_argument("--app", "-a",
-                        help="Application name",
-                        required=True)
-    parser.add_argument("--shot", "-s",
-                        help="Shot name",
-                        required=True)
-    parser.add_argument("--campaign_store", "-c",
-                        help="Path to local campaign store",
-                        required=True)
+    parser.add_argument("--campaign_store", "-s",
+                        help="Path to local campaign store", default=None)
     parser.add_argument("--hostname", "-n",
                         help="Host name unique for hosts in a campaign",
                         required=False)
@@ -41,17 +45,24 @@ def SetupArgs():
 
     # default values
     args.update = False
-    args.CampaignFileName = args.campaign_store + "/" + \
-        args.project + "_" + args.app + "_" + args.shot + ".aca"
+    if args.campaign_store is None:
+        args.campaign_store = ReadConfig()
+
+    args.CampaignFileName = args.campaign
+    if not args.campaign.endswith(".aca"):
+        args.CampaignFileName += ".aca"
+    if args.campaign_store is not None:
+        args.CampaignFileName = args.campaign_store + "/" + args.CampaignFileName
     args.LocalCampaignDir = "adios-campaign/"
 
     # print("Verbosity = {0}".format(args.verbose))
     print(f"Campaign File Name = {args.CampaignFileName}")
+    print(f"Command = {args.command}")
     return args
 
 
 def CheckCampaignStore(args):
-    if not isdir(args.campaign_store):
+    if args.campaign_store is not None and not isdir(args.campaign_store):
         print("ERROR: Campaign directory " + args.campaign_store +
               " does not exist", flush=True)
         exit(1)
@@ -155,7 +166,7 @@ def AddDatasetToArchive(args: dict, dataset: str, cur: sqlite3.Cursor, hostID: i
         print(f"Add HDF5 file {dataset} to archive")
         statres = stat(dataset)
         ct = int(statres.st_ctime_ns / 1000)
-        curDS = cur.execute('insert into h5dataset values (?, ?, ?, ?)',
+        curDS = cur.execute('insert into bpdataset values (?, ?, ?, ?)',
                             (hostID, dirID, dataset, ct))
     else:
         print(f"WARNING: Dataset {dataset} is not an ADIOS dataset nor an HDF5 file. Skip")
@@ -220,14 +231,6 @@ def Info(args: dict, cur: sqlite3.Cursor):
                 t = datetime.fromtimestamp(float(bpdataset[2] / 1000000))
                 print(f"        dataset = {bpdataset[1]}     created on {t}")
 
-            res4 = cur.execute(
-                'select rowid, name, ctime from h5dataset where hostid = "' + str(host[0]) +
-                '" and dirid = "' + str(dir[0]) + '"')
-            h5datasets = res4.fetchall()
-            for h5dataset in h5datasets:
-                t = datetime.fromtimestamp(float(h5dataset[2] / 1000000))
-                print(f"        dataset = {h5dataset[1]}     created on {t}")
-
 
 def Update(args: dict, cur: sqlite3.Cursor):
     longHostName, shortHostName = GetHostName()
@@ -246,9 +249,10 @@ def Update(args: dict, cur: sqlite3.Cursor):
     dirID = curDir.lastrowid
     con.commit()
 
+    print(f"dbFileList = {dbFileList}")
     db_list = MergeDBFiles(dbFileList)
 
-    # print(f"Merged json = {jsonlist}")
+    print(f"Merged db list = {db_list}")
     ProcessDBFile(args, db_list, cur, hostID, dirID)
 
     con.commit()
@@ -271,9 +275,6 @@ def Create(args: dict, cur: sqlite3.Cursor):
                 "(bpdatasetid INT, name TEXT, compression INT, lenorig INT" +
                 ", lencompressed INT, ctime INT, data BLOB" +
                 ", PRIMARY KEY (bpdatasetid, name))")
-    cur.execute("create table h5dataset" +
-                "(hostid INT, dirid INT, name TEXT, ctime INT" +
-                ", PRIMARY KEY (hostid, dirid, name))")
     Update(args, cur)
 
 
