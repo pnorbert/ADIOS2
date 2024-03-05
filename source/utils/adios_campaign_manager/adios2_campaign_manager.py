@@ -15,6 +15,7 @@ from time import time
 
 ADIOS_ACA_VERSION = "1.1"
 
+
 def ReadConfig():
     path = expanduser("~/.config/adios2/campaign.cfg")
     try:
@@ -28,19 +29,24 @@ def ReadConfig():
         adios_campaign_store = None
     return adios_campaign_store
 
+
 def SetupArgs():
     parser = argparse.ArgumentParser()
-    parser.add_argument("campaign", help="Campaign name or path, with .aca or without")
     parser.add_argument(
-        "command", help="Command: create/update/delete",
-        choices=['create', 'update', 'delete', 'info'])
-    parser.add_argument("--verbose", "-v",
-                        help="More verbosity", action="count")
-    parser.add_argument("--campaign_store", "-s",
-                        help="Path to local campaign store", default=None)
-    parser.add_argument("--hostname", "-n",
-                        help="Host name unique for hosts in a campaign",
-                        required=False)
+        "command",
+        help="Command: create/update/delete/info/list",
+        choices=["create", "update", "delete", "info", "list"],
+    )
+    parser.add_argument(
+        "campaign", help="Campaign name or path, with .aca or without", default=None, nargs="?"
+    )
+    parser.add_argument("--verbose", "-v", help="More verbosity", action="count")
+    parser.add_argument(
+        "--campaign_store", "-s", help="Path to local campaign store", default=None
+    )
+    parser.add_argument(
+        "--hostname", "-n", help="Host name unique for hosts in a campaign", required=False
+    )
     args = parser.parse_args()
 
     # default values
@@ -48,31 +54,42 @@ def SetupArgs():
     if args.campaign_store is None:
         args.campaign_store = ReadConfig()
 
-    args.CampaignFileName = args.campaign
-    if not args.campaign.endswith(".aca"):
-        args.CampaignFileName += ".aca"
     if args.campaign_store is not None:
-        args.CampaignFileName = args.campaign_store + "/" + args.CampaignFileName
+        while args.campaign_store[-1] == "/":
+            args.campaign_store = args.campaign_store[:-1]
+
+    args.CampaignFileName = args.campaign
+    if args.campaign is not None:
+        if not args.campaign.endswith(".aca"):
+            args.CampaignFileName += ".aca"
+        if args.campaign_store is not None:
+            args.CampaignFileName = args.campaign_store + "/" + args.CampaignFileName
+
     args.LocalCampaignDir = "adios-campaign/"
 
     # print("Verbosity = {0}".format(args.verbose))
-    print(f"Campaign File Name = {args.CampaignFileName}")
     print(f"Command = {args.command}")
+    print(f"Campaign File Name = {args.CampaignFileName}")
+    print(f"Campaign Store = {args.campaign_store}")
     return args
 
 
 def CheckCampaignStore(args):
     if args.campaign_store is not None and not isdir(args.campaign_store):
-        print("ERROR: Campaign directory " + args.campaign_store +
-              " does not exist", flush=True)
+        print("ERROR: Campaign directory " + args.campaign_store + " does not exist", flush=True)
         exit(1)
 
 
 def CheckLocalCampaignDir(args):
     if not isdir(args.LocalCampaignDir):
-        print("ERROR: Shot campaign data '" + args.LocalCampaignDir +
-              "' does not exist. Run this command where the code was executed.", flush=True)
+        print(
+            "ERROR: Shot campaign data '"
+            + args.LocalCampaignDir
+            + "' does not exist. Run this command where the code was executed.",
+            flush=True,
+        )
         exit(1)
+
 
 def IsHDF5File(dataset: str):
     if not exists(dataset):
@@ -88,6 +105,7 @@ def IsHDF5File(dataset: str):
                     answer = False
     return answer
 
+
 def IsADIOSDataset(dataset: str):
     if not isdir(dataset):
         return False
@@ -96,6 +114,7 @@ def IsADIOSDataset(dataset: str):
     if not exists(dataset + "/" + "data.0"):
         return False
     return True
+
 
 def CompressFile(f):
     compObj = zlib.compressobj()
@@ -116,7 +135,8 @@ def CompressFile(f):
 
     return compressed, len_orig, len_compressed
 
-#def DecompressBuffer(buf: bytearray):
+
+# def DecompressBuffer(buf: bytearray):
 #    data = zlib.decompress(buf)
 #    return data
 
@@ -124,7 +144,7 @@ def CompressFile(f):
 def AddFileToArchive(args: dict, filename: str, cur: sqlite3.Cursor, dsID: int):
     compressed = 1
     try:
-        f = open(filename, 'rb')
+        f = open(filename, "rb")
         compressed_data, len_orig, len_compressed = CompressFile(f)
 
     except IOError:
@@ -134,8 +154,10 @@ def AddFileToArchive(args: dict, filename: str, cur: sqlite3.Cursor, dsID: int):
     statres = stat(filename)
     ct = int(statres.st_ctime_ns / 1000)
 
-    cur.execute('insert into bpfile values (?, ?, ?, ?, ?, ?, ?)',
-                (dsID, filename, compressed, len_orig, len_compressed, ct, compressed_data))
+    cur.execute(
+        "insert into bpfile values (?, ?, ?, ?, ?, ?, ?)",
+        (dsID, filename, compressed, len_orig, len_compressed, ct, compressed_data),
+    )
     con.commit()
 
     # test
@@ -151,13 +173,14 @@ def AddDatasetToArchive(args: dict, dataset: str, cur: sqlite3.Cursor, hostID: i
         print(f"Add dataset {dataset} to archive")
         statres = stat(dataset)
         ct = int(statres.st_ctime_ns / 1000)
-        curDS = cur.execute('insert into bpdataset values (?, ?, ?, ?)',
-                            (hostID, dirID, dataset, ct))
+        curDS = cur.execute(
+            "insert into bpdataset values (?, ?, ?, ?)", (hostID, dirID, dataset, ct)
+        )
         dsID = curDS.lastrowid
         cwd = getcwd()
         chdir(dataset)
-        mdFileList = glob.glob('*md.*')
-        profileList = glob.glob('profiling.json')
+        mdFileList = glob.glob("*md.*")
+        profileList = glob.glob("profiling.json")
         files = mdFileList + profileList
         for f in files:
             AddFileToArchive(args, f, cur, dsID)
@@ -166,8 +189,9 @@ def AddDatasetToArchive(args: dict, dataset: str, cur: sqlite3.Cursor, hostID: i
         print(f"Add HDF5 file {dataset} to archive")
         statres = stat(dataset)
         ct = int(statres.st_ctime_ns / 1000)
-        curDS = cur.execute('insert into bpdataset values (?, ?, ?, ?)',
-                            (hostID, dirID, dataset, ct))
+        curDS = cur.execute(
+            "insert into bpdataset values (?, ?, ?, ?)", (hostID, dirID, dataset, ct)
+        )
     else:
         print(f"WARNING: Dataset {dataset} is not an ADIOS dataset nor an HDF5 file. Skip")
 
@@ -177,8 +201,7 @@ def ProcessDBFile(args: dict, jsonlist: list, cur: sqlite3.Cursor, hostID: int, 
         # print(f"Process entry {entry}:")
         if isinstance(entry, dict):
             if "name" in entry:
-                AddDatasetToArchive(
-                    args, entry['name'], cur, hostID, dirID)
+                AddDatasetToArchive(args, entry["name"], cur, hostID, dirID)
         else:
             print(f"WARNING: your object is not a dictionary, skip : {entry}")
 
@@ -186,46 +209,49 @@ def ProcessDBFile(args: dict, jsonlist: list, cur: sqlite3.Cursor, hostID: int, 
 def GetHostName():
     host = getfqdn()
     if host.startswith("login"):
-        host = sub('^login[0-9]*\\.', '', host)
+        host = sub("^login[0-9]*\\.", "", host)
     if host.startswith("batch"):
-        host = sub('^batch[0-9]*\\.', '', host)
-    shorthost = host.split('.')[0]
+        host = sub("^batch[0-9]*\\.", "", host)
+    shorthost = host.split(".")[0]
     return host, shorthost
 
 
 def AddHostName(longHostName, shortHostName):
-    res = cur.execute(
-        'select rowid from host where hostname = "' + shortHostName + '"')
+    res = cur.execute('select rowid from host where hostname = "' + shortHostName + '"')
     row = res.fetchone()
     if row is not None:
         hostID = row[0]
         print(f"Found host {shortHostName} in database, rowid = {hostID}")
     else:
-        curHost = cur.execute('insert into host values (?, ?)',
-                              (shortHostName, longHostName))
+        curHost = cur.execute("insert into host values (?, ?)", (shortHostName, longHostName))
         hostID = curHost.lastrowid
         print(f"Inserted host {shortHostName} into database, rowid = {hostID}")
     return hostID
 
 
 def Info(args: dict, cur: sqlite3.Cursor):
-    res = cur.execute('select id, name, version, ctime from info')
+    res = cur.execute("select id, name, version, ctime from info")
     info = res.fetchone()
     t = datetime.fromtimestamp(float(info[3]))
     print(f"{info[1]}, version {info[2]}, created on {t}")
 
-    res = cur.execute('select rowid, hostname, longhostname from host')
+    res = cur.execute("select rowid, hostname, longhostname from host")
     hosts = res.fetchall()
     for host in hosts:
         print(f"hostname = {host[1]}   longhostname = {host[2]}")
         res2 = cur.execute(
-            'select rowid, name from directory where hostid = "' + str(host[0]) + '"')
+            'select rowid, name from directory where hostid = "' + str(host[0]) + '"'
+        )
         dirs = res2.fetchall()
         for dir in dirs:
             print(f"    dir = {dir[1]}")
             res3 = cur.execute(
-                'select rowid, name, ctime from bpdataset where hostid = "' + str(host[0]) +
-                '" and dirid = "' + str(dir[0]) + '"')
+                'select rowid, name, ctime from bpdataset where hostid = "'
+                + str(host[0])
+                + '" and dirid = "'
+                + str(dir[0])
+                + '"'
+            )
             bpdatasets = res3.fetchall()
             for bpdataset in bpdatasets:
                 t = datetime.fromtimestamp(float(bpdataset[2] / 1000000))
@@ -244,8 +270,7 @@ def Update(args: dict, cur: sqlite3.Cursor):
     #                      (shortHostName, longHostName))
     # hostID = curHost.lastrowid
 
-    curDir = cur.execute('insert or replace into directory values (?, ?)',
-                         (hostID, rootdir))
+    curDir = cur.execute("insert or replace into directory values (?, ?)", (hostID, rootdir))
     dirID = curDir.lastrowid
     con.commit()
 
@@ -260,21 +285,24 @@ def Update(args: dict, cur: sqlite3.Cursor):
 
 def Create(args: dict, cur: sqlite3.Cursor):
     epoch = time()
+    cur.execute("create table info(id TEXT, name TEXT, version TEXT, ctime INT)")
     cur.execute(
-        "create table info(id TEXT, name TEXT, version TEXT, ctime INT)")
-    cur.execute('insert into info values (?, ?, ?, ?)',
-                ("ACA", "ADIOS Campaign Archive", ADIOS_ACA_VERSION, epoch))
-    cur.execute("create table host" +
-                "(hostname TEXT PRIMARY KEY, longhostname TEXT)")
-    cur.execute("create table directory" +
-                "(hostid INT, name TEXT, PRIMARY KEY (hostid, name))")
-    cur.execute("create table bpdataset" +
-                "(hostid INT, dirid INT, name TEXT, ctime INT" +
-                ", PRIMARY KEY (hostid, dirid, name))")
-    cur.execute("create table bpfile" +
-                "(bpdatasetid INT, name TEXT, compression INT, lenorig INT" +
-                ", lencompressed INT, ctime INT, data BLOB" +
-                ", PRIMARY KEY (bpdatasetid, name))")
+        "insert into info values (?, ?, ?, ?)",
+        ("ACA", "ADIOS Campaign Archive", ADIOS_ACA_VERSION, epoch),
+    )
+    cur.execute("create table host" + "(hostname TEXT PRIMARY KEY, longhostname TEXT)")
+    cur.execute("create table directory" + "(hostid INT, name TEXT, PRIMARY KEY (hostid, name))")
+    cur.execute(
+        "create table bpdataset"
+        + "(hostid INT, dirid INT, name TEXT, ctime INT"
+        + ", PRIMARY KEY (hostid, dirid, name))"
+    )
+    cur.execute(
+        "create table bpfile"
+        + "(bpdatasetid INT, name TEXT, compression INT, lenorig INT"
+        + ", lencompressed INT, ctime INT, data BLOB"
+        + ", PRIMARY KEY (bpdatasetid, name))"
+    )
     Update(args, cur)
 
 
@@ -299,12 +327,31 @@ def MergeDBFiles(dbfiles: list):
     return result
 
 
-if __name__ == "__main__":
+def List():
+    if args.campaign_store is None:
+        print("ERROR: Set --campaign_store for this command")
+        return 1
+    else:
+        # List the local campaign store
+        acaList = glob.glob(args.campaign_store + "/*.aca", recursive=True)
+        if len(acaList) == 0:
+            print("There are no campaign archives in  " + args.campaign_store)
+            return 2
+        else:
+            startCharPos = len(args.campaign_store) + 1
+            for f in acaList:
+                print(f[startCharPos:])
+    return 0
 
+
+if __name__ == "__main__":
     args = SetupArgs()
     CheckCampaignStore(args)
 
-    if (args.command == "delete"):
+    if args.command == "list":
+        exit(List())
+
+    if args.command == "delete":
         if exists(args.CampaignFileName):
             print(f"Delete archive {args.CampaignFileName}")
             remove(args.CampaignFileName)
@@ -313,12 +360,12 @@ if __name__ == "__main__":
             print(f"ERROR: archive {args.CampaignFileName} does not exist")
             exit(1)
 
-    if (args.command == "create"):
+    if args.command == "create":
         print("Create archive")
         if exists(args.CampaignFileName):
             print(f"ERROR: archive {args.CampaignFileName} already exist")
             exit(1)
-    elif (args.command == "update" or args.command == 'info'):
+    elif args.command == "update" or args.command == "info":
         print(f"{args.command} archive")
         if not exists(args.CampaignFileName):
             print(f"ERROR: archive {args.CampaignFileName} does not exist")
@@ -327,19 +374,19 @@ if __name__ == "__main__":
     con = sqlite3.connect(args.CampaignFileName)
     cur = con.cursor()
 
-    if (args.command == "info"):
+    if args.command == "info":
         Info(args, cur)
     else:
         CheckLocalCampaignDir(args)
         # List the local campaign directory
-        dbFileList = glob.glob(args.LocalCampaignDir + '/*.acr')
+        dbFileList = glob.glob(args.LocalCampaignDir + "/*.acr")
         if len(dbFileList) == 0:
             print("There are no campaign data files in  " + args.LocalCampaignDir)
             exit(2)
 
-        if (args.command == "create"):
+        if args.command == "create":
             Create(args, cur)
-        elif (args.command == "update"):
+        elif args.command == "update":
             Update(args, cur)
 
     cur.close()
