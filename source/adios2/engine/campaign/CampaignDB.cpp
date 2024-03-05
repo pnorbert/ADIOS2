@@ -83,7 +83,7 @@ bool CampaignDB::Open(const std::string &name)
     }
 
     sqlcmd = "CREATE TABLE if not exists step (bpdatasetid INT, enginestep INT, physstep INT, "
-             "phystime INT, ctime INT);";
+             "phystime INT, ctime INT, PRIMARY KEY (bpdatasetid, enginestep));";
     rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
     if (rc != SQLITE_OK)
     {

@@ -40,7 +40,7 @@ def SetupArgs():
     parser.add_argument(
         "campaign", help="Campaign name or path, with .aca or without", default=None, nargs="?"
     )
-    parser.add_argument("--verbose", "-v", help="More verbosity", action="count")
+    parser.add_argument("--verbose", "-v", help="More verbosity", action="count", default=0)
     parser.add_argument(
         "--campaign_store", "-s", help="Path to local campaign store", default=None
     )
@@ -67,10 +67,11 @@ def SetupArgs():
 
     args.LocalCampaignDir = "adios-campaign/"
 
-    # print("Verbosity = {0}".format(args.verbose))
-    print(f"Command = {args.command}")
-    print(f"Campaign File Name = {args.CampaignFileName}")
-    print(f"Campaign Store = {args.campaign_store}")
+    if args.verbose > 0:
+        print(f"# Verbosity = {args.verbose}")
+        print(f"# Command = {args.command}")
+        print(f"# Campaign File Name = {args.CampaignFileName}")
+        print(f"# Campaign Store = {args.campaign_store}")
     return args
 
 
@@ -302,6 +303,11 @@ def Create(args: dict, cur: sqlite3.Cursor):
         + "(bpdatasetid INT, name TEXT, compression INT, lenorig INT"
         + ", lencompressed INT, ctime INT, data BLOB"
         + ", PRIMARY KEY (bpdatasetid, name))"
+    )
+    cur.execute(
+        "create table step"
+        + "(bpdatasetid INT, enginestep INT, physstep INT, phystime INT, ctime INT"
+        + ", PRIMARY KEY (bpdatasetid, enginestep))"
     )
     Update(args, cur)
 
