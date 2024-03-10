@@ -142,7 +142,7 @@ def CompressFile(f):
 #    return data
 
 
-def AddFileToArchive(args: dict, filename: str, cur: sqlite3.Cursor, dsID: int):
+def AddFileToArchive(filename: str, cur: sqlite3.Cursor, dsID: int):
     compressed = 1
     try:
         f = open(filename, "rb")
@@ -156,10 +156,26 @@ def AddFileToArchive(args: dict, filename: str, cur: sqlite3.Cursor, dsID: int):
     ct = int(statres.st_ctime_ns / 1000)
 
     cur.execute(
-        "insert into bpfile values (?, ?, ?, ?, ?, ?, ?)",
-        (dsID, filename, compressed, len_orig, len_compressed, ct, compressed_data),
+        "insert into bpfile "
+        "(bpdatasetid, name, compression, lenorig, lencompressed, ctime, data) "
+        "values (?, ?, ?, ?, ?, ?, ?) "
+        "on conflict (bpdatasetid, name) do update "
+        "set compression = ?, lenorig = ?, lencompressed = ?, ctime = ?, data = ?",
+        (
+            dsID,
+            filename,
+            compressed,
+            len_orig,
+            len_compressed,
+            ct,
+            compressed_data,
+            compressed,
+            len_orig,
+            len_compressed,
+            ct,
+            compressed_data,
+        ),
     )
-    con.commit()
 
     # test
     # if (filename == "dataAll.bp/md.0"):
@@ -169,42 +185,140 @@ def AddFileToArchive(args: dict, filename: str, cur: sqlite3.Cursor, dsID: int):
     #    of.close()
 
 
-def AddDatasetToArchive(args: dict, dataset: str, cur: sqlite3.Cursor, hostID: int, dirID: int):
-    if IsADIOSDataset(dataset):
-        print(f"Add dataset {dataset} to archive")
-        statres = stat(dataset)
-        ct = int(statres.st_ctime_ns / 1000)
-        curDS = cur.execute(
-            "insert into bpdataset values (?, ?, ?, ?)", (hostID, dirID, dataset, ct)
+def AddStepsToArchive(steps: list, cur: sqlite3.Cursor):
+    for s in steps:
+        cur.execute(
+            "insert into step "
+            "(bpdatasetid, enginestep, physstep, phystime, ctime) "
+            "values (?, ?, ?, ?, ?) "
+            "on conflict (bpdatasetid, enginestep) do update "
+            "set physstep = ?, phystime = ?, ctime = ?",
+            (s[0], s[1], s[2], s[3], s[4], s[2], s[3], s[4]),
         )
-        dsID = curDS.lastrowid
+
+
+def AddDatasetToArchive_DesiredButNotWorking(hostID: int, dirID: int, dataset: str) -> int:
+    statres = stat(dataset)
+    ct = int(statres.st_ctime_ns / 1000)
+    curDS = cur.execute(
+        "insert into bpdataset values (?, ?, ?, ?) on conflict (hostid, dirid, name) "
+        "do update set ctime=" + str(ct) + " returning hostid",
+        (hostID, dirID, dataset, ct),
+    )
+    return curDS.lastrowid
+
+
+def AddDatasetToArchive(hostID: int, dirID: int, dataset: str) -> int:
+    statres = stat(dataset)
+    ct = int(statres.st_ctime_ns / 1000)
+    select_cmd = (
+        "select rowid from bpdataset "
+        f"where hostid = {hostID} and dirid = {dirID} and name = '{dataset}'"
+    )
+    print(select_cmd)
+    res = cur.execute(select_cmd)
+    row = res.fetchone()
+    if row is not None:
+        rowID = row[0]
+        print(
+            f"Found bpdataset {dataset} in database on host {hostID} in dir {dirID}, rowid = {rowID}"
+        )
+    else:
+        curDS = cur.execute(
+            "insert into bpdataset (hostid, dirid, name, ctime) values (?, ?, ?, ?)",
+            (hostID, dirID, dataset, ct),
+        )
+        rowID = curDS.lastrowid
+        print(
+            f"Inserted bpdataset {dataset} in database on host {hostID} in dir {dirID}, rowid = {rowID}"
+        )
+    return rowID
+
+
+def ProcessOneDataset(
+    args: dict, dataset: str, cur: sqlite3.Cursor, hostID: int, dirID: int
+) -> int:
+    dsID = 0
+    if IsADIOSDataset(dataset):
+        print(f"Add ADIOS dataset {dataset} to archive")
+        dsID = AddDatasetToArchive(hostID, dirID, dataset)
+        print(f"  New insert id = {dsID}")
+        #        print(f"Add dataset {dataset} to archive")
+        #        statres = stat(dataset)
+        #        ct = int(statres.st_ctime_ns / 1000)
+        #        curDS = cur.execute(
+        #            "insert into bpdataset values (?, ?, ?, ?)", (hostID, dirID, dataset, ct)
+        #        )
+        #        dsID = curDS.lastrowid
         cwd = getcwd()
         chdir(dataset)
         mdFileList = glob.glob("*md.*")
         profileList = glob.glob("profiling.json")
         files = mdFileList + profileList
         for f in files:
-            AddFileToArchive(args, f, cur, dsID)
+            AddFileToArchive(f, cur, dsID)
         chdir(cwd)
     elif IsHDF5File(dataset):
         print(f"Add HDF5 file {dataset} to archive")
-        statres = stat(dataset)
-        ct = int(statres.st_ctime_ns / 1000)
-        curDS = cur.execute(
-            "insert into bpdataset values (?, ?, ?, ?)", (hostID, dirID, dataset, ct)
-        )
+        dsID = AddDatasetToArchive(hostID, dirID, dataset)
+        print(f"  New insert id = {dsID}")
+    #        statres = stat(dataset)
+    #        ct = int(statres.st_ctime_ns / 1000)
+    #        curDS = cur.execute(
+    #            "insert into bpdataset values (?, ?, ?, ?) on conflict do update ctime=", (hostID, dirID, dataset, ct)
+    #        )
+    #        dsID = curDS.lastrowid
     else:
         print(f"WARNING: Dataset {dataset} is not an ADIOS dataset nor an HDF5 file. Skip")
+    return dsID
 
 
-def ProcessDBFile(args: dict, jsonlist: list, cur: sqlite3.Cursor, hostID: int, dirID: int):
-    for entry in jsonlist:
-        # print(f"Process entry {entry}:")
-        if isinstance(entry, dict):
-            if "name" in entry:
-                AddDatasetToArchive(args, entry["name"], cur, hostID, dirID)
-        else:
-            print(f"WARNING: your object is not a dictionary, skip : {entry}")
+def ReadDBFile(dbfile: str) -> list:
+    # read one db file, return list of bpdataset names and
+    # copy step table from file to memory db
+    try:
+        con = sqlite3.connect(dbfile)
+    except sqlite3.Error as e:
+        print(e)
+        return [], []
+
+    cur = con.cursor()
+    try:
+        cur.execute("select rowid, name from bpdataset")
+    except sqlite3.Error as e:
+        print(e)
+        return [], []
+    bpdatasets = cur.fetchall()
+
+    try:
+        cur.execute("select bpdatasetid, enginestep, physstep, phystime, ctime from step")
+    except sqlite3.Error as e:
+        print(e)
+        return [], []
+    steps = cur.fetchall()
+
+    cur.close()
+    return bpdatasets, steps
+
+
+def ProcessDatasets(
+    args: dict, bpdatasets: list, steps: list, cur: sqlite3.Cursor, hostID: int, dirID: int
+):
+    updated_ids = dict()
+    for entry in bpdatasets:
+        print(f"Process entry {entry}:  rowid = {entry[0]}, name = {entry[1]}")
+        dsID = ProcessOneDataset(args, entry[1], cur, hostID, dirID)
+        updated_ids[entry[0]] = dsID
+
+    print(f"updated ids = {updated_ids}")
+
+    # update bpdatasetid in step list
+    for i in range(len(steps)):
+        s = steps[i]
+        steps[i] = (updated_ids[s[0]], s[1], s[2], s[3], s[4])
+
+    print(steps)
+    AddStepsToArchive(steps, cur)
 
 
 def GetHostName():
@@ -217,7 +331,7 @@ def GetHostName():
     return host, shorthost
 
 
-def AddHostName(longHostName, shortHostName):
+def AddHostName(longHostName, shortHostName) -> int:
     res = cur.execute('select rowid from host where hostname = "' + shortHostName + '"')
     row = res.fetchone()
     if row is not None:
@@ -230,33 +344,22 @@ def AddHostName(longHostName, shortHostName):
     return hostID
 
 
-def Info(args: dict, cur: sqlite3.Cursor):
-    res = cur.execute("select id, name, version, ctime from info")
-    info = res.fetchone()
-    t = datetime.fromtimestamp(float(info[3]))
-    print(f"{info[1]}, version {info[2]}, created on {t}")
-
-    res = cur.execute("select rowid, hostname, longhostname from host")
-    hosts = res.fetchall()
-    for host in hosts:
-        print(f"hostname = {host[1]}   longhostname = {host[2]}")
-        res2 = cur.execute(
-            'select rowid, name from directory where hostid = "' + str(host[0]) + '"'
-        )
-        dirs = res2.fetchall()
-        for dir in dirs:
-            print(f"    dir = {dir[1]}")
-            res3 = cur.execute(
-                'select rowid, name, ctime from bpdataset where hostid = "'
-                + str(host[0])
-                + '" and dirid = "'
-                + str(dir[0])
-                + '"'
-            )
-            bpdatasets = res3.fetchall()
-            for bpdataset in bpdatasets:
-                t = datetime.fromtimestamp(float(bpdataset[2] / 1000000))
-                print(f"        dataset = {bpdataset[1]}     created on {t}")
+def AddDirectory(hostID: int, path: str) -> int:
+    print(
+        "select rowid from directory where hostid = " + str(hostID) + ' and name = "' + path + '"'
+    )
+    res = cur.execute(
+        "select rowid from directory where hostid = " + str(hostID) + ' and name = "' + path + '"'
+    )
+    row = res.fetchone()
+    if row is not None:
+        dirID = row[0]
+        print(f"Found directory {path} with hostID {hostID} in database, rowid = {dirID}")
+    else:
+        curDirectory = cur.execute("insert into directory values (?, ?)", (hostID, path))
+        dirID = curDirectory.lastrowid
+        print(f"Inserted directory {path} into database, rowid = {dirID}")
+    return dirID
 
 
 def Update(args: dict, cur: sqlite3.Cursor):
@@ -267,19 +370,15 @@ def Update(args: dict, cur: sqlite3.Cursor):
     hostID = AddHostName(longHostName, shortHostName)
 
     rootdir = getcwd()
-    # curHost = cur.execute('insert into host values (?, ?)',
-    #                      (shortHostName, longHostName))
-    # hostID = curHost.lastrowid
+    dirID = AddDirectory(hostID, rootdir)
 
-    curDir = cur.execute("insert or replace into directory values (?, ?)", (hostID, rootdir))
-    dirID = curDir.lastrowid
     con.commit()
 
     print(f"dbFileList = {dbFileList}")
-    db_list = MergeDBFiles(dbFileList)
-
-    print(f"Merged db list = {db_list}")
-    ProcessDBFile(args, db_list, cur, hostID, dirID)
+    for dbfile in dbFileList:
+        print("---- {dbfile} ----")
+        bpdatasets, steps = ReadDBFile(dbfile)
+        ProcessDatasets(args, bpdatasets, steps, cur, hostID, dirID)
 
     con.commit()
 
@@ -312,25 +411,33 @@ def Create(args: dict, cur: sqlite3.Cursor):
     Update(args, cur)
 
 
-def MergeDBFiles(dbfiles: list):
-    # read db files here
-    result = list()
-    for f1 in dbfiles:
-        try:
-            con = sqlite3.connect(f1)
-        except sqlite3.Error as e:
-            print(e)
+def Info(args: dict, cur: sqlite3.Cursor):
+    res = cur.execute("select id, name, version, ctime from info")
+    info = res.fetchone()
+    t = datetime.fromtimestamp(float(info[3]))
+    print(f"{info[1]}, version {info[2]}, created on {t}")
 
-        cur = con.cursor()
-        try:
-            cur.execute("select  * from bpdataset")
-        except sqlite3.Error as e:
-            print(e)
-        record = cur.fetchall()
-        for item in record:
-            result.append({"name": item[0]})
-        cur.close()
-    return result
+    res = cur.execute("select rowid, hostname, longhostname from host")
+    hosts = res.fetchall()
+    for host in hosts:
+        print(f"hostname = {host[1]}   longhostname = {host[2]}")
+        res2 = cur.execute(
+            'select rowid, name from directory where hostid = "' + str(host[0]) + '"'
+        )
+        dirs = res2.fetchall()
+        for dir in dirs:
+            print(f"    dir = {dir[1]}")
+            res3 = cur.execute(
+                'select rowid, name, ctime from bpdataset where hostid = "'
+                + str(host[0])
+                + '" and dirid = "'
+                + str(dir[0])
+                + '"'
+            )
+            bpdatasets = res3.fetchall()
+            for bpdataset in bpdatasets:
+                t = datetime.fromtimestamp(float(bpdataset[2] / 1000000))
+                print(f"        dataset = {bpdataset[1]}     created on {t}")
 
 
 def List():
@@ -350,6 +457,16 @@ def List():
     return 0
 
 
+def Delete():
+    if exists(args.CampaignFileName):
+        print(f"Delete archive {args.CampaignFileName}")
+        remove(args.CampaignFileName)
+        return 0
+    else:
+        print(f"ERROR: archive {args.CampaignFileName} does not exist")
+        return 1
+
+
 if __name__ == "__main__":
     args = SetupArgs()
     CheckCampaignStore(args)
@@ -358,13 +475,7 @@ if __name__ == "__main__":
         exit(List())
 
     if args.command == "delete":
-        if exists(args.CampaignFileName):
-            print(f"Delete archive {args.CampaignFileName}")
-            remove(args.CampaignFileName)
-            exit(0)
-        else:
-            print(f"ERROR: archive {args.CampaignFileName} does not exist")
-            exit(1)
+        exit(Delete())
 
     if args.command == "create":
         print("Create archive")
