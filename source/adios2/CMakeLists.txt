@@ -34,6 +34,7 @@ add_library(adios2_core
   helper/adiosMemory.cpp
   helper/adiosNetwork.cpp
   helper/adiosPluginManager.cpp
+  helper/adiosStride.cpp
   helper/adiosString.cpp helper/adiosString.tcc
   helper/adiosSystem.cpp
   helper/adiosType.cpp

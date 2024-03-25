@@ -87,6 +87,7 @@ Box<Dims> Variable::Selection() const
     }
     ADIOS2_FOREACH_STDTYPE_1ARG(declare_template_instantiation)
 #undef declare_template_instantiation
+    return Box<Dims>();
 }
 
 void Variable::SetStride(const Dims &stride)
