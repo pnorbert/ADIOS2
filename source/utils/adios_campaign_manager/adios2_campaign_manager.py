@@ -433,11 +433,11 @@ def Info(args: dict, cur: sqlite3.Cursor):
         for dir in dirs:
             print(f"    dir = {dir[1]}")
             res3 = cur.execute(
-                'select rowid, name, ctime from bpdataset where hostid = "'
-                + str(host[0])
-                + '" and dirid = "'
-                + str(dir[0])
-                + '"'
+                'select rowid, name, ctime from bpdataset where hostid = "' +
+                str(host[0]) +
+                '" and dirid = "' +
+                str(dir[0]) +
+                '"'
             )
             bpdatasets = res3.fetchall()
             for bpdataset in bpdatasets:
