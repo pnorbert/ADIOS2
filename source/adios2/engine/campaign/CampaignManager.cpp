@@ -92,7 +92,7 @@ int64_t CampaignManager::RecordOutput(const std::string &name, const size_t star
 void CampaignManager::RecordOutputStep(const std::string &name, const size_t physStep,
                                        const double physTime, const size_t engineStep)
 {
-    int64_t wallclockTime_us = std::chrono::duration_cast<std::chrono::microseconds>(
+    int64_t wallclockTime_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                    std::chrono::system_clock::now().time_since_epoch())
                                    .count();
 
@@ -100,7 +100,7 @@ void CampaignManager::RecordOutputStep(const std::string &name, const size_t phy
     {
         std::cout << "Campaign Manager " << m_WriterRank << "   Record Step, name = " << name
                   << " physStep = " << physStep << " time = " << physTime
-                  << " engineStep = " << engineStep << " clock = " << wallclockTime_us << " us\n";
+                  << " engineStep = " << engineStep << " clock = " << wallclockTime_ns << " ns\n";
     }
 
     FirstEvent();
@@ -115,7 +115,7 @@ void CampaignManager::RecordOutputStep(const std::string &name, const size_t phy
     {
         dbFileID = r->second;
     }
-    m_CampaignDB.AddFileStep(dbFileID, engineStep, physStep, physTime, wallclockTime_us);
+    m_CampaignDB.AddFileStep(dbFileID, engineStep, physStep, physTime, wallclockTime_ns);
 }
 
 void CampaignManager::Close()

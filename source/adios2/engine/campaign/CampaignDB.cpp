@@ -109,12 +109,12 @@ bool CampaignDB::Open(const std::string &name)
 
     if (oldversion.empty())
     {
-        int64_t wallclockTime_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        int64_t wallclockTime_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                        std::chrono::system_clock::now().time_since_epoch())
                                        .count();
         sqlcmd = "INSERT INTO info (id, name, version, ctime) VALUES ('ACR', 'ADIOS "
                  "Campaign Recording', '" +
-                 CampaignDBVersion + "', " + std::to_string(wallclockTime_us) + ")";
+                 CampaignDBVersion + "', " + std::to_string(wallclockTime_ns) + ")";
         rc = sqlite3_exec(m_DB, sqlcmd.c_str(), 0, 0, &zErrMsg);
         if (rc != SQLITE_OK)
         {

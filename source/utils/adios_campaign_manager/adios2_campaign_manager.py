@@ -9,7 +9,7 @@ from os import chdir, getcwd, remove, stat
 from os.path import exists, isdir, expanduser
 from re import sub
 from socket import getfqdn
-from time import time
+from time import time_ns
 
 # from adios2.adios2_campaign_manager import *
 
@@ -153,7 +153,7 @@ def AddFileToArchive(filename: str, cur: sqlite3.Cursor, dsID: int):
         return
 
     statres = stat(filename)
-    ct = int(statres.st_ctime_ns / 1000)
+    ct = statres.st_ctime_ns
 
     cur.execute(
         "insert into bpfile "
@@ -177,13 +177,6 @@ def AddFileToArchive(filename: str, cur: sqlite3.Cursor, dsID: int):
         ),
     )
 
-    # test
-    # if (filename == "dataAll.bp/md.0"):
-    #    data = DecompressBuffer(compressed_data)
-    #    of = open("dataAll.bp-md.0", "wb")
-    #    of.write(data)
-    #    of.close()
-
 
 def AddStepsToArchive(steps: list, cur: sqlite3.Cursor):
     for s in steps:
@@ -199,7 +192,7 @@ def AddStepsToArchive(steps: list, cur: sqlite3.Cursor):
 
 def AddDatasetToArchive_DesiredButNotWorking(hostID: int, dirID: int, dataset: str) -> int:
     statres = stat(dataset)
-    ct = int(statres.st_ctime_ns / 1000)
+    ct = statres.st_ctime_ns
     curDS = cur.execute(
         "insert into bpdataset values (?, ?, ?, ?) on conflict (hostid, dirid, name) "
         "do update set ctime=" + str(ct) + " returning hostid",
@@ -208,30 +201,31 @@ def AddDatasetToArchive_DesiredButNotWorking(hostID: int, dirID: int, dataset: s
     return curDS.lastrowid
 
 
-def AddDatasetToArchive(hostID: int, dirID: int, dataset: str) -> int:
+def AddDatasetToArchive(hostID: int, dirID: int, dataset: str, cur: sqlite3.Cursor) -> int:
     statres = stat(dataset)
-    ct = int(statres.st_ctime_ns / 1000)
+    ct = statres.st_ctime_ns
     select_cmd = (
         "select rowid from bpdataset "
         f"where hostid = {hostID} and dirid = {dirID} and name = '{dataset}'"
     )
-    print(select_cmd)
     res = cur.execute(select_cmd)
     row = res.fetchone()
     if row is not None:
         rowID = row[0]
         print(
-            f"Found bpdataset {dataset} in database on host {hostID} in dir {dirID}, rowid = {rowID}"
+            f"Found dataset {dataset} in database on host {hostID} "
+            f"in dir {dirID}, rowid = {rowID}"
         )
     else:
+        print(f"Add dataset {dataset} to archive")
         curDS = cur.execute(
             "insert into bpdataset (hostid, dirid, name, ctime) values (?, ?, ?, ?)",
             (hostID, dirID, dataset, ct),
         )
         rowID = curDS.lastrowid
-        print(
-            f"Inserted bpdataset {dataset} in database on host {hostID} in dir {dirID}, rowid = {rowID}"
-        )
+        # print(
+        #     f"Inserted bpdataset {dataset} in database on host {hostID} in dir {dirID}, rowid = {rowID}"
+        # )
     return rowID
 
 
@@ -241,11 +235,11 @@ def ProcessOneDataset(
     dsID = 0
     if IsADIOSDataset(dataset):
         print(f"Add ADIOS dataset {dataset} to archive")
-        dsID = AddDatasetToArchive(hostID, dirID, dataset)
+        dsID = AddDatasetToArchive(hostID, dirID, dataset, cur)
         print(f"  New insert id = {dsID}")
         #        print(f"Add dataset {dataset} to archive")
         #        statres = stat(dataset)
-        #        ct = int(statres.st_ctime_ns / 1000)
+        #        ct = statres.st_ctime_ns
         #        curDS = cur.execute(
         #            "insert into bpdataset values (?, ?, ?, ?)", (hostID, dirID, dataset, ct)
         #        )
@@ -263,7 +257,7 @@ def ProcessOneDataset(
         dsID = AddDatasetToArchive(hostID, dirID, dataset)
         print(f"  New insert id = {dsID}")
     #        statres = stat(dataset)
-    #        ct = int(statres.st_ctime_ns / 1000)
+    #        ct = statres.st_ctime_ns
     #        curDS = cur.execute(
     #            "insert into bpdataset values (?, ?, ?, ?) on conflict do update ctime=", (hostID, dirID, dataset, ct)
     #        )
@@ -345,9 +339,6 @@ def AddHostName(longHostName, shortHostName) -> int:
 
 
 def AddDirectory(hostID: int, path: str) -> int:
-    print(
-        "select rowid from directory where hostid = " + str(hostID) + ' and name = "' + path + '"'
-    )
     res = cur.execute(
         "select rowid from directory where hostid = " + str(hostID) + ' and name = "' + path + '"'
     )
@@ -384,7 +375,7 @@ def Update(args: dict, cur: sqlite3.Cursor):
 
 
 def Create(args: dict, cur: sqlite3.Cursor):
-    epoch = time()
+    epoch = time_ns()
     cur.execute("create table info(id TEXT, name TEXT, version TEXT, ctime INT)")
     cur.execute(
         "insert into info values (?, ?, ?, ?)",
@@ -411,10 +402,22 @@ def Create(args: dict, cur: sqlite3.Cursor):
     Update(args, cur)
 
 
+def timestamp_to_datetime(timestamp: int) -> datetime:
+    digits = len(str(int(timestamp)))
+    t = float(timestamp)
+    if digits > 18:
+        t = t / 1000000000
+    elif digits > 15:
+        t = t / 1000000
+    elif digits > 12:
+        t = t / 1000
+    return datetime.fromtimestamp(t)
+
+
 def Info(args: dict, cur: sqlite3.Cursor):
     res = cur.execute("select id, name, version, ctime from info")
     info = res.fetchone()
-    t = datetime.fromtimestamp(float(info[3]))
+    t = timestamp_to_datetime(info[3])
     print(f"{info[1]}, version {info[2]}, created on {t}")
 
     res = cur.execute("select rowid, hostname, longhostname from host")
@@ -436,7 +439,7 @@ def Info(args: dict, cur: sqlite3.Cursor):
             )
             bpdatasets = res3.fetchall()
             for bpdataset in bpdatasets:
-                t = datetime.fromtimestamp(float(bpdataset[2] / 1000000))
+                t = timestamp_to_datetime(bpdataset[2])
                 print(f"        dataset = {bpdataset[1]}     created on {t}")
 
 
@@ -446,7 +449,7 @@ def List():
         return 1
     else:
         # List the local campaign store
-        acaList = glob.glob(args.campaign_store + "/*.aca", recursive=True)
+        acaList = glob.glob(args.campaign_store + "/**/*.aca", recursive=True)
         if len(acaList) == 0:
             print("There are no campaign archives in  " + args.campaign_store)
             return 2
