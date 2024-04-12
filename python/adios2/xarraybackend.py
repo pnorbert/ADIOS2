@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+
 # import warnings
 
 from collections.abc import Iterable
@@ -66,7 +67,8 @@ adios_to_numpy_type = {
 
 
 class ADIOSBackendArray(BackendArray):
-    '''ADIOS2 backend for lazily indexed arrays '''
+    """ADIOS2 backend for lazily indexed arrays"""
+
     def __init__(self, shape, dtype, lock, adiosfile: FileReader, varname: str):
         self.shape = shape
         self.dtype = dtype
@@ -110,7 +112,7 @@ class ADIOSBackendArray(BackendArray):
 
 
 def attrs_of_var(varname: str, items: ItemsView, separator: str = "/"):
-    '''Return attributes whose name starts with a variable's name'''
+    """Return attributes whose name starts with a variable's name"""
     return [(key, value) for key, value in items if key.startswith(varname + separator)]
 
 
@@ -136,7 +138,7 @@ class AdiosBackendEntrypoint(BackendEntrypoint):
         self._fh = None
 
     def close():
-        '''Close the ADIOS file'''
+        """Close the ADIOS file"""
         print("AdiosBackendEntrypoint.close() called")
         # Note that this is a strange method without 'self', so we cannot close the file because
         # we don't have any handle to it
@@ -157,21 +159,21 @@ class AdiosBackendEntrypoint(BackendEntrypoint):
         self,
         filename_or_obj: str | os.PathLike[Any] | BufferedIOBase | AbstractDataStore,
         *,
-#        mask_and_scale=True,
-#        decode_times=True,
-#        concat_characters=True,
-#        decode_coords=True,
+        #        mask_and_scale=True,
+        #        decode_times=True,
+        #        concat_characters=True,
+        #        decode_coords=True,
         drop_variables: str | Iterable[str] | None = None,
-#        use_cftime=None,
-#        decode_timedelta=None,
-#        group=None,
-#        mode="r",
-#        synchronizer=None,
-#        consolidated=None,
-#        chunk_store=None,
-#        storage_options=None,
-#        stacklevel=3,
-#        adios_version=None,
+        #        use_cftime=None,
+        #        decode_timedelta=None,
+        #        group=None,
+        #        mode="r",
+        #        synchronizer=None,
+        #        consolidated=None,
+        #        chunk_store=None,
+        #        storage_options=None,
+        #        stacklevel=3,
+        #        adios_version=None,
     ) -> Dataset:
         filename_or_obj = _normalize_path(filename_or_obj)
         print(f"AdiosBackendEntrypoint: path = {filename_or_obj} type = {type(filename_or_obj)}")
@@ -251,7 +253,7 @@ class AdiosBackendEntrypoint(BackendEntrypoint):
                         xvar = Variable([], data, attrs=xattrs, encoding=None)
                     else:
                         # print(f"\tCreate scalar variable {varname}")
-                        xvar = Variable([], data[0], attrs=xattrs, encoding=None)
+                        xvar = Variable([], data, attrs=xattrs, encoding=None)
             xvars[varname] = xvar
             # print(f"--- {xvar}")
 
