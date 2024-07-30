@@ -146,6 +146,21 @@ Variable IO::DefineVariable(const std::string &name, const pybind11::object &val
     return Variable(variable);
 }
 
+VariableDerived IO::DefineDerivedVariable(const std::string &name, const std::string &exp_string,
+                                          const DerivedVarType varType)
+{
+    helper::CheckForNullptr(m_IO,
+                            "for variable " + name + ", in call to IO::DefineDerivedVariable");
+
+#ifdef ADIOS2_HAVE_DERIVED_VARIABLE
+    adios2::core::VariableDerived *dv = &m_IO->DefineDerivedVariable(name, exp_string, varType);
+    adios2::py11::VariableDerived vd(dv);
+#else
+    adios2::py11::VariableDerived vd;
+#endif
+    return vd;
+}
+
 Variable IO::InquireVariable(const std::string &name)
 {
     helper::CheckForNullptr(m_IO, "for variable " + name + ", in call to IO::InquireVariable");

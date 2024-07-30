@@ -20,6 +20,7 @@ python_add_test(NAME Api.Python.Variable SCRIPT TestVariable.py)
 python_add_test(NAME Api.Python.Attribute SCRIPT TestAttribute.py)
 python_add_test(NAME Api.Python.Stream SCRIPT TestStream.py)
 python_add_test(NAME Api.Python.FileReader SCRIPT TestFileReader.py)
+python_add_test(NAME Api.Python.DerivedVariable SCRIPT TestDerivedVariable.py)
 
 if(ADIOS2_HAVE_MPI)
   add_python_mpi_test(BPWriteReadString)
