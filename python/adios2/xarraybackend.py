@@ -33,12 +33,12 @@ from xarray.core import indexing
 # from xarray.core.indexing import LazilyIndexedArray
 
 # from xarray.core.parallelcompat import guess_chunkmanager
-from xarray.core.pycompat import integer_types
-from xarray.core.utils import (
-    FrozenDict,
-    HiddenKeyDict,
-    close_on_error,
-)
+# from xarray.core.pycompat import integer_types
+# from xarray.core.utils import (
+#     FrozenDict,
+#    HiddenKeyDict,
+#     close_on_error,
+# )
 
 if TYPE_CHECKING:
     from io import BufferedIOBase
@@ -57,7 +57,7 @@ adios_to_numpy_type = {
     "uint16_t": np.uint16,
     "uint32_t": np.uint32,
     "uint64_t": np.uint64,
-    "float": np.float,
+    "float": float,
     "double": np.double,
     "long double": np.longdouble,
     "float complex": np.complex64,
