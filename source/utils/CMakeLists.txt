@@ -102,6 +102,12 @@ if(Python_Interpreter_FOUND)
     COMPONENT adios2_scripts-runtime
     ${ADIOS2_MAYBE_EXCLUDE_FROM_ALL}
   )
+  install(PROGRAMS adios2_perfmetric.py
+  RENAME adios2_perfmetric
+  DESTINATION ${CMAKE_INSTALL_BINDIR}
+  COMPONENT adios2_scripts-runtime
+  ${ADIOS2_MAYBE_EXCLUDE_FROM_ALL}
+)
 endif()
 
 install(PROGRAMS adios2_deactivate_bp
