@@ -337,6 +337,15 @@ if(ADIOS2_HAVE_MHS)
     )
 endif()
 
+if(ADIOS2_HAVE_MGARD_MDR)
+    target_sources(adios2_core PRIVATE
+        engine/refactor/RefactorWriter.cpp
+        engine/refactor/RefactorWriter.tcc
+        engine/refactor/RefactorReader.cpp
+        engine/refactor/RefactorReader.tcc
+    )
+endif()
+
 if(ADIOS2_HAVE_SST)
   add_subdirectory(toolkit/sst)
   target_sources(adios2_core PRIVATE

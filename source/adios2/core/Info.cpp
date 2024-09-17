@@ -41,6 +41,9 @@ static const char *const engines[] = {"BP3",
 #ifdef ADIOS2_HAVE_DataSpaces
                                       "DataSpaces",
 #endif
+#ifdef ADIOS2_HAVE_MGARD_MDR
+                                      "Refactor",
+#endif
                                       "Inline",
 #ifdef ADIOS2_HAVE_DAOS
                                       "DAOS",

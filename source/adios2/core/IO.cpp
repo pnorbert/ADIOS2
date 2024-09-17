@@ -59,6 +59,11 @@
 #include "adios2/engine/campaign/CampaignReader.h"
 #endif
 
+#ifdef ADIOS2_HAVE_MGARD_MDR // external dependencies
+#include "adios2/engine/refactor/RefactorReader.h"
+#include "adios2/engine/refactor/RefactorWriter.h"
+#endif
+
 namespace adios2
 {
 namespace core
@@ -149,6 +154,14 @@ std::unordered_map<std::string, IO::EngineFactoryEntry> Factory = {
                        "support for campaign management, can't use Campaign engine\n")
 #endif
     },
+    {"refactor",
+#ifdef ADIOS2_HAVE_MGARD_MDR
+     {IO::MakeEngine<engine::RefactorReader>, IO::MakeEngine<engine::RefactorWriter>}
+#else
+     IO::NoEngineEntry("ERROR: this version didn't compile with "
+                       "MGARD library with MDR feature, can't use Refactor engine\n")
+#endif
+    },
 };
 
 const std::unordered_map<std::string, bool> ReadRandomAccess_Supported = {
@@ -156,7 +169,7 @@ const std::unordered_map<std::string, bool> ReadRandomAccess_Supported = {
     {"ssc", false},     {"mhs", false},        {"sst", false},     {"daos", false},
     {"effis", false},   {"dataspaces", false}, {"hdf5", false},    {"skeleton", true},
     {"inline", false},  {"null", true},        {"nullcore", true}, {"plugin", false},
-    {"campaign", true},
+    {"campaign", true}, {"refactor", true},
 };
 
 // Synchronize access to the factory in case one thread is

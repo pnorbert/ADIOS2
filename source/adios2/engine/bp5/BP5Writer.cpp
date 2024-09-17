@@ -295,9 +295,12 @@ void BP5Writer::WriteData_EveryoneWrites(format::BufferV *Data, bool SerializedW
                         "Chain token in BP5Writer::WriteData");
     }
 
-    m_DataPos += Data->Size();
-    std::vector<core::iovec> DataVec = Data->DataVec();
-    m_FileDataManager.WriteFileAt(DataVec.data(), DataVec.size(), m_StartDataPos);
+    if (!Data->Size())
+    {
+        m_DataPos += Data->Size();
+        std::vector<core::iovec> DataVec = Data->DataVec();
+        m_FileDataManager.WriteFileAt(DataVec.data(), DataVec.size(), m_StartDataPos);
+    }
 
     if (SerializedWriters && a->m_Comm.Rank() < a->m_Comm.Size() - 1)
     {
