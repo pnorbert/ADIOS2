@@ -34,7 +34,6 @@ private:
     IO *m_MDRIO;
     Engine *m_DataEngine;
     Engine *m_MDREngine;
-    // std::unordered_map<std::string, std::shared_ptr<Operator>> m_TransportMap;
     std::shared_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
     adios2::format::MallocV m_RefData = adios2::format::MallocV("RefactorWriter");
 

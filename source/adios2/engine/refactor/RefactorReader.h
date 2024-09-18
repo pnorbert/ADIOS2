@@ -7,7 +7,7 @@
 #define ADIOS2_ENGINE_REFACTORREADER_H_
 
 #include "adios2/core/Engine.h"
-#include "adios2/operator/compress/CompressSirius.h"
+#include "adios2/toolkit/format/buffer/malloc/MallocV.h"
 
 namespace adios2
 {
@@ -28,10 +28,14 @@ public:
     void EndStep() final;
 
 private:
-    std::vector<IO *> m_SubIOs;
-    std::vector<Engine *> m_SubEngines;
-    std::shared_ptr<compress::CompressSirius> m_SiriusCompressor;
-    int m_Tiers;
+    IO *m_DataIO;
+    IO *m_MDRIO;
+    Engine *m_DataEngine;
+    Engine *m_MDREngine;
+    std::shared_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
+    adios2::format::MallocV m_RefData = adios2::format::MallocV("RefactorWriter");
+
+    double m_Accuracy = 0.01;
 
 #define declare_type(T)                                                                            \
     void DoGetSync(Variable<T> &, T *) final;                                                      \
@@ -52,6 +56,9 @@ private:
 
     template <class T>
     void GetDeferredCommon(Variable<T> &variable, T *data);
+
+    template <class T>
+    void GetRefactored(Variable<T> &variable, T *values);
 };
 
 } // end namespace engine

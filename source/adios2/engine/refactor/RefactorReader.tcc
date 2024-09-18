@@ -19,6 +19,54 @@ namespace core
 {
 namespace engine
 {
+/*
+   Get Deferred
+*/
+
+template <>
+inline void RefactorReader::GetDeferredCommon(Variable<std::string> &variable, std::string *data)
+{
+    m_DataEngine->Get(variable, data, Mode::Sync);
+}
+
+template <>
+void RefactorReader::GetDeferredCommon<double>(Variable<double> &variable, double *data)
+{
+    GetRefactored(variable, data);
+}
+
+template <>
+void RefactorReader::GetDeferredCommon<float>(Variable<float> &variable, float *data)
+{
+    GetRefactored(variable, data);
+}
+
+template <class T>
+void RefactorReader::GetDeferredCommon(Variable<T> &variable, T *data)
+{
+    m_DataEngine->Get(variable, data, Mode::Deferred);
+}
+
+/*
+   Get Sync
+*/
+template <>
+inline void RefactorReader::GetSyncCommon(Variable<std::string> &variable, std::string *data)
+{
+    m_DataEngine->Get(variable, data, Mode::Sync);
+}
+
+template <>
+void RefactorReader::GetSyncCommon<double>(Variable<double> &variable, double *data)
+{
+    GetDeferredCommon(variable, data);
+}
+
+template <>
+void RefactorReader::GetSyncCommon<float>(Variable<float> &variable, float *data)
+{
+    GetDeferredCommon(variable, data);
+}
 
 template <class T>
 inline void RefactorReader::GetSyncCommon(Variable<T> &variable, T *data)
@@ -27,29 +75,57 @@ inline void RefactorReader::GetSyncCommon(Variable<T> &variable, T *data)
     PerformGets();
 }
 
-template <>
-inline void RefactorReader::GetDeferredCommon(Variable<std::string> &variable, std::string *data)
-{
-    m_SubEngines[0]->Get(variable, data, Mode::Sync);
-}
+/*
+   Get Refactored
+*/
 
+/* This function should only be called for float and double type variables */
 template <class T>
-void RefactorReader::GetDeferredCommon(Variable<T> &variable, T *data)
+void RefactorReader::GetRefactored(Variable<T> &variable, T *data)
 {
-    for (int i = 0; i < m_Tiers; ++i)
+    if (variable.m_SingleValue)
     {
-        auto var = m_SubIOs[i]->InquireVariable<T>(variable.m_Name);
-        if (!var)
-        {
-            break;
-        }
-        var->SetSelection({variable.m_Start, variable.m_Count});
-        m_SubEngines[i]->Get(*var, data, Mode::Sync);
-        if (m_SiriusCompressor->m_CurrentReadFinished)
-        {
-            break;
-        }
+        m_DataEngine->Get(variable, data, Mode::Sync);
+        return;
     }
+
+    auto *var0 = m_MDRIO->InquireVariable<uint8_t>(variable.m_Name);
+    if (!var0)
+    {
+        m_DataEngine->Get(variable, data, Mode::Sync);
+        return;
+    }
+
+    size_t ElemCount = helper::GetTotalSize(variable.m_Shape);
+    size_t ElemSize = (variable.m_Type == DataType::Double ? sizeof(double) : sizeof(float));
+    size_t DimCount = variable.m_Shape.size();
+    size_t *Count = variable.m_Shape.data();
+    size_t AllocSize = m_RefactorOperator->GetEstimatedSize(ElemCount, ElemSize, DimCount, Count);
+    MemorySpace MemSpace = variable.GetMemorySpace(data);
+
+    m_RefData.Reset();
+    m_RefData.Allocate(AllocSize, ElemSize);
+    char *RefactoredData = (char *)m_RefData.GetPtr(0);
+
+    size_t RefactoredSize = m_RefactorOperator->Operate(
+        (const char *)data, variable.m_Start, variable.m_Count, variable.m_Type, RefactoredData);
+    size_t HeaderSize = m_RefactorOperator->GetHeaderSize();
+
+    std::cout << "=== RefactorWriter::Put Refactored size = " << RefactoredSize
+              << " HeaderSize = " << HeaderSize << std::endl;
+
+    // if the operator was not applied
+    if (RefactoredSize == 0)
+    {
+        RefactoredSize =
+            helper::CopyMemoryWithOpHeader((const char *)data, variable.m_Count, variable.m_Type,
+                                           RefactoredData, HeaderSize, MemSpace);
+    }
+
+    var0->SetSelection({{}, {HeaderSize}});
+    m_MDREngine->Put(*var0, (uint8_t *)RefactoredData, Mode::Sync);
+
+    m_DataEngine->Get(variable, data, Mode::Sync);
 }
 
 } // end namespace engine

@@ -5,6 +5,7 @@
 
 #include "RefactorReader.tcc"
 #include "adios2/helper/adiosFunctions.h"
+#include "adios2/operator/refactor/RefactorMDR.h"
 
 namespace adios2
 {
@@ -16,28 +17,24 @@ namespace engine
 RefactorReader::RefactorReader(IO &io, const std::string &name, const Mode mode, helper::Comm comm)
 : Engine("RefactorReader", io, name, mode, std::move(comm))
 {
-    helper::GetParameter(io.m_Parameters, "Tiers", m_Tiers);
-    Params params = {{"Tiers", std::to_string(m_Tiers)}};
-    m_SiriusCompressor = std::make_shared<compress::CompressSirius>(params);
-    io.SetEngine("");
-    m_SubIOs.emplace_back(&io);
-    m_SubEngines.emplace_back(&io.Open(m_Name + ".tier0", adios2::Mode::Read));
+    helper::GetParameter(io.m_Parameters, "accuracy", m_Accuracy);
+    Params params = {{"accuracy", std::to_string(m_Accuracy)}};
+    m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(io.m_Parameters);
 
-    for (int i = 1; i < m_Tiers; ++i)
-    {
-        m_SubIOs.emplace_back(&io.m_ADIOS.DeclareIO("SubIO" + std::to_string(i)));
-        m_SubEngines.emplace_back(
-            &m_SubIOs.back()->Open(m_Name + ".tier" + std::to_string(i), adios2::Mode::Read));
-    }
+    io.SetEngine("BP5");
+    m_DataEngine = &io.Open(m_Name, mode);
+
+    m_MDRIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#mdr");
+    m_MDRIO->SetEngine("BP5");
+    m_MDREngine = &m_MDRIO->Open(m_Name + "/md.r", mode);
+
     m_IsOpen = true;
 }
 
 RefactorReader::~RefactorReader()
 {
-    for (int i = 1; i < m_Tiers; ++i)
-    {
-        m_IO.m_ADIOS.RemoveIO("SubIO" + std::to_string(i));
-    }
+    m_IO.m_ADIOS.RemoveIO(m_MDRIO->m_Name);
+    m_IO.m_ADIOS.RemoveIO(m_DataIO->m_Name);
     if (m_IsOpen)
     {
         DestructorClose(m_FailVerbose);
@@ -47,38 +44,23 @@ RefactorReader::~RefactorReader()
 
 StepStatus RefactorReader::BeginStep(const StepMode mode, const float timeoutSeconds)
 {
-    bool endOfStream = false;
-    for (auto &e : m_SubEngines)
-    {
-        auto status = e->BeginStep(mode, timeoutSeconds);
-        if (status == StepStatus::EndOfStream)
-        {
-            endOfStream = true;
-        }
-    }
-    if (endOfStream)
-    {
-        return StepStatus::EndOfStream;
-    }
-    return StepStatus::OK;
+    StepStatus status = m_DataEngine->BeginStep(mode, timeoutSeconds);
+    m_MDREngine->BeginStep(mode, timeoutSeconds);
+    return status;
 }
 
-size_t RefactorReader::CurrentStep() const { return m_SubEngines[0]->CurrentStep(); }
+size_t RefactorReader::CurrentStep() const { return m_DataEngine->CurrentStep(); }
 
 void RefactorReader::PerformGets()
 {
-    for (auto &e : m_SubEngines)
-    {
-        e->PerformGets();
-    }
+    /* This should be called for non-refactored integer data */
+    m_DataEngine->PerformGets();
 }
 
 void RefactorReader::EndStep()
 {
-    for (auto &e : m_SubEngines)
-    {
-        e->EndStep();
-    }
+    m_DataEngine->EndStep();
+    m_MDREngine->EndStep();
 }
 
 // PRIVATE
@@ -98,10 +80,8 @@ ADIOS2_FOREACH_STDTYPE_1ARG(declare_type)
 
 void RefactorReader::DoClose(const int transportIndex)
 {
-    for (auto &e : m_SubEngines)
-    {
-        e->Close();
-    }
+    m_DataEngine->Close();
+    m_MDREngine->Close();
 }
 
 } // end namespace engine
