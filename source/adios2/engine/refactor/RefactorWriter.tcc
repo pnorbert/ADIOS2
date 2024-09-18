@@ -12,6 +12,8 @@
 #define ADIOS2_ENGINE_REFACTORWRITER_TCC_
 
 #include "RefactorWriter.h"
+#include "adios2/helper/adiosMath.h"
+#include "adios2/helper/adiosMemory.h"
 
 namespace adios2
 {
@@ -59,18 +61,45 @@ void RefactorWriter::PutRefactored(Variable<T> &variable, const T *data)
     if (variable.m_SingleValue)
     {
         m_DataEngine->Put(variable, data);
+        return;
     }
 
     m_DataEngine->Put(variable, data, Mode::Deferred);
 
-    // std::shared_ptr<adios2::core::Operator> tr = nullptr;
-
-    core::Variable<std::string> *var0 = m_MDRIO->InquireVariable<std::string>(variable.m_Name);
+    auto *var0 = m_MDRIO->InquireVariable<uint8_t>(variable.m_Name);
     if (!var0)
     {
-        var0 = &m_MDRIO->DefineVariable<std::string>(variable.m_Name);
+        var0 = &m_MDRIO->DefineVariable<uint8_t>(variable.m_Name, {}, {}, {UnknownDim});
     }
-    m_MDREngine->Put(*var0, ToString(variable.m_Type), Mode::Sync);
+
+    size_t ElemCount = helper::GetTotalSize(variable.m_Shape);
+    size_t ElemSize = (variable.m_Type == DataType::Double ? sizeof(double) : sizeof(float));
+    size_t DimCount = variable.m_Shape.size();
+    size_t *Count = variable.m_Shape.data();
+    size_t AllocSize = m_RefactorOperator->GetEstimatedSize(ElemCount, ElemSize, DimCount, Count);
+    MemorySpace MemSpace = variable.GetMemorySpace(data);
+
+    m_RefData.Reset();
+    m_RefData.Allocate(AllocSize, ElemSize);
+    char *RefactoredData = (char *)m_RefData.GetPtr(0);
+
+    size_t RefactoredSize = m_RefactorOperator->Operate(
+        (const char *)data, variable.m_Start, variable.m_Count, variable.m_Type, RefactoredData);
+    size_t HeaderSize = m_RefactorOperator->GetHeaderSize();
+
+    std::cout << "=== RefactorWriter::Put Refactored size = " << RefactoredSize
+              << " HeaderSize = " << HeaderSize << std::endl;
+
+    // if the operator was not applied
+    if (RefactoredSize == 0)
+    {
+        RefactoredSize =
+            helper::CopyMemoryWithOpHeader((const char *)data, variable.m_Count, variable.m_Type,
+                                           RefactoredData, HeaderSize, MemSpace);
+    }
+
+    var0->SetSelection({{}, {HeaderSize}});
+    m_MDREngine->Put(*var0, (uint8_t *)RefactoredData, Mode::Sync);
 }
 
 } // end namespace engine

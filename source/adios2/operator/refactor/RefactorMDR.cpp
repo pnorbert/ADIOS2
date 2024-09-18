@@ -282,6 +282,13 @@ size_t RefactorMDR::SerializeRefactoredData(mgard_x::MDR::RefactoredMetadata &re
     std::cout << "MDR serialized " << offset << " bytes, MDR header size = " << MDRHeaderSize
               << " subdomains = " << (size_t)nSubdomains << " levels = " << (size_t)nLevels
               << " bitplanes = " << (size_t)nBitPlanes << " blocks = " << nBlocks << "\n";
+
+    /* New meaning of Operator->GetHeaderSize() specifically for the Refactor engine:
+       Indicate the entire MDR refactoring metadata size on succesful refactoring.
+       No one has used this function on successful operator call before,
+       only when the Operate() functions returns 0 indicating no-op */
+    headerSize = MDRHeaderSize;
+
     return offset;
 }
 

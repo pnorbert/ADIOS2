@@ -7,6 +7,7 @@
 #define ADIOS2_ENGINE_REFACTORWRITER_H_
 
 #include "adios2/core/Engine.h"
+#include "adios2/toolkit/format/buffer/malloc/MallocV.h"
 
 namespace adios2
 {
@@ -34,6 +35,8 @@ private:
     Engine *m_DataEngine;
     Engine *m_MDREngine;
     // std::unordered_map<std::string, std::shared_ptr<Operator>> m_TransportMap;
+    std::shared_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
+    adios2::format::MallocV m_RefData = adios2::format::MallocV("RefactorWriter");
 
     void PutSubEngine(bool finalPut = false);
 
