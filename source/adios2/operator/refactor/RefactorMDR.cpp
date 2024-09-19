@@ -294,44 +294,49 @@ size_t RefactorMDR::SerializeRefactoredData(mgard_x::MDR::RefactoredMetadata &re
 
 size_t RefactorMDR::GetHeaderSize() const { return headerSize; }
 
-size_t RefactorMDR::ReconstructV1(const char *bufferIn, const size_t sizeIn, char *dataOut)
+RefactorMDR::RMD_V1 RefactorMDR::Reconstruct_ProcessMetadata_V1(const char *bufferIn,
+                                                                const size_t sizeIn)
 {
     // Do NOT remove even if the buffer version is updated. Data might be still
     // in lagacy formats. This function must be kept for backward compatibility.
     // If a newer buffer format is implemented, create another function, e.g.
     // ReconstructV1 and keep this function for reconstructing legacy data.
 
+    RMD_V1 rmd;
+    rmd.metadataSize = 0;
+    rmd.requiredDataSize = 0;
+
     config.log_level = 1;
     // double s = std::numeric_limits<double>::infinity();
 
-    size_t bufferInOffset = 0;
+    size_t &bufferInOffset = rmd.metadataSize;
 
-    const size_t ndims = GetParameter<size_t, size_t>(bufferIn, bufferInOffset);
-    Dims blockCount(ndims);
-    for (size_t i = 0; i < ndims; ++i)
+    rmd.ndims = GetParameter<size_t, size_t>(bufferIn, bufferInOffset);
+    rmd.blockCount.resize(rmd.ndims);
+    for (size_t i = 0; i < rmd.ndims; ++i)
     {
-        blockCount[i] = GetParameter<size_t, size_t>(bufferIn, bufferInOffset);
+        rmd.blockCount[i] = GetParameter<size_t, size_t>(bufferIn, bufferInOffset);
     }
-    const DataType type = GetParameter<DataType>(bufferIn, bufferInOffset);
+    rmd.type = GetParameter<DataType>(bufferIn, bufferInOffset);
     m_VersionInfo = " Data is compressed using MGARD Version " +
                     std::to_string(GetParameter<uint8_t>(bufferIn, bufferInOffset)) + "." +
                     std::to_string(GetParameter<uint8_t>(bufferIn, bufferInOffset)) + "." +
                     std::to_string(GetParameter<uint8_t>(bufferIn, bufferInOffset)) +
                     ". Please make sure a compatible version is used for decompression.";
 
-    const bool isRefactored = GetParameter<bool>(bufferIn, bufferInOffset);
+    rmd.isRefactored = GetParameter<bool>(bufferIn, bufferInOffset);
 
-    if (!isRefactored)
+    if (!rmd.isRefactored)
     {
         // data was copied as is from this offset
         headerSize += bufferInOffset;
         m_AccuracyProvided = m_AccuracyRequested;
-        return 0;
+        return rmd;
     }
 
-    size_t sizeOut = helper::GetTotalSize(blockCount, helper::GetDataTypeSize(type));
+    rmd.sizeOut = helper::GetTotalSize(rmd.blockCount, helper::GetDataTypeSize(rmd.type));
 
-    mgard_x::MDR::RefactoredMetadata refactored_metadata;
+    mgard_x::MDR::RefactoredMetadata &refactored_metadata = rmd.refactored_metadata;
 
     /* Metadata header */
     {
@@ -353,33 +358,61 @@ size_t RefactorMDR::ReconstructV1(const char *bufferIn, const size_t sizeIn, cha
         refactored_metadata.InitializeForReconstruction();
     }
 
-    mgard_x::MDR::RefactoredData refactored_data;
+    mgard_x::MDR::RefactoredData &refactored_data = rmd.refactored_data;
     refactored_data.InitializeForReconstruction(refactored_metadata);
 
-    const uint8_t nSubdomains = GetParameter<uint8_t>(bufferIn, bufferInOffset);
-    const uint8_t nLevels = GetParameter<uint8_t>(bufferIn, bufferInOffset);
-    const uint8_t nBitPlanes = GetParameter<uint8_t>(bufferIn, bufferInOffset);
+    rmd.nSubdomains = GetParameter<uint8_t>(bufferIn, bufferInOffset);
+    rmd.nLevels = GetParameter<uint8_t>(bufferIn, bufferInOffset);
+    rmd.nBitPlanes = GetParameter<uint8_t>(bufferIn, bufferInOffset);
 
-    const uint64_t tableSize = (nSubdomains * nLevels * nBitPlanes);
-    const uint64_t *table = (uint64_t *)(bufferIn + bufferInOffset);
-    bufferInOffset += tableSize * sizeof(uint64_t);
+    rmd.tableSize = (rmd.nSubdomains * rmd.nLevels * rmd.nBitPlanes);
+    rmd.table = (uint64_t *)(bufferIn + bufferInOffset);
+    bufferInOffset += rmd.tableSize * sizeof(uint64_t);
 
-    /*
-        Reconstruction
-    */
-    const char *componentData = bufferIn + bufferInOffset; // data pieces are here in memory
-
-    mgard_x::MDR::ReconstructedData reconstructed_data;
     for (auto &metadata : refactored_metadata.metadata)
     {
         metadata.requested_tol = m_AccuracyRequested.error;
         metadata.requested_s = m_AccuracyRequested.norm;
     }
     mgard_x::MDR::MDRequest(refactored_metadata, config);
-    /*for (auto &metadata : refactored_metadata.metadata)
+    for (auto &metadata : refactored_metadata.metadata)
     {
         metadata.PrintStatus();
-    }*/
+    }
+
+    /*
+      void PrintStatus() {
+        printf("Request tol: %f, s: %f\n", requested_tol, requested_s);
+        for (int level_idx = 0; level_idx < num_levels; level_idx++) {
+          printf("Level %d bitplanes: used [%2d] loaded [%2d] requested [%2d]\n",
+                 level_idx, prev_used_level_num_bitplanes[level_idx],
+                 loaded_level_num_bitplanes[level_idx],
+                 requested_level_num_bitplanes[level_idx]);
+        }
+        printf("level_num_elems: ");
+        for (int level_idx = 0; level_idx < num_levels; level_idx++) {
+          printf("%llu ", level_num_elems[level_idx]);
+        }
+        printf("\n");
+      }
+    */
+
+    rmd.requiredDataSize = sizeIn - bufferInOffset;
+    return rmd;
+}
+
+size_t RefactorMDR::Reconstruct_ProcessData_V1(RMD_V1 &rmd, const char *bufferIn,
+                                               const size_t sizeIn, char *dataOut)
+{
+    /*
+       Reconstruction
+   */
+    mgard_x::MDR::RefactoredMetadata &refactored_metadata = rmd.refactored_metadata;
+    mgard_x::MDR::RefactoredData &refactored_data = rmd.refactored_data;
+
+    const char *componentData = bufferIn; // data pieces are here in memory
+
+    mgard_x::MDR::ReconstructedData reconstructed_data;
 
     bool first_reconstruction = true; // only will be needed with progressive reconstruction
 
@@ -387,27 +420,27 @@ size_t RefactorMDR::ReconstructV1(const char *bufferIn, const size_t sizeIn, cha
     {
         uint64_t tableIdx;
         int num_subdomains = refactored_metadata.metadata.size();
-        assert(nSubdomains == refactored_metadata.metadata.size());
+        assert(rmd.nSubdomains == refactored_metadata.metadata.size());
         for (int subdomain_id = 0; subdomain_id < num_subdomains; subdomain_id++)
         {
             mgard_x::MDR::MDRMetadata metadata = refactored_metadata.metadata[subdomain_id];
             int num_levels = metadata.level_sizes.size();
             for (int level_idx = 0; level_idx < num_levels; level_idx++)
             {
-                assert(nLevels >= metadata.level_sizes.size());
-                tableIdx = subdomain_id * nLevels * nBitPlanes + level_idx * nBitPlanes;
+                assert(rmd.nLevels >= metadata.level_sizes.size());
+                tableIdx = subdomain_id * rmd.nLevels * rmd.nBitPlanes + level_idx * rmd.nBitPlanes;
                 int num_bitplanes = metadata.level_sizes[level_idx].size();
                 int loaded_bitplanes = metadata.loaded_level_num_bitplanes[level_idx];
                 int reqested_bitplanes = metadata.requested_level_num_bitplanes[level_idx];
-                assert(nBitPlanes >= metadata.requested_level_num_bitplanes[level_idx]);
+                assert(rmd.nBitPlanes >= metadata.requested_level_num_bitplanes[level_idx]);
                 for (int bitplane_idx = loaded_bitplanes; bitplane_idx < reqested_bitplanes;
                      bitplane_idx++)
                 {
 
                     uint64_t componentSize = refactored_metadata.metadata[subdomain_id]
                                                  .level_sizes[level_idx][bitplane_idx];
-                    const mgard_x::Byte *cdata =
-                        reinterpret_cast<const mgard_x::Byte *>(componentData + table[tableIdx]);
+                    const mgard_x::Byte *cdata = reinterpret_cast<const mgard_x::Byte *>(
+                        componentData + rmd.table[tableIdx]);
 
                     refactored_data.data[subdomain_id][level_idx][bitplane_idx] =
                         const_cast<mgard_x::Byte *>(cdata);
@@ -433,10 +466,10 @@ size_t RefactorMDR::ReconstructV1(const char *bufferIn, const size_t sizeIn, cha
     {
         reconstructed_data.Initialize(1);
         reconstructed_data.data[0] = reinterpret_cast<mgard_x::Byte *>(dataOut);
-        std::memset(reconstructed_data.data[0], 0, sizeOut);
-        std::vector<mgard_x::SIZE> offsets = std::vector<mgard_x::SIZE>(ndims, 0);
+        std::memset(reconstructed_data.data[0], 0, rmd.sizeOut);
+        std::vector<mgard_x::SIZE> offsets = std::vector<mgard_x::SIZE>(rmd.ndims, 0);
         std::vector<mgard_x::SIZE> shape = std::vector<mgard_x::SIZE>();
-        for (const auto &c : blockCount)
+        for (const auto &c : rmd.blockCount)
         {
             shape.push_back(static_cast<mgard_x::SIZE>(c));
         }
@@ -448,9 +481,9 @@ size_t RefactorMDR::ReconstructV1(const char *bufferIn, const size_t sizeIn, cha
                                 false);
 
     size_t refactoredSize =
-        helper::GetTotalSize(reconstructed_data.shape[0], helper::GetDataTypeSize(type));
-    assert(sizeOut == refactoredSize);
-    std::memcpy(dataOut, reconstructed_data.data[0], sizeOut);
+        helper::GetTotalSize(reconstructed_data.shape[0], helper::GetDataTypeSize(rmd.type));
+    assert(rmd.sizeOut == refactoredSize);
+    std::memcpy(dataOut, reconstructed_data.data[0], rmd.sizeOut);
 
     first_reconstruction = false;
 
@@ -469,7 +502,7 @@ size_t RefactorMDR::ReconstructV1(const char *bufferIn, const size_t sizeIn, cha
         std::cout << ")\n";
     }*/
 
-    if (type == DataType::FloatComplex || type == DataType::Float)
+    if (rmd.type == DataType::FloatComplex || rmd.type == DataType::Float)
     {
         m_AccuracyProvided.error =
             std::max(m_AccuracyRequested.error, adios2::ops::mdr::FLOAT_ROUNDING_ERROR_LIMIT);
@@ -482,16 +515,15 @@ size_t RefactorMDR::ReconstructV1(const char *bufferIn, const size_t sizeIn, cha
     m_AccuracyProvided.norm = m_AccuracyRequested.norm;
     m_AccuracyProvided.relative = false; // should be m_AccuracyRequested.relative
 
-    if (type == DataType::FloatComplex || type == DataType::DoubleComplex)
+    if (rmd.type == DataType::FloatComplex || rmd.type == DataType::DoubleComplex)
     {
-        sizeOut /= 2;
+        rmd.sizeOut /= 2;
     }
-    return sizeOut;
+    return rmd.sizeOut;
 }
 
 size_t RefactorMDR::InverseOperate(const char *bufferIn, const size_t sizeIn, char *dataOut)
 {
-
     for (auto &p : m_Parameters)
     {
         std::cout << "User parameter " << p.first << " = " << p.second << std::endl;
@@ -512,7 +544,14 @@ size_t RefactorMDR::InverseOperate(const char *bufferIn, const size_t sizeIn, ch
 
     if (bufferVersion == 1)
     {
-        return ReconstructV1(bufferIn + bufferInOffset, sizeIn - bufferInOffset, dataOut);
+        RMD_V1 rmd =
+            Reconstruct_ProcessMetadata_V1(bufferIn + bufferInOffset, sizeIn - bufferInOffset);
+        if (!rmd.isRefactored)
+        {
+            return 0; // caller needs to use raw data as is
+        }
+        const char *dataIn = bufferIn + bufferInOffset + rmd.metadataSize;
+        return Reconstruct_ProcessData_V1(rmd, dataIn, rmd.requiredDataSize, dataOut);
     }
     /*else if (bufferVersion == 2)
     {

@@ -34,7 +34,7 @@ private:
     IO *m_MDRIO;
     Engine *m_DataEngine;
     Engine *m_MDREngine;
-    std::shared_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
+    std::unique_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
     adios2::format::MallocV m_RefData = adios2::format::MallocV("RefactorWriter");
 
     void PutSubEngine(bool finalPut = false);

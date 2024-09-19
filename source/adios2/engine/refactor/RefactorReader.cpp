@@ -3,8 +3,10 @@
  * accompanying file Copyright.txt for details.
  */
 
+#include "RefactorReader.h"
 #include "RefactorReader.tcc"
-#include "adios2/helper/adiosFunctions.h"
+
+#include "adios2/helper/adiosString.h"
 #include "adios2/operator/refactor/RefactorMDR.h"
 
 namespace adios2
@@ -17,9 +19,9 @@ namespace engine
 RefactorReader::RefactorReader(IO &io, const std::string &name, const Mode mode, helper::Comm comm)
 : Engine("RefactorReader", io, name, mode, std::move(comm))
 {
-    helper::GetParameter(io.m_Parameters, "accuracy", m_Accuracy);
-    Params params = {{"accuracy", std::to_string(m_Accuracy)}};
-    m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(io.m_Parameters);
+    // helper::GetParameter(m_IO.m_Parameters, "accuracy", m_Accuracy);
+    // Params params = {{"accuracy", std::to_string(m_Accuracy)}};
+    m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(Params());
 
     io.SetEngine("BP5");
     m_DataEngine = &io.Open(m_Name, mode);

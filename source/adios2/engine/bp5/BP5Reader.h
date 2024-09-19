@@ -13,6 +13,7 @@
 #include "adios2/core/CoreTypes.h"
 #include "adios2/core/Engine.h"
 #include "adios2/engine/bp5/BP5Engine.h"
+#include "adios2/engine/refactor/RefactorReader.h"
 #include "adios2/helper/adiosComm.h"
 #include "adios2/helper/adiosRangeFilter.h"
 #include "adios2/toolkit/format/bp5/BP5Deserializer.h"
@@ -280,6 +281,8 @@ private:
     helper::Comm singleComm;
     unsigned int m_Threads;
     std::vector<transportman::TransportMan> fileManagers; // manager per thread
+
+    friend class RefactorReader;
 };
 
 } // end namespace engine
