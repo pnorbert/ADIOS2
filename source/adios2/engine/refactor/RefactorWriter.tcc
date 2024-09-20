@@ -64,8 +64,6 @@ void RefactorWriter::PutRefactored(Variable<T> &variable, const T *data)
         return;
     }
 
-    m_DataEngine->Put(variable, data, Mode::Deferred);
-
     auto *var0 = m_MDRIO->InquireVariable<uint8_t>(variable.m_Name);
     if (!var0)
     {
@@ -100,6 +98,12 @@ void RefactorWriter::PutRefactored(Variable<T> &variable, const T *data)
 
     var0->SetSelection({{}, {HeaderSize}});
     m_MDREngine->Put(*var0, (uint8_t *)RefactoredData, Mode::Sync);
+
+    variable.RemoveOperations();
+    variable.AddOperation(m_RefactorOperator);
+    m_RefactorOperator->SetParameter("AlreadyTransformed", "true");
+    m_DataEngine->Put(variable, (T *)RefactoredData, Mode::Deferred);
+    m_RefactorOperator->RemoveParameter("AlreadyTransformed");
 }
 
 } // end namespace engine

@@ -100,6 +100,17 @@ struct RefactorMDRHeader
 size_t RefactorMDR::Operate(const char *dataIn, const Dims &blockStart, const Dims &blockCount,
                             const DataType type, char *bufferOut)
 {
+    bool isAlreadyTransformed = false;
+    helper::GetParameter(m_Parameters, "alreadytransformed", isAlreadyTransformed);
+    if (isAlreadyTransformed)
+    {
+        // headerSize and transformedSize are already set by previous operate call
+        std::cout << "RefactorMDR::Operate() already transformed, header size = " << headerSize
+                  << " transformed size = " << transformedSize << std::endl;
+        std::memcpy(bufferOut, dataIn, transformedSize);
+        return transformedSize;
+    };
+
     const uint8_t bufferVersion = 1;
     size_t bufferOutOffset = 0;
 
@@ -192,7 +203,8 @@ size_t RefactorMDR::Operate(const char *dataIn, const Dims &blockStart, const Di
 
     bufferOutOffset += nbytes;
 
-    return bufferOutOffset;
+    transformedSize = bufferOutOffset;
+    return transformedSize;
 }
 
 // return number of bytes written

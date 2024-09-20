@@ -33,7 +33,7 @@ RefactorWriter::RefactorWriter(IO &io, const std::string &name, const Mode mode,
     m_MDRIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#mdr");
     m_MDRIO->SetEngine("BP5");
     m_MDREngine = &m_MDRIO->Open(m_Name + "/md.r", adios2::Mode::Write);
-    m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(io.m_Parameters);
+    m_RefactorOperator = std::make_shared<refactor::RefactorMDR>(io.m_Parameters);
     m_IsOpen = true;
 }
 

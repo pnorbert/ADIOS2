@@ -30,6 +30,16 @@ void Operator::SetParameter(const std::string key, const std::string value) noex
     m_Parameters[helper::LowerCase(key)] = value;
 }
 
+void Operator::RemoveParameter(const std::string key)
+{
+    size_t n = m_Parameters.erase(helper::LowerCase(key));
+    if (!n)
+    {
+        helper::Throw<std::invalid_argument>("Core", "Operator", "RemoveParameter",
+                                             "key '" + helper::LowerCase(key) + "' does not exist");
+    }
+}
+
 Params &Operator::GetParameters() noexcept { return m_Parameters; }
 
 void Operator::SetAccuracy(const adios2::Accuracy &a) noexcept { m_AccuracyRequested = a; }

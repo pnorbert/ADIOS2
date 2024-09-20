@@ -92,6 +92,7 @@ public:
 
 private:
     size_t headerSize = 0;
+    size_t transformedSize = 0;
 
     size_t SerializeRefactoredData(mgard_x::MDR::RefactoredMetadata &refactored_metadata,
                                    mgard_x::MDR::RefactoredData &refactored_data, char *buffer,

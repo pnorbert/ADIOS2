@@ -54,6 +54,7 @@ public:
     virtual ~Operator() = default;
 
     void SetParameter(const std::string key, const std::string value) noexcept;
+    void RemoveParameter(const std::string key);
 
     Params &GetParameters() noexcept;
 
