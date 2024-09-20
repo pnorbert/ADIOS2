@@ -119,7 +119,7 @@ void RefactorReader::GetRefactored(Variable<T> &variable, T *data)
 
         auto e = reinterpret_cast<BP5Reader *>(m_DataEngine);
 
-        Accuracy a{0.01, L2_norm, false};
+        Accuracy a{0.01, Linf_norm, false};
         variable.SetAccuracy(a);
 
         /* Prepare a BP5ArrayRequest like in BP5Deserializer::QueueGetSingle() */

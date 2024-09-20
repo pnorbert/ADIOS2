@@ -375,29 +375,42 @@ RefactorMDR::RMD_V1 RefactorMDR::Reconstruct_ProcessMetadata_V1(const char *buff
         metadata.requested_s = m_AccuracyRequested.norm;
     }
     mgard_x::MDR::MDRequest(refactored_metadata, config);
-    for (auto &metadata : refactored_metadata.metadata)
+
+    uint64_t tableIdx;
+    int num_subdomains = refactored_metadata.metadata.size();
+    assert(rmd.nSubdomains == refactored_metadata.metadata.size());
+    for (int subdomain_id = 0; subdomain_id < num_subdomains; subdomain_id++)
     {
+        mgard_x::MDR::MDRMetadata &metadata = refactored_metadata.metadata[subdomain_id];
         metadata.PrintStatus();
+
+        int num_levels = metadata.level_sizes.size();
+        for (int level_idx = 0; level_idx < num_levels; level_idx++)
+        {
+            assert(rmd.nLevels >= metadata.level_sizes.size());
+            tableIdx = subdomain_id * rmd.nLevels * rmd.nBitPlanes + level_idx * rmd.nBitPlanes;
+            int num_bitplanes = metadata.level_sizes[level_idx].size();
+            int loaded_bitplanes = metadata.loaded_level_num_bitplanes[level_idx];
+            int requested_bitplanes = metadata.requested_level_num_bitplanes[level_idx];
+            assert(rmd.nBitPlanes >= metadata.requested_level_num_bitplanes[level_idx]);
+            for (int bitplane_idx = loaded_bitplanes; bitplane_idx < requested_bitplanes;
+                 bitplane_idx++)
+            {
+
+                uint64_t componentSize =
+                    refactored_metadata.metadata[subdomain_id].level_sizes[level_idx][bitplane_idx];
+                uint64_t pos = rmd.table[tableIdx];
+                rmd.requiredDataSize = std::max(pos + componentSize, rmd.requiredDataSize);
+                ++tableIdx;
+            }
+        }
     }
 
-    /*
-      void PrintStatus() {
-        printf("Request tol: %f, s: %f\n", requested_tol, requested_s);
-        for (int level_idx = 0; level_idx < num_levels; level_idx++) {
-          printf("Level %d bitplanes: used [%2d] loaded [%2d] requested [%2d]\n",
-                 level_idx, prev_used_level_num_bitplanes[level_idx],
-                 loaded_level_num_bitplanes[level_idx],
-                 requested_level_num_bitplanes[level_idx]);
-        }
-        printf("level_num_elems: ");
-        for (int level_idx = 0; level_idx < num_levels; level_idx++) {
-          printf("%llu ", level_num_elems[level_idx]);
-        }
-        printf("\n");
-      }
-    */
+    std::cout << "Refactor::MDR::Reconstruct_ProcessMetadata_V1 refactored data size = "
+              << sizeIn - bufferInOffset << " required data size = " << rmd.requiredDataSize
+              << " metadata size = " << rmd.metadataSize << std::endl;
+    assert(rmd.requiredDataSize <= sizeIn - bufferInOffset);
 
-    rmd.requiredDataSize = sizeIn - bufferInOffset;
     return rmd;
 }
 
@@ -423,7 +436,7 @@ size_t RefactorMDR::Reconstruct_ProcessData_V1(RMD_V1 &rmd, const char *bufferIn
         assert(rmd.nSubdomains == refactored_metadata.metadata.size());
         for (int subdomain_id = 0; subdomain_id < num_subdomains; subdomain_id++)
         {
-            mgard_x::MDR::MDRMetadata metadata = refactored_metadata.metadata[subdomain_id];
+            mgard_x::MDR::MDRMetadata &metadata = refactored_metadata.metadata[subdomain_id];
             int num_levels = metadata.level_sizes.size();
             for (int level_idx = 0; level_idx < num_levels; level_idx++)
             {
@@ -524,6 +537,8 @@ size_t RefactorMDR::Reconstruct_ProcessData_V1(RMD_V1 &rmd, const char *bufferIn
 
 size_t RefactorMDR::InverseOperate(const char *bufferIn, const size_t sizeIn, char *dataOut)
 {
+    m_AccuracyRequested.norm = Linf_norm;
+    m_AccuracyRequested.relative = false;
     for (auto &p : m_Parameters)
     {
         std::cout << "User parameter " << p.first << " = " << p.second << std::endl;
@@ -533,7 +548,8 @@ size_t RefactorMDR::InverseOperate(const char *bufferIn, const size_t sizeIn, ch
         {
             m_AccuracyRequested.error =
                 helper::StringTo<double>(p.second, " in Parameter key=" + key);
-            std::cout << "Accuracy error set from Parameter to " << m_AccuracyRequested.error;
+            std::cout << "Accuracy error set from Parameter to " << m_AccuracyRequested.error
+                      << std::endl;
         }
     }
 
@@ -551,6 +567,12 @@ size_t RefactorMDR::InverseOperate(const char *bufferIn, const size_t sizeIn, ch
             return 0; // caller needs to use raw data as is
         }
         const char *dataIn = bufferIn + bufferInOffset + rmd.metadataSize;
+        std::memset((void *)(dataIn + rmd.requiredDataSize), 0,
+                    sizeIn - bufferInOffset - rmd.metadataSize - rmd.requiredDataSize);
+        std::cout << "-- erase "
+                  << sizeIn - bufferInOffset - rmd.metadataSize - rmd.requiredDataSize
+                  << " bytes from pos " << rmd.requiredDataSize
+                  << ", headersize = " << bufferInOffset + rmd.metadataSize << std::endl;
         return Reconstruct_ProcessData_V1(rmd, dataIn, rmd.requiredDataSize, dataOut);
     }
     /*else if (bufferVersion == 2)
