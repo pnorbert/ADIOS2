@@ -61,6 +61,12 @@ private:
 
     template <class T>
     void PutRefactored(Variable<T> &variable, const T *values);
+
+    static void CallbackFromRefactorOperator(const char *dataIn, const char *bufferOut,
+                                             const size_t headerSize, const size_t bufferSize);
+
+    typedef std::map<const char *, std::pair<RefactorWriter *, std::string>> RefactorStaticMap;
+    static RefactorStaticMap m_DataPtrToMDRVariable;
 };
 
 } // end namespace engine

@@ -204,6 +204,12 @@ size_t RefactorMDR::Operate(const char *dataIn, const Dims &blockStart, const Di
     bufferOutOffset += nbytes;
 
     transformedSize = bufferOutOffset;
+
+    if (m_CallbackAfterOperate)
+    {
+        m_CallbackAfterOperate(dataIn, bufferOut, headerSize, transformedSize);
+    }
+
     return transformedSize;
 }
 
@@ -595,7 +601,8 @@ size_t RefactorMDR::InverseOperate(const char *bufferIn, const size_t sizeIn, ch
     else
     {
         helper::Throw<std::runtime_error>("Operator", "RefactorMDR", "InverseOperate",
-                                          "invalid mgard buffer version" + bufferVersion);
+                                          "invalid mgard buffer version" +
+                                              std::to_string(bufferVersion));
     }
 
     return 0;
@@ -609,6 +616,12 @@ bool RefactorMDR::IsDataTypeValid(const DataType type) const
         return true;
     }
     return false;
+}
+
+void RefactorMDR::SetCallbackAfterOperate(
+    const std::function<void(const char *, const char *, const size_t, const size_t)> &function)
+{
+    m_CallbackAfterOperate = function;
 }
 
 } // end namespace compress

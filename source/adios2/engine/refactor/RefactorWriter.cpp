@@ -14,6 +14,8 @@ namespace core
 namespace engine
 {
 
+RefactorWriter::RefactorStaticMap RefactorWriter::m_DataPtrToMDRVariable = {};
+
 RefactorWriter::RefactorWriter(IO &io, const std::string &name, const Mode mode, helper::Comm comm)
 : Engine("RefactorWriter", io, name, mode, std::move(comm))
 {
@@ -33,7 +35,11 @@ RefactorWriter::RefactorWriter(IO &io, const std::string &name, const Mode mode,
     m_MDRIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#mdr");
     m_MDRIO->SetEngine("BP5");
     m_MDREngine = &m_MDRIO->Open(m_Name + "/md.r", adios2::Mode::Write);
+
     m_RefactorOperator = std::make_shared<refactor::RefactorMDR>(io.m_Parameters);
+    auto *mdr = reinterpret_cast<refactor::RefactorMDR *>(m_RefactorOperator.get());
+    mdr->SetCallbackAfterOperate(CallbackFromRefactorOperator);
+
     m_IsOpen = true;
 }
 

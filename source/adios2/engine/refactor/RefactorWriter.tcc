@@ -54,6 +54,35 @@ void RefactorWriter::PutDeferredCommon(Variable<T> &variable, const T *data)
     m_DataEngine->Put(variable, data, Mode::Deferred);
 }
 
+void RefactorWriter::CallbackFromRefactorOperator(const char *dataIn, const char *bufferOut,
+                                                  const size_t headerSize, const size_t bufferSize)
+{
+    /* This is a static function */
+    auto it = m_DataPtrToMDRVariable.find(dataIn);
+    if (it == m_DataPtrToMDRVariable.end())
+    {
+        helper::Throw<std::invalid_argument>(
+            "Core", "RefactorWriter", "CallbackFromRefactorOperator",
+            "unrecognized data pointer was returned from RefactorMDR operator");
+    }
+
+    RefactorWriter *object = it->second.first;
+    std::string varName = it->second.second;
+
+    auto *var0 = object->m_MDRIO->InquireVariable<uint8_t>(varName);
+    if (!var0)
+    {
+        var0 = &object->m_MDRIO->DefineVariable<uint8_t>(varName, {}, {}, {UnknownDim});
+    }
+
+    std::cout << "=== RefactorWriter::Put Refactored size = " << bufferSize
+              << " HeaderSize = " << headerSize << std::endl;
+
+    var0->SetSelection({{}, {headerSize}});
+    object->m_MDREngine->Put(*var0, (uint8_t *)bufferOut, Mode::Sync);
+    m_DataPtrToMDRVariable.erase(it);
+}
+
 /* This function should only be called for float and double type variables */
 template <class T>
 void RefactorWriter::PutRefactored(Variable<T> &variable, const T *data)
@@ -64,46 +93,11 @@ void RefactorWriter::PutRefactored(Variable<T> &variable, const T *data)
         return;
     }
 
-    auto *var0 = m_MDRIO->InquireVariable<uint8_t>(variable.m_Name);
-    if (!var0)
-    {
-        var0 = &m_MDRIO->DefineVariable<uint8_t>(variable.m_Name, {}, {}, {UnknownDim});
-    }
-
-    size_t ElemCount = helper::GetTotalSize(variable.m_Shape);
-    size_t ElemSize = (variable.m_Type == DataType::Double ? sizeof(double) : sizeof(float));
-    size_t DimCount = variable.m_Shape.size();
-    size_t *Count = variable.m_Shape.data();
-    size_t AllocSize = m_RefactorOperator->GetEstimatedSize(ElemCount, ElemSize, DimCount, Count);
-    MemorySpace MemSpace = variable.GetMemorySpace(data);
-
-    m_RefData.Reset();
-    m_RefData.Allocate(AllocSize, ElemSize);
-    char *RefactoredData = (char *)m_RefData.GetPtr(0);
-
-    size_t RefactoredSize = m_RefactorOperator->Operate(
-        (const char *)data, variable.m_Start, variable.m_Count, variable.m_Type, RefactoredData);
-    size_t HeaderSize = m_RefactorOperator->GetHeaderSize();
-
-    std::cout << "=== RefactorWriter::Put Refactored size = " << RefactoredSize
-              << " HeaderSize = " << HeaderSize << std::endl;
-
-    // if the operator was not applied
-    if (RefactoredSize == 0)
-    {
-        RefactoredSize =
-            helper::CopyMemoryWithOpHeader((const char *)data, variable.m_Count, variable.m_Type,
-                                           RefactoredData, HeaderSize, MemSpace);
-    }
-
-    var0->SetSelection({{}, {HeaderSize}});
-    m_MDREngine->Put(*var0, (uint8_t *)RefactoredData, Mode::Sync);
+    m_DataPtrToMDRVariable.emplace((char *)data, std::make_pair(this, variable.m_Name));
 
     variable.RemoveOperations();
     variable.AddOperation(m_RefactorOperator);
-    m_RefactorOperator->SetParameter("AlreadyTransformed", "true");
-    m_DataEngine->Put(variable, (T *)RefactoredData, Mode::Deferred);
-    m_RefactorOperator->RemoveParameter("AlreadyTransformed");
+    m_DataEngine->Put(variable, data, Mode::Deferred);
 }
 
 } // end namespace engine

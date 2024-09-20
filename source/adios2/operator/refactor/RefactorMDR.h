@@ -90,6 +90,15 @@ public:
     size_t Reconstruct_ProcessData_V1(RMD_V1 &rmd, const char *bufferIn, const size_t sizeIn,
                                       char *dataOut);
 
+    /* Call back function at end of Operate to report:
+       - incoming buffer ptr
+       - result buffer
+       - size of header in result buffer
+       - size of result buffer
+       */
+    void SetCallbackAfterOperate(const std::function<void(const char *, const char *, const size_t,
+                                                          const size_t)> &function);
+
 private:
     size_t headerSize = 0;
     size_t transformedSize = 0;
@@ -101,6 +110,9 @@ private:
     std::string m_VersionInfo;
 
     mgard_x::Config config;
+
+    std::function<void(const char *, const char *, const size_t, const size_t)>
+        m_CallbackAfterOperate;
 };
 
 } // end namespace compress
