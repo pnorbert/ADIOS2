@@ -30,7 +30,7 @@ public:
     void Flush(const int transportIndex = -1) final;
 
 private:
-    IO *m_DataIO;
+    // IO *m_DataIO;
     IO *m_MDRIO;
     Engine *m_DataEngine;
     Engine *m_MDREngine;

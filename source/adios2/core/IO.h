@@ -449,6 +449,16 @@ public:
     void RemoveEngine(const std::string &name);
 
     /**
+     * Called from Refactor Engine to enable having two engines using same file name.
+     * Not exposed in APIs.
+     * Change the name of an existing engine in the IO's engine-map to something else, so that the
+     * original name can be reused (in the open chain used by the Refactor Engine)
+     * @param oldname Engine name that should exist in the list of engines
+     * @param newname New identifier
+     */
+    void RenameEngineInIO(const std::string &oldname, const std::string &newname);
+
+    /**
      * Flushes all engines created with the current IO object using Open.
      * If no engine is created it does nothing.
      * @exception std::runtime_error if any engine Flush fails

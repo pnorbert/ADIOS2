@@ -782,6 +782,22 @@ void IO::RemoveEngine(const std::string &name)
     }
 }
 
+void IO::RenameEngineInIO(const std::string &oldname, const std::string &newname)
+{
+    auto itEngine = m_Engines.find(oldname);
+    if (itEngine != m_Engines.end())
+    {
+        auto nodeHandler = m_Engines.extract(oldname);
+        nodeHandler.key() = newname;
+        m_Engines.insert(std::move(nodeHandler));
+    }
+    else
+    {
+        helper::Throw<std::invalid_argument>("Core", "IO", "RenameEngine",
+                                             "Engine " + oldname + " not found");
+    }
+}
+
 void IO::EnterComputationBlock() noexcept
 {
     for (auto &enginePair : m_Engines)

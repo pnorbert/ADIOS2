@@ -19,9 +19,17 @@ RefactorWriter::RefactorWriter(IO &io, const std::string &name, const Mode mode,
 {
     // helper::GetParameter(io.m_Parameters, "Tiers", m_Tiers);
     //  std::make_shared<refactor::RefactorMDR>(io.m_Parameters));
-    m_DataIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#data");
-    m_DataIO->SetEngine("BP5");
-    m_DataEngine = &m_DataIO->Open(m_Name, adios2::Mode::Write);
+    // m_DataIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#data");
+    // m_DataIO->SetEngine("BP5");
+    // m_DataEngine = &m_DataIO->Open(m_Name, adios2::Mode::Write);
+    m_IO.SetEngine("BP5");
+    m_DataEngine = &m_IO.Open(m_Name, adios2::Mode::Write);
+
+    /* Need to rename the BP5 engine's name in the IO's map because there cannot be
+    two engines with the same name, and the RefactorReader has the same name, which
+    IO is going to insert into its map after this call */
+    io.RenameEngineInIO(m_Name, m_Name + "#data");
+
     m_MDRIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#mdr");
     m_MDRIO->SetEngine("BP5");
     m_MDREngine = &m_MDRIO->Open(m_Name + "/md.r", adios2::Mode::Write);
@@ -32,7 +40,7 @@ RefactorWriter::RefactorWriter(IO &io, const std::string &name, const Mode mode,
 RefactorWriter::~RefactorWriter()
 {
     m_IO.m_ADIOS.RemoveIO(m_MDRIO->m_Name);
-    m_IO.m_ADIOS.RemoveIO(m_DataIO->m_Name);
+    // m_IO.m_ADIOS.RemoveIO(m_DataIO->m_Name);
     if (m_IsOpen)
     {
         DestructorClose(m_FailVerbose);

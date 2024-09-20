@@ -27,8 +27,14 @@ public:
     void PerformGets() final;
     void EndStep() final;
 
+    MinVarInfo *MinBlocksInfo(const VariableBase &, const size_t Step) const;
+    MinVarInfo *MinBlocksInfo(const VariableBase &, const size_t Step, const size_t WriterID,
+                              const size_t BlockID) const;
+    bool VarShape(const VariableBase &Var, const size_t Step, Dims &Shape) const;
+    bool VariableMinMax(const VariableBase &, const size_t Step, MinMaxStruct &MinMax);
+    std::string VariableExprStr(const VariableBase &Var);
+
 private:
-    IO *m_DataIO;
     IO *m_MDRIO;
     Engine *m_DataEngine;
     Engine *m_MDREngine;

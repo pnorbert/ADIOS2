@@ -26,6 +26,11 @@ RefactorReader::RefactorReader(IO &io, const std::string &name, const Mode mode,
     io.SetEngine("BP5");
     m_DataEngine = &io.Open(m_Name, mode);
 
+    /* Need to rename the BP5 engine's name in the IO's map because there cannot be
+    two engines with the same name, and the RefactorReader has the same name, which
+    IO is going to insert into its map after this call */
+    io.RenameEngineInIO(m_Name, m_Name + "#data");
+
     m_MDRIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#mdr");
     m_MDRIO->SetEngine("BP5");
     m_MDREngine = &m_MDRIO->Open(m_Name + "/md.r", mode);
@@ -36,7 +41,6 @@ RefactorReader::RefactorReader(IO &io, const std::string &name, const Mode mode,
 RefactorReader::~RefactorReader()
 {
     m_IO.m_ADIOS.RemoveIO(m_MDRIO->m_Name);
-    m_IO.m_ADIOS.RemoveIO(m_DataIO->m_Name);
     if (m_IsOpen)
     {
         DestructorClose(m_FailVerbose);
@@ -63,6 +67,33 @@ void RefactorReader::EndStep()
 {
     m_DataEngine->EndStep();
     m_MDREngine->EndStep();
+}
+
+MinVarInfo *RefactorReader::MinBlocksInfo(const VariableBase &Var, const size_t Step) const
+{
+    return m_DataEngine->MinBlocksInfo(Var, Step);
+}
+
+MinVarInfo *RefactorReader::MinBlocksInfo(const VariableBase &Var, const size_t Step,
+                                          const size_t WriterID, const size_t BlockID) const
+{
+    return m_DataEngine->MinBlocksInfo(Var, Step, WriterID, BlockID);
+}
+
+bool RefactorReader::VarShape(const VariableBase &Var, const size_t Step, Dims &Shape) const
+{
+    return m_DataEngine->VarShape(Var, Step, Shape);
+}
+
+bool RefactorReader::VariableMinMax(const VariableBase &Var, const size_t Step,
+                                    MinMaxStruct &MinMax)
+{
+    return m_DataEngine->VariableMinMax(Var, Step, MinMax);
+}
+
+std::string RefactorReader::VariableExprStr(const VariableBase &Var)
+{
+    return m_DataEngine->VariableExprStr(Var);
 }
 
 // PRIVATE
