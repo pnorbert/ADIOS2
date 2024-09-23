@@ -75,6 +75,7 @@ public:
      */
     std::vector<ReadRequest> GenerateReadRequests(const bool doAllocTempBuffers,
                                                   size_t *maxReadSize);
+
     void FinalizeGet(const ReadRequest &, const bool freeAddr);
     void FinalizeGets(std::vector<ReadRequest> &);
     void FinalizeDerivedGets(std::vector<ReadRequest> &);
@@ -115,6 +116,10 @@ public:
         void *Data;
     };
     std::vector<BP5ArrayRequest> PendingGetRequests;
+
+    void GenerateReadRequest(std::vector<BP5Deserializer::ReadRequest> &Requests,
+                             BP5ArrayRequest *Req, const size_t ReqIndex,
+                             const bool doAllocTempBuffers, size_t *maxReadSize);
 
 private:
     size_t m_VarCount = 0;

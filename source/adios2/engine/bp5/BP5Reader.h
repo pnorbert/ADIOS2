@@ -283,6 +283,12 @@ private:
     std::vector<transportman::TransportMan> fileManagers; // manager per thread
 
     friend class RefactorReader;
+    IO *m_MDRIO = nullptr;
+    Engine *m_MDREngine = nullptr;
+    std::unique_ptr<Remote> m_RemoteMDR;
+    std::unique_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
+    adios2::format::MallocV m_RefactorData = adios2::format::MallocV("RefactorWriter");
+    double m_RefactorAccuracy = 0.01;
 };
 
 } // end namespace engine

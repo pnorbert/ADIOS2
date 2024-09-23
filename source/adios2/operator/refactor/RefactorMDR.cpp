@@ -198,6 +198,7 @@ size_t RefactorMDR::Operate(const char *dataIn, const Dims &blockStart, const Di
                              refactored_data, config, false);
     mgard_x::unpin_memory(dataptr, config);
 
+    headerSize = bufferOutOffset;
     size_t nbytes = SerializeRefactoredData(refactored_metadata, refactored_data,
                                             bufferOut + bufferOutOffset, SIZE_MAX);
 
@@ -305,7 +306,7 @@ size_t RefactorMDR::SerializeRefactoredData(mgard_x::MDR::RefactoredMetadata &re
        Indicate the entire MDR refactoring metadata size on succesful refactoring.
        No one has used this function on successful operator call before,
        only when the Operate() functions returns 0 indicating no-op */
-    headerSize = MDRHeaderSize;
+    headerSize += MDRHeaderSize;
 
     return offset;
 }
@@ -427,8 +428,6 @@ RefactorMDR::RMD_V1 RefactorMDR::Reconstruct_ProcessMetadata_V1(const char *buff
     std::cout << "Refactor::MDR::Reconstruct_ProcessMetadata_V1 refactored data size = "
               << sizeIn - bufferInOffset << " required data size = " << rmd.requiredDataSize
               << " metadata size = " << rmd.metadataSize << std::endl;
-    assert(rmd.requiredDataSize <= sizeIn - bufferInOffset);
-
     return rmd;
 }
 
@@ -591,6 +590,7 @@ size_t RefactorMDR::InverseOperate(const char *bufferIn, const size_t sizeIn, ch
                   << sizeIn - bufferInOffset - rmd.metadataSize - rmd.requiredDataSize
                   << " bytes from pos " << rmd.requiredDataSize
                   << ", headersize = " << bufferInOffset + rmd.metadataSize << std::endl;
+        assert(rmd.requiredDataSize <= sizeIn - bufferInOffset - rmd.metadataSize);
         return Reconstruct_ProcessData_V1(rmd, dataIn, rmd.requiredDataSize, dataOut);
     }
     /*else if (bufferVersion == 2)
