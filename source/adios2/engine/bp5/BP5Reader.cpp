@@ -339,14 +339,27 @@ std::pair<double, double> BP5Reader::ReadData(adios2::transportman::TransportMan
     TP startSubfile = NOW();
     if (FileManager.m_Transports.count(SubfileNum) == 0)
     {
+        std::string baseName;
+        Params p;
+        if (m_dataIsRemote)
+        {
+            baseName = m_Parameters.RemoteDataPath;
+            p = {{"transport", "File"}, {"library", "remote"}, {"host", m_Parameters.RemoteHost}};
+        }
+        else
+        {
+            baseName = m_Name;
+            p = m_IO.m_TransportsParameters[0];
+        }
         const std::string subFileName =
-            GetBPSubStreamName(m_Name, SubfileNum, m_Minifooter.HasSubFiles, true);
+            GetBPSubStreamName(baseName, SubfileNum, m_Minifooter.HasSubFiles, true);
         if (FileManager.m_Transports.size() >= maxOpenFiles)
         {
             auto m = FileManager.m_Transports.begin();
             FileManager.CloseFiles((int)m->first);
         }
-        FileManager.OpenFileID(subFileName, SubfileNum, Mode::Read, m_IO.m_TransportsParameters[0],
+
+        FileManager.OpenFileID(subFileName, SubfileNum, Mode::Read, p,
                                /*{{"transport", "File"}},*/ true);
         if (!m_WriterIsActive)
         {
@@ -430,15 +443,6 @@ void BP5Reader::PerformGets()
             int localPort =
                 m_Remote->LaunchRemoteServerViaConnectionManager(m_Parameters.RemoteHost);
             m_Remote->Open("localhost", localPort, RemoteName, m_OpenMode, RowMajorOrdering);
-            if (m_MDREngine)
-            {
-                std::string RemoteNameMDR = RemoteName + "/md.r";
-                m_RemoteMDR = std::unique_ptr<EVPathRemote>(new EVPathRemote(m_HostOptions));
-                int localPort =
-                    m_RemoteMDR->LaunchRemoteServerViaConnectionManager(m_Parameters.RemoteHost);
-                m_RemoteMDR->Open("localhost", localPort, RemoteNameMDR, m_OpenMode,
-                                  RowMajorOrdering);
-            }
         }
 #endif
 #ifdef ADIOS2_HAVE_KVCACHE
@@ -693,13 +697,6 @@ void BP5Reader::PerformRemoteGets()
         }
         if (varMDR)
         {
-            Accuracy a{0.01, Linf_norm, false};
-            VB->SetAccuracy(a);
-
-            /* Prepare a BP5ArrayRequest like in BP5Deserializer::QueueGetSingle() */
-            // format::BP5Deserializer::BP5VarRec *VarRec =
-            // e->m_BP5Deserializer->VarByKey[&variable]; MemorySpace MemSpace =
-            // variable.GetMemorySpace(data); format::BP5Deserializer::BP5ArrayRequest Req;
             varMDR->SetBlockSelection(VB->m_BlockID);
             std::vector<uint8_t> mdrblock;
             m_MDREngine->Get(*varMDR, mdrblock, Mode::Sync);
@@ -714,9 +711,6 @@ void BP5Reader::PerformRemoteGets()
 
             if (rmd.isRefactored)
             {
-                // std::vector<format::BP5Deserializer::BP5ArrayRequest> saveRequests =
-                //     std::move(m_BP5Deserializer->PendingGetRequests);
-                // size_t readSize = rmd.requiredDataSize + rmd.metadataSize + 4;
                 m_RefactorData.Allocate(rmd.requiredDataSize, sizeof(double));
                 char *RefactoredData = (char *)m_RefactorData.GetPtr(0);
 
@@ -724,7 +718,6 @@ void BP5Reader::PerformRemoteGets()
                 size_t maxReadSize = 0;
                 m_BP5Deserializer->GenerateReadRequest(myRequests, &Req, 0, false, &maxReadSize);
                 assert(myRequests.size() == 1);
-                // assert(maxReadSize == rmd.requiredDataSize);
                 for (auto &RR : myRequests)
                 {
                     assert(!RR.DestinationAddr);
@@ -738,8 +731,6 @@ void BP5Reader::PerformRemoteGets()
                     mdr->Reconstruct_ProcessData_V1(rmd, RR.DestinationAddr, rmd.requiredDataSize,
                                                     (char *)Req.Data);
                 }
-
-                // m_BP5Deserializer->PendingGetRequests = std::move(saveRequests);
             }
             else
             {
@@ -956,7 +947,9 @@ void BP5Reader::Init()
     {
         m_MDRIO = &m_IO.m_ADIOS.DeclareIO(m_IO.m_Name + "#refactor#mdr");
         m_MDRIO->SetEngine("BP5");
-        m_MDREngine = &m_MDRIO->Open(m_Name + "/md.r", m_OpenMode);
+        m_MDRIO->SetParameters({{"RemoteDataPath", m_Parameters.RemoteDataPath + "/md.r"},
+                                {"RemoteHost", m_Parameters.RemoteHost}});
+        m_MDREngine = &m_MDRIO->Open(m_Name + PathSeparator + "md.r", m_OpenMode);
         // helper::GetParameter(m_IO.m_Parameters, "accuracy", m_Accuracy);
         // Params params = {{"accuracy", std::to_string(m_Accuracy)}};
         m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(Params());
