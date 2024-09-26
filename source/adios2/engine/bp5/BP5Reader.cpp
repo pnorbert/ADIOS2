@@ -684,7 +684,7 @@ void BP5Reader::PerformRemoteGets()
     {
         VariableBase *VB = m_BP5Deserializer->GetVariableBaseFromBP5VarRec(Req.VarRec);
         adios2::core::Variable<uint8_t> *varMDR = nullptr;
-        if (VB->m_Type == DataType::Double || VB->m_Type == DataType::Float)
+        if (m_MDREngine && VB->m_Type == DataType::Double || VB->m_Type == DataType::Float)
         {
             if ((VB->m_SelectionType == adios2::SelectionType::WriteBlock) ||
                 (VB->m_ShapeID == ShapeID::LocalArray))
