@@ -288,9 +288,13 @@ void CampaignReader::InitTransports()
                 helper::CreateDirectory(localPath);
                 for (auto &bpf : ds.files)
                 {
-                    /*std::cout << "     save file " << remoteURL << "/" <<
-                       bpf.name
-                              << " to " << localPath << "/" << bpf.name << "\n";*/
+                    std::cout << "     save file " << remoteURL << "/" << bpf.name << " to "
+                              << localPath << "/" << bpf.name << "\n";
+                    auto subdir = adios2sys::SystemTools::GetParentDirectory(bpf.name);
+                    if (!subdir.empty() && subdir != "/")
+                    {
+                        helper::CreateDirectory(localPath + PathSeparator + subdir);
+                    }
                     SaveToFile(m_DB, localPath + PathSeparator + bpf.name, bpf);
                 }
                 io.SetParameter("RemoteDataPath", remotePath);

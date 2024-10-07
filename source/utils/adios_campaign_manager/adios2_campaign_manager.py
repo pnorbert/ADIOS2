@@ -285,7 +285,16 @@ def ProcessFiles(args: dict, cur: sqlite3.Cursor, hostID: int, dirID: int):
             profileList = glob.glob("profiling.json")
             files = mdFileList + profileList
             for f in files:
-                AddFileToArchive(args, f, cur, dsID)
+                if f == "md.r":
+                    chdir("md.r")
+                    mdrFileList = glob.glob("*md.*")
+                    mdrProfileList = glob.glob("profiling.json")
+                    mdrFiles = mdrFileList + mdrProfileList
+                    chdir("..")
+                    for fmdr in mdrFiles:
+                        AddFileToArchive(args, f + "/" + fmdr, cur, dsID)
+                else:
+                    AddFileToArchive(args, f, cur, dsID)              
             chdir(cwd)
         else:
             print(f"WARNING: Dataset {dataset} is not an ADIOS dataset. Skip")
