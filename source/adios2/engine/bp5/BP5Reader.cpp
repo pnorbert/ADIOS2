@@ -10,12 +10,14 @@
 #include "BP5Reader.tcc"
 
 #include "adios2/helper/adiosMath.h" // SetWithinLimit
+#include "adios2/operator/refactor/RefactorMDR.h"
 #include "adios2/toolkit/remote/EVPathRemote.h"
 #include "adios2/toolkit/remote/XrootdRemote.h"
 #include "adios2/toolkit/transport/file/FileFStream.h"
 #include "adios2sys/SystemTools.hxx"
 #include <adios2-perfstubs-interface.h>
 
+#include <assert.h>
 #include <chrono>
 #include <cstdio>
 #include <errno.h>
@@ -654,11 +656,79 @@ void BP5Reader::PerformRemoteGets()
     // TP startGenerate = NOW();
     auto GetRequests = m_BP5Deserializer->PendingGetRequests;
     std::vector<Remote::GetHandle> handles;
+    size_t maxOpenFiles =
+        helper::SetWithinLimit((size_t)m_Parameters.MaxOpenFilesAtOnce, (size_t)1, MaxSizeT);
     for (auto &Req : GetRequests)
     {
-        auto handle =
-            m_Remote->Get(Req.VarName, Req.RelStep, Req.BlockID, Req.Count, Req.Start, Req.Data);
-        handles.push_back(handle);
+        VariableBase *VB = m_BP5Deserializer->GetVariableBaseFromBP5VarRec(Req.VarRec);
+        std::vector<format::BP5Deserializer::ReadRequest> myRequests;
+        size_t maxReadSize = 0;
+        if ((VB->m_SelectionType == adios2::SelectionType::WriteBlock) ||
+            (VB->m_ShapeID == ShapeID::LocalArray &&
+             VB->m_SelectionType != adios2::SelectionType::BoundingBox))
+        {
+            m_BP5Deserializer->GenerateReadRequest(myRequests, &Req, 0, false, &maxReadSize);
+            assert(myRequests.size() == 1);
+        }
+        if (myRequests.size() && myRequests[0].OperatorHeaderLength &&
+            myRequests[0].OperatorHeaderLength != myRequests[0].ReadLength)
+        {
+            // has operator, and not compress operator (header=0 or header-readlength)
+            for (auto &RR : myRequests)
+            {
+                m_RefactorData.Allocate(RR.OperatorHeaderLength, sizeof(double));
+                char *RefactoredDataHeader = (char *)m_RefactorData.GetPtr(0);
+                RR.DestinationAddr = RefactoredDataHeader;
+                RR.ReadLength = RR.OperatorHeaderLength;
+                RR.OffsetInBlock = 4;
+                RR.StartOffset = RR.OffsetInBlock;
+                m_JSONProfiler.AddBytes("dataread", RR.ReadLength);
+                ReadData(m_DataFileManager, maxOpenFiles, RR.WriterRank, RR.Timestep,
+                         RR.StartOffset, RR.ReadLength, RR.DestinationAddr);
+
+                m_RefactorOperator->SetAccuracy(VB->GetAccuracyRequested());
+                auto *mdr = reinterpret_cast<refactor::RefactorMDR *>(m_RefactorOperator.get());
+                refactor::RefactorMDR::RMD_V1 rmd;
+                rmd = mdr->Reconstruct_ProcessMetadata_V1(RefactoredDataHeader + 4,
+                                                          RR.OperatorHeaderLength);
+
+                std::cout << "Refactored Get " << VB->m_Name
+                          << " bytes needed for reconstruction = " << rmd.requiredDataSize
+                          << std::endl;
+
+                if (rmd.isRefactored)
+                {
+                    m_RefactorData.Allocate(rmd.requiredDataSize, sizeof(double));
+                    char *RefactoredData = (char *)m_RefactorData.GetPtr(0);
+
+                    for (auto &RR : myRequests)
+                    {
+                        assert(!RR.DestinationAddr);
+                        RR.DestinationAddr = RefactoredData;
+                        RR.ReadLength = rmd.requiredDataSize;
+                        RR.OffsetInBlock = rmd.metadataSize + 4;
+                        RR.StartOffset = RR.OffsetInBlock;
+                        m_JSONProfiler.AddBytes("dataread", RR.ReadLength);
+                        ReadData(m_DataFileManager, maxOpenFiles, RR.WriterRank, RR.Timestep,
+                                 RR.StartOffset, RR.ReadLength, RR.DestinationAddr);
+                        mdr->Reconstruct_ProcessData_V1(rmd, RR.DestinationAddr,
+                                                        rmd.requiredDataSize, (char *)Req.Data);
+                    }
+                }
+                else
+                {
+                    auto handle = m_Remote->Get(Req.VarName, Req.RelStep, Req.BlockID, Req.Count,
+                                                Req.Start, Req.Data);
+                    handles.push_back(handle);
+                }
+            }
+        }
+        else
+        {
+            auto handle = m_Remote->Get(Req.VarName, Req.RelStep, Req.BlockID, Req.Count, Req.Start,
+                                        Req.Data);
+            handles.push_back(handle);
+        }
     }
     for (auto &handle : handles)
     {
@@ -854,6 +924,8 @@ void BP5Reader::Init()
             m_dataIsRemote = true;
         if (getenv("DoRemote") || getenv("DoXRootD"))
             m_dataIsRemote = true;
+
+        m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(Params());
     }
 }
 

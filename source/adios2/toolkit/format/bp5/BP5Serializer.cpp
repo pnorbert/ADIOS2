@@ -16,6 +16,7 @@
 #include "adios2/helper/adiosFunctions.h"
 #include "adios2/toolkit/format/buffer/ffs/BufferFFS.h"
 
+#include <assert.h>
 #include <stddef.h> // max_align_t
 
 #include <cstring>
@@ -897,7 +898,25 @@ void BP5Serializer::Marshal(void *Variable, const char *Name, const DataType Typ
             {
                 MetaArrayRecOperator *OpEntry = (MetaArrayRecOperator *)MetaEntry;
                 OpEntry->DataBlockSize = (size_t *)malloc(sizeof(size_t));
-                OpEntry->DataBlockSize[0] = CompressedSize;
+                /* record refactor header info size on upper 16 bits and
+                 * the block size of refactored data in lower 48 bits in metadata INSTEAD of
+                 * just the block size of refactored data on disk
+                 * (so that we can ask operator how many bytes to retrieve on demand) */
+                if (CompressedSize > 0x0000FFFFFFFFFFFF)
+                {
+                    throw std::runtime_error(
+                        "BP5 assumes a single data block is not larger than "
+                        "256TB (48 bits integer size) but here we have a block of variable " +
+                        VB->m_Name + " with operator " + VB->m_Operations[0]->m_TypeString +
+                        " that has size of " + std::to_string(CompressedSize));
+                }
+                size_t combo = (VB->m_Operations[0]->GetHeaderSize() << 48) |
+                               (CompressedSize & 0x0000FFFFFFFFFFFF);
+                std::cout << "### Op = " << Rec->OperatorType
+                          << " HeaderSize = " << VB->m_Operations[0]->GetHeaderSize()
+                          << " CompressedSize = " << CompressedSize << "  combo = " << combo
+                          << std::endl;
+                OpEntry->DataBlockSize[0] = combo;
             }
             if (Offsets)
                 MetaEntry->Offsets = CopyDims(DimCount, Offsets);
@@ -943,7 +962,23 @@ void BP5Serializer::Marshal(void *Variable, const char *Name, const DataType Typ
                 MetaArrayRecOperator *OpEntry = (MetaArrayRecOperator *)MetaEntry;
                 OpEntry->DataBlockSize =
                     (size_t *)realloc(OpEntry->DataBlockSize, OpEntry->BlockCount * sizeof(size_t));
-                OpEntry->DataBlockSize[OpEntry->BlockCount - 1] = CompressedSize;
+
+                if (CompressedSize > 0x0000FFFFFFFFFFFF)
+                {
+                    throw std::runtime_error(
+                        "BP5 assumes a single data block is not larger than "
+                        "256TB (48 bits integer size) but here we have a block of variable " +
+                        VB->m_Name + " with operator " + VB->m_Operations[0]->m_TypeString +
+                        " that has size of " + std::to_string(CompressedSize));
+                }
+                size_t combo = (VB->m_Operations[0]->GetHeaderSize() << 48) |
+                               (CompressedSize & 0x0000FFFFFFFFFFFF);
+                std::cout << "### Op = " << Rec->OperatorType
+                          << "HeaderSize = " << VB->m_Operations[0]->GetHeaderSize()
+                          << " CompressedSize = " << CompressedSize << "  combo = " << combo
+                          << std::endl;
+
+                OpEntry->DataBlockSize[OpEntry->BlockCount - 1] = combo;
             }
             if (DoMinMax)
             {

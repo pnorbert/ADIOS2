@@ -17,6 +17,7 @@
 #include "adios2/helper/adiosRangeFilter.h"
 #include "adios2/toolkit/format/bp5/BP5Deserializer.h"
 #include "adios2/toolkit/format/buffer/heap/BufferMalloc.h"
+#include "adios2/toolkit/format/buffer/malloc/MallocV.h"
 #include "adios2/toolkit/kvcache/KVCacheCommon.h"
 #include "adios2/toolkit/remote/Remote.h"
 #include "adios2/toolkit/transportman/TransportMan.h"
@@ -280,6 +281,9 @@ private:
     helper::Comm singleComm;
     unsigned int m_Threads;
     std::vector<transportman::TransportMan> fileManagers; // manager per thread
+
+    std::unique_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
+    adios2::format::MallocV m_RefactorData = adios2::format::MallocV("RefactorWriter");
 };
 
 } // end namespace engine
