@@ -57,10 +57,8 @@ public:
     size_t GetEstimatedSize(const size_t ElemCount, const size_t ElemSize, const size_t ndims,
                             const size_t *dims) const;
 
-private:
-    size_t headerSize = 0;
     /**
-     * Decompress function for V1 buffer. Do NOT remove even if the buffer
+     * Decompress functions for V1 buffer. Do NOT remove even if the buffer
      * version is updated. Data might be still in lagacy formats. This function
      * must be kept for backward compatibility
      * @param bufferIn : compressed data buffer (V1 only)
@@ -68,7 +66,34 @@ private:
      * @param dataOut : decompressed data buffer
      * @return : number of bytes in dataOut
      */
-    size_t ReconstructV1(const char *bufferIn, const size_t sizeIn, char *dataOut);
+
+    struct RMD_V1
+    {
+        size_t requiredDataSize; // size of data to fetch from storage to reconstruct next
+        mgard_x::MDR::RefactoredMetadata refactored_metadata;
+        mgard_x::MDR::RefactoredData refactored_data;
+        size_t metadataSize; // how many bytes from bufferIn are for metadata
+        bool isRefactored;   // false: use the raw data, don't reconstruct
+        uint8_t nSubdomains;
+        uint8_t nLevels;
+        uint8_t nBitPlanes;
+        uint64_t tableSize;
+        uint64_t *table;
+        DataType type;   // of reconstructed data
+        size_t ndims;    // of reconstructed data
+        Dims blockCount; // of reconstructed data
+        size_t sizeOut;  // size of reconstructed data
+    };
+
+    RMD_V1 Reconstruct_ProcessMetadata_V1(const char *bufferIn, const size_t sizeIn);
+
+    size_t Reconstruct_ProcessData_V1(RMD_V1 &rmd, const char *bufferIn, const size_t sizeIn,
+                                      char *dataOut);
+
+private:
+    size_t headerSize = 0;
+    size_t transformedSize = 0;
+
     size_t SerializeRefactoredData(mgard_x::MDR::RefactoredMetadata &refactored_metadata,
                                    mgard_x::MDR::RefactoredData &refactored_data, char *buffer,
                                    size_t maxsize);
