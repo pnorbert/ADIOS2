@@ -349,7 +349,6 @@ std::pair<double, double> BP5Reader::ReadData(adios2::transportman::TransportMan
             auto m = FileManager.m_Transports.begin();
             FileManager.CloseFiles((int)m->first);
         }
-        std::cout << "BP5Reader::ReadData, open subfile " << subFileName << std::endl;
         FileManager.OpenFileID(subFileName, SubfileNum, Mode::Read, p, true);
         if (!m_WriterIsActive)
         {
