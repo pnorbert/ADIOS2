@@ -676,10 +676,13 @@ void BP5Reader::PerformRemoteGets()
             // has operator, and not compress operator (header=0 or header-readlength)
             for (auto &RR : myRequests)
             {
+                assert(!RR.DestinationAddr); // Debug: we did not preallocate, right?
                 m_RefactorData.Allocate(RR.OperatorHeaderLength, sizeof(double));
                 char *RefactoredDataHeader = (char *)m_RefactorData.GetPtr(0);
                 RR.DestinationAddr = RefactoredDataHeader;
-                RR.ReadLength = RR.OperatorHeaderLength;
+                // 4 bytes in front is common operator header, used by InverseOperate()
+                // need to be omitted in this direct call
+                RR.ReadLength = RR.OperatorHeaderLength - 4;
                 RR.OffsetInBlock = 4;
                 RR.StartOffset = RR.OffsetInBlock;
                 m_JSONProfiler.AddBytes("dataread", RR.ReadLength);
@@ -689,8 +692,9 @@ void BP5Reader::PerformRemoteGets()
                 m_RefactorOperator->SetAccuracy(VB->GetAccuracyRequested());
                 auto *mdr = reinterpret_cast<refactor::RefactorMDR *>(m_RefactorOperator.get());
                 refactor::RefactorMDR::RMD_V1 rmd;
-                rmd = mdr->Reconstruct_ProcessMetadata_V1(RefactoredDataHeader + 4,
-                                                          RR.OperatorHeaderLength);
+
+                rmd = mdr->Reconstruct_ProcessMetadata_V1(RefactoredDataHeader,
+                                                          RR.OperatorHeaderLength - 4);
 
                 std::cout << "Refactored Get " << VB->m_Name
                           << " bytes needed for reconstruction = " << rmd.requiredDataSize
@@ -701,19 +705,15 @@ void BP5Reader::PerformRemoteGets()
                     m_RefactorData.Allocate(rmd.requiredDataSize, sizeof(double));
                     char *RefactoredData = (char *)m_RefactorData.GetPtr(0);
 
-                    for (auto &RR : myRequests)
-                    {
-                        assert(!RR.DestinationAddr);
-                        RR.DestinationAddr = RefactoredData;
-                        RR.ReadLength = rmd.requiredDataSize;
-                        RR.OffsetInBlock = rmd.metadataSize + 4;
-                        RR.StartOffset = RR.OffsetInBlock;
-                        m_JSONProfiler.AddBytes("dataread", RR.ReadLength);
-                        ReadData(m_DataFileManager, maxOpenFiles, RR.WriterRank, RR.Timestep,
-                                 RR.StartOffset, RR.ReadLength, RR.DestinationAddr);
-                        mdr->Reconstruct_ProcessData_V1(rmd, RR.DestinationAddr,
-                                                        rmd.requiredDataSize, (char *)Req.Data);
-                    }
+                    RR.DestinationAddr = RefactoredData;
+                    RR.ReadLength = rmd.requiredDataSize;
+                    RR.OffsetInBlock = rmd.metadataSize + 4; // 4 is common operator header
+                    RR.StartOffset = RR.OffsetInBlock;
+                    m_JSONProfiler.AddBytes("dataread", RR.ReadLength);
+                    ReadData(m_DataFileManager, maxOpenFiles, RR.WriterRank, RR.Timestep,
+                             RR.StartOffset, RR.ReadLength, RR.DestinationAddr);
+                    mdr->Reconstruct_ProcessData_V1(rmd, RR.DestinationAddr, rmd.requiredDataSize,
+                                                    (char *)Req.Data);
                 }
                 else
                 {
