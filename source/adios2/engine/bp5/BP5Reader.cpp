@@ -330,15 +330,27 @@ std::pair<double, double> BP5Reader::ReadData(adios2::transportman::TransportMan
     TP startSubfile = NOW();
     if (FileManager.m_Transports.count(SubfileNum) == 0)
     {
+        std::string baseName;
+        Params p;
+        if (m_dataIsRemote)
+        {
+            baseName = m_Parameters.RemoteDataPath;
+            p = {{"transport", "File"}, {"library", "remote"}, {"host", m_Parameters.RemoteHost}};
+        }
+        else
+        {
+            baseName = m_Name;
+            p = m_IO.m_TransportsParameters[0];
+        }
         const std::string subFileName =
-            GetBPSubStreamName(m_Name, SubfileNum, m_Minifooter.HasSubFiles, true);
+            GetBPSubStreamName(baseName, SubfileNum, m_Minifooter.HasSubFiles, true);
         if (FileManager.m_Transports.size() >= maxOpenFiles)
         {
             auto m = FileManager.m_Transports.begin();
             FileManager.CloseFiles((int)m->first);
         }
-        FileManager.OpenFileID(subFileName, SubfileNum, Mode::Read, m_IO.m_TransportsParameters[0],
-                               /*{{"transport", "File"}},*/ true);
+        std::cout << "BP5Reader::ReadData, open subfile " << subFileName << std::endl;
+        FileManager.OpenFileID(subFileName, SubfileNum, Mode::Read, p, true);
         if (!m_WriterIsActive)
         {
             Params transportParameters;
