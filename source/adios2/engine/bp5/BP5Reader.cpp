@@ -10,12 +10,15 @@
 #include "BP5Reader.tcc"
 
 #include "adios2/helper/adiosMath.h" // SetWithinLimit
-#include "adios2/operator/refactor/RefactorMDR.h"
 #include "adios2/toolkit/remote/EVPathRemote.h"
 #include "adios2/toolkit/remote/XrootdRemote.h"
 #include "adios2/toolkit/transport/file/FileFStream.h"
 #include "adios2sys/SystemTools.hxx"
 #include <adios2-perfstubs-interface.h>
+
+#ifdef ADIOS2_HAVE_MGARD_MDR
+#include "adios2/operator/refactor/RefactorMDR.h"
+#endif
 
 #include <assert.h>
 #include <chrono>
@@ -671,6 +674,7 @@ void BP5Reader::PerformRemoteGets()
         helper::SetWithinLimit((size_t)m_Parameters.MaxOpenFilesAtOnce, (size_t)1, MaxSizeT);
     for (auto &Req : GetRequests)
     {
+#ifdef ADIOS2_HAVE_MGARD_MDR
         VariableBase *VB = m_BP5Deserializer->GetVariableBaseFromBP5VarRec(Req.VarRec);
         std::vector<format::BP5Deserializer::ReadRequest> myRequests;
         size_t maxReadSize = 0;
@@ -735,6 +739,7 @@ void BP5Reader::PerformRemoteGets()
             }
         }
         else
+#endif
         {
             auto handle = m_Remote->Get(Req.VarName, Req.RelStep, Req.BlockID, Req.Count, Req.Start,
                                         Req.Data);
@@ -936,7 +941,9 @@ void BP5Reader::Init()
         if (getenv("DoRemote") || getenv("DoXRootD"))
             m_dataIsRemote = true;
 
+#ifdef ADIOS2_HAVE_MGARD_MDR
         m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(Params());
+#endif
     }
 }
 
