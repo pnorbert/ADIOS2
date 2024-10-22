@@ -910,10 +910,13 @@ void BP5Serializer::Marshal(void *Variable, const char *Name, const DataType Typ
                         VB->m_Name + " with operator " + VB->m_Operations[0]->m_TypeString +
                         " that has size of " + std::to_string(CompressedSize));
                 }
-                size_t combo = (VB->m_Operations[0]->GetHeaderSize() << 48) |
-                               (CompressedSize & 0x0000FFFFFFFFFFFF);
-                std::cout << "### Op = " << Rec->OperatorType
-                          << " HeaderSize = " << VB->m_Operations[0]->GetHeaderSize()
+                size_t headerSize = 0;
+                if (VB->m_Operations[0]->m_Category == "refactor")
+                {
+                    headerSize = VB->m_Operations[0]->GetHeaderSize();
+                }
+                size_t combo = (headerSize << 48) | (CompressedSize & 0x0000FFFFFFFFFFFF);
+                std::cout << "### Op = " << Rec->OperatorType << " HeaderSize = " << headerSize
                           << " CompressedSize = " << CompressedSize << "  combo = " << combo
                           << std::endl;
                 OpEntry->DataBlockSize[0] = combo;

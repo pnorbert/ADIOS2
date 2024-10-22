@@ -1665,6 +1665,10 @@ void BP5Deserializer::GenerateReadRequest(std::vector<BP5Deserializer::ReadReque
                         RR.ReadLength =
                             helper::GetDataTypeSize(VarRec->Type) *
                             CalcBlockLength(VarRec->DimCount, &writer_meta_base->Count[StartDim]);
+                        RR.OperatorHeaderLength = 0;
+                        std::cout << "### No-operator RR.ReadLength = " << RR.ReadLength
+                                  << " OperatorHeaderLength = " << RR.OperatorHeaderLength
+                                  << std::endl;
                     }
                     RR.OffsetInBlock = 0;
                     if (RR.DirectToAppMemory)
@@ -1739,6 +1743,7 @@ void BP5Deserializer::GenerateReadRequest(std::vector<BP5Deserializer::ReadReque
                                 RR.ReadLength = helper::GetDataTypeSize(VarPrimaryRec->Type) *
                                                 CalcBlockLength(VarPrimaryRec->DimCount,
                                                                 varBase->m_Count.data());
+                                RR.OperatorHeaderLength = 0;
                                 RR.DestinationAddr = (char *)malloc(RR.ReadLength);
                                 RR.DirectToAppMemory = false;
                                 RR.ReqIndex = ReqIndex;
@@ -1826,6 +1831,7 @@ void BP5Deserializer::GenerateReadRequest(std::vector<BP5Deserializer::ReadReque
                             if (writer_meta_base->DataBlockLocation[Block] == (size_t)-1)
                                 throw std::runtime_error("No data exists for this variable");
                             RR.ReadLength = EndOffsetInBlock - StartOffsetInBlock;
+                            RR.OperatorHeaderLength = 0;
                             if (Req->MemSpace != MemorySpace::Host)
                                 RR.DirectToAppMemory = false;
                             else
