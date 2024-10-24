@@ -283,7 +283,7 @@ private:
     std::vector<transportman::TransportMan> fileManagers; // manager per thread
 
     std::unique_ptr<adios2::core::Operator> m_RefactorOperator = nullptr;
-    adios2::format::MallocV m_RefactorData = adios2::format::MallocV("RefactorWriter");
+    std::vector<double> m_RefactorData;
 };
 
 } // end namespace engine

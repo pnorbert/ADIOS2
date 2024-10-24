@@ -391,6 +391,8 @@ std::pair<double, double> BP5Reader::ReadData(adios2::transportman::TransportMan
     size_t ThisDataPos = helper::ReadValue<uint64_t>(m_MetadataIndex.m_Buffer, InfoStartPos,
                                                      m_Minifooter.IsLittleEndian);
     size_t Offset = StartOffset - SumDataSize;
+    std::cout << "BP5Reader::ReadData subfile = " << SubfileNum
+              << " offset = " << ThisDataPos + Offset << " size = " << Length << std::endl;
     FileManager.ReadFile(Destination, Length, ThisDataPos + Offset, SubfileNum);
 
     TP endRead = NOW();
@@ -692,40 +694,57 @@ void BP5Reader::PerformRemoteGets()
             for (auto &RR : myRequests)
             {
                 assert(!RR.DestinationAddr); // Debug: we did not preallocate, right?
+                m_RefactorData.resize(RR.ReadLength / 8 + 1);
 
                 // 4 bytes in front is common operator header, used by InverseOperate()
                 // need to be omitted in this direct call
-                RR.StartOffset += 4;
-                RR.ReadLength = RR.OperatorHeaderLength - 4;
-                m_RefactorData.Allocate(RR.ReadLength, sizeof(double));
-                char *RefactoredDataHeader = (char *)m_RefactorData.GetPtr(0);
+                // RR.StartOffset += 4;
+                RR.ReadLength = RR.OperatorHeaderLength;
+
+                char *RefactoredDataHeader = (char *)m_RefactorData.data();
                 RR.DestinationAddr = RefactoredDataHeader;
+
+                std::cout << "Refactored Get " << VB->m_Name
+                          << " bytes needed for header = " << RR.ReadLength << " rank "
+                          << RR.WriterRank << " offset " << RR.StartOffset << std::endl;
 
                 m_JSONProfiler.AddBytes("dataread", RR.ReadLength);
                 ReadData(m_DataFileManager, maxOpenFiles, RR.WriterRank, RR.Timestep,
                          RR.StartOffset, RR.ReadLength, RR.DestinationAddr);
 
-                m_RefactorOperator->SetAccuracy(VB->GetAccuracyRequested());
-                auto *mdr = reinterpret_cast<refactor::RefactorMDR *>(m_RefactorOperator.get());
+                assert(RefactoredDataHeader[0] == 41);
+                assert(RefactoredDataHeader[1] == 1);
+                assert(RefactoredDataHeader[2] == 0);
+                assert(RefactoredDataHeader[3] == 0);
+
+                refactor::RefactorMDR mdrOperator = refactor::RefactorMDR(Params());
+                // auto *mdr = reinterpret_cast<refactor::RefactorMDR *>(m_RefactorOperator.get());
+                auto *mdr = &mdrOperator;
+                mdr->SetAccuracy(VB->GetAccuracyRequested());
                 refactor::RefactorMDR::RMD_V1 rmd;
 
-                rmd = mdr->Reconstruct_ProcessMetadata_V1(RefactoredDataHeader, RR.ReadLength);
-
-                std::cout << "Refactored Get " << VB->m_Name
-                          << " bytes needed for reconstruction = " << rmd.requiredDataSize
-                          << std::endl;
+                rmd = mdr->Reconstruct_ProcessMetadata_V1(RefactoredDataHeader + 4,
+                                                          RR.ReadLength - 4);
 
                 if (rmd.isRefactored)
                 {
-                    assert(rmd.metadataSize == RR.ReadLength);
-                    m_RefactorData.Allocate(rmd.requiredDataSize, sizeof(double));
-                    char *RefactoredData = (char *)m_RefactorData.GetPtr(0);
+                    assert(rmd.metadataSize == RR.ReadLength - 4);
+                    // m_RefactorData.Allocate(rmd.requiredDataSize, sizeof(double));
+                    char *RefactoredData = (char *)m_RefactorData.data() + RR.ReadLength;
 
                     RR.DestinationAddr = RefactoredData;
                     RR.ReadLength = rmd.requiredDataSize;
                     // RR.OffsetInBlock = rmd.metadataSize + 4; // 4 is common operator header
-                    RR.StartOffset += rmd.metadataSize; // 4 was already added for header
+                    RR.StartOffset += rmd.metadataSize + 4; // 4 was already added for header
                     m_JSONProfiler.AddBytes("dataread", RR.ReadLength);
+
+                    std::cout << "Refactored Get " << VB->m_Name
+                              << " bytes needed for reconstruction = " << rmd.requiredDataSize
+                              << " rank " << RR.WriterRank << " offset " << RR.StartOffset
+                              << " buf = " << (uint64_t)RR.DestinationAddr
+                              << " &rmd = " << (uint64_t)(&rmd)
+                              << " &rmd.table = " << (uint64_t)(rmd.table) << std::endl;
+
                     ReadData(m_DataFileManager, maxOpenFiles, RR.WriterRank, RR.Timestep,
                              RR.StartOffset, RR.ReadLength, RR.DestinationAddr);
                     mdr->Reconstruct_ProcessData_V1(rmd, RR.DestinationAddr, rmd.requiredDataSize,
@@ -942,9 +961,9 @@ void BP5Reader::Init()
         if (getenv("DoRemote") || getenv("DoXRootD"))
             m_dataIsRemote = true;
 
-#ifdef ADIOS2_HAVE_MGARD_MDR
-        m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(Params());
-#endif
+        // #ifdef ADIOS2_HAVE_MGARD_MDR
+        //         m_RefactorOperator = std::make_unique<refactor::RefactorMDR>(Params());
+        // #endif
     }
 }
 

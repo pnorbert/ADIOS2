@@ -466,6 +466,14 @@ size_t RefactorMDR::Reconstruct_ProcessData_V1(RMD_V1 &rmd, const char *bufferIn
                                                  .level_sizes[level_idx][bitplane_idx];
                     const mgard_x::Byte *cdata = reinterpret_cast<const mgard_x::Byte *>(
                         componentData + rmd.table[tableIdx]);
+                    if (rmd.table[tableIdx] + componentSize > sizeIn)
+                    {
+                        std::cout << "ERROR: RefactorMDR::Reconstruct_ProcessData_V1: sizeIn = "
+                                  << sizeIn << " level " << level_idx << " bitplane "
+                                  << bitplane_idx << " tableIdx " << tableIdx << " componentsize "
+                                  << componentSize << " table[idx] = " << rmd.table[tableIdx]
+                                  << std::endl;
+                    }
 
                     refactored_data.data[subdomain_id][level_idx][bitplane_idx] =
                         const_cast<mgard_x::Byte *>(cdata);

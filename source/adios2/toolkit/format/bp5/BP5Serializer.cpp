@@ -881,6 +881,8 @@ void BP5Serializer::Marshal(void *Variable, const char *Name, const DataType Typ
             DataOffset = m_PriorDataBufferSizeTotal + Span->globalPos;
             spanMemSpace = MemorySpace::Host;
         }
+        std::cout << "BP5Serializer::Marshal var " << VB->m_Name << " block " << VB->m_BlockID
+                  << " DataOffset = " << DataOffset << std::endl;
 
         if (!AlreadyWritten)
         {
