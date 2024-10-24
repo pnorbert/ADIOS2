@@ -102,9 +102,9 @@ public:
     Engine *m_Engine = nullptr;
 
     /** user requested accuracy */
-    Accuracy m_AccuracyRequested = {0.0, 0.0, false};
+    Accuracy m_AccuracyRequested = {0.0, Linf_norm, false};
     /** provided accuracy */
-    Accuracy m_AccuracyProvided = {0.0, 0.0, false};
+    Accuracy m_AccuracyProvided = {0.0, Linf_norm, false};
 
     /** Index to Step and blocks' (inside a step) characteristics position in a
      * serial metadata buffer

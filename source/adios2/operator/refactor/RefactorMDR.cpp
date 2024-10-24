@@ -29,7 +29,7 @@ RefactorMDR::RefactorMDR(const Params &parameters)
 : Operator("mdr", REFACTOR_MDR, "refactor", parameters)
 {
     config.normalize_coordinates = false;
-    config.log_level = 1;
+    config.log_level = 0;
     config.decomposition = mgard_x::decomposition_type::MultiDim;
     config.domain_decomposition = mgard_x::domain_decomposition_type::MaxDim;
     // config.domain_decomposition = mgard_x::domain_decomposition_type::Block;
@@ -320,7 +320,7 @@ RefactorMDR::RMD_V1 RefactorMDR::Reconstruct_ProcessMetadata_V1(const char *buff
     rmd.metadataSize = 0;
     rmd.requiredDataSize = 0;
 
-    config.log_level = 1;
+    config.log_level = 0;
     // double s = std::numeric_limits<double>::infinity();
 
     size_t &bufferInOffset = rmd.metadataSize;
