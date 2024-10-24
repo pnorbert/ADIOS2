@@ -103,9 +103,9 @@ protected:
     Params m_Parameters;
 
     /** user requested accuracy */
-    Accuracy m_AccuracyRequested = {0.0, 0.0, false};
+    Accuracy m_AccuracyRequested = {0.0, Linf_norm, false};
     /** provided accuracy */
-    Accuracy m_AccuracyProvided = {0.0, 0.0, false};
+    Accuracy m_AccuracyProvided = {0.0, Linf_norm, false};
 
     /**
      * Used by lossy compressors with a limitation on complex data types or
