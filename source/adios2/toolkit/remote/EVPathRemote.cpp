@@ -12,6 +12,8 @@
 #include "adios2/helper/adiosSystem.h"
 #include "adios2/operator/OperatorFactory.h"
 
+#include <iomanip>
+
 #ifdef _MSC_VER
 #define strdup(x) _strdup(x)
 #endif
@@ -23,6 +25,8 @@
 
 namespace adios2
 {
+
+core::TimePoint tRequest;
 
 EVPathRemote::EVPathRemote(const adios2::HostOptions &hostOptions) : Remote(hostOptions) {}
 
@@ -64,6 +68,12 @@ void ReadResponseHandler(CManager cm, CMConnection conn, void *vevent, void *cli
     EVPathRemoteCommon::ReadResponseMsg read_response_msg =
         static_cast<EVPathRemoteCommon::ReadResponseMsg>(vevent);
 
+    core::TimePoint tResponse = core::Now();
+    core::Seconds tReqResp = (tResponse - tRequest);
+    std::cout << "Received data of " << read_response_msg->Size
+              << " bytes, operator = " << (unsigned int)read_response_msg->OperatorType
+              << " request-response roundtrip time " << tReqResp.count() << std::endl;
+    core::TimePoint ts = core::Now();
     switch (read_response_msg->OperatorType)
     {
     case adios2::core::Operator::OperatorType::COMPRESS_MGARD: {
@@ -89,6 +99,10 @@ void ReadResponseHandler(CManager cm, CMConnection conn, void *vevent, void *cli
                                                  std::to_string(read_response_msg->OperatorType) +
                                                  " received in response");
     }
+    core::TimePoint te = core::Now();
+    core::Seconds tDecompress = (te - ts);
+    std::cout << "Decompression time " << tDecompress.count() << std::endl;
+
     CMCondition_signal(cm, read_response_msg->ReadResponseCondition);
     return;
 };
@@ -202,6 +216,7 @@ EVPathRemote::GetHandle EVPathRemote::Get(char *VarName, size_t Step, size_t Blo
     GetMsg.Relative = accuracy.relative;
     GetMsg.Dest = dest;
     CMwrite(m_conn, ev_state.GetRequestFormat, &GetMsg);
+    tRequest = core::Now();
     return (Remote::GetHandle)(intptr_t)GetMsg.GetResponseCondition;
 }
 
@@ -216,6 +231,7 @@ EVPathRemote::GetHandle EVPathRemote::Read(size_t Start, size_t Size, void *Dest
     ReadMsg.Dest = Dest;
     CMwrite(m_conn, ev_state.ReadRequestFormat, &ReadMsg);
     CMCondition_wait(ev_state.cm, ReadMsg.ReadResponseCondition);
+    tRequest = core::Now();
     return (Remote::GetHandle)(intptr_t)ReadMsg.ReadResponseCondition;
 }
 

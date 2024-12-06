@@ -277,6 +277,7 @@ void ReturnResponseThread(CMConnection conn, CMFormat ReadResponseFormat, AnonAD
     Response.Dest = Dest; /* final data destination in client memory space */
     Response.OperatorType = Operator::OperatorType::COMPRESS_NULL;
 
+    core::TimePoint ts = core::Now();
     if (acc.error > 0.0)
     {
 #if defined(ADIOS2_HAVE_MGARD) || defined(ADIOS2_HAVE_ZFP)
@@ -313,6 +314,10 @@ void ReturnResponseThread(CMConnection conn, CMFormat ReadResponseFormat, AnonAD
     {
         Response.ReadData = (char *)RawData;
     }
+    core::TimePoint te = core::Now();
+    core::Seconds tCompress = (te - ts);
+    std::cout << "Compression original size " << readSize << " compressed size " << Response.Size
+              << " compression time " << tCompress.count() << std::endl;
 
     if (verbose >= 2)
     {
@@ -371,9 +376,14 @@ void PrepareResponseForGet(CMConnection conn, struct Remote_evpath_state *ev_sta
     std::cout << "Reading var " << VarName << " with "
               << (GetMsg->Relative ? "relative" : "absolute") << " error " << GetMsg->Error
               << " in norm " << GetMsg->Norm << std::endl;
+    core::TimePoint ts = core::Now();
     size_t readSize = var->SelectionSize() * sizeof(T);
     T *RawData = (T *)malloc(readSize);
     f->m_engine->Get(*var, RawData, Mode::Sync);
+    core::TimePoint te = core::Now();
+    core::Seconds tRead = (te - ts);
+    std::cout << "Reading from disk size " << readSize << " read time " << tRead.count()
+              << std::endl;
 
     WaitForAvailableThread(); /* blocking here until we can launch a thread */
 

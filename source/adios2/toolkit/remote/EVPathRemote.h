@@ -16,6 +16,7 @@
 
 #include "Remote.h"
 #include "adios2/common/ADIOSConfig.h"
+#include "adios2/core/CoreTypes.h"
 
 #include "remote_common.h"
 
