@@ -80,7 +80,7 @@ class ADIOSBackendArray(BackendArray):
         # print(f"ADIOSBackendArray.__init__: {dtype} {varname} {shape} {dtype.itemsize}")
 
     def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
-        # print(f"ADIOSBackendArray.__getitem__: {self.varname} key = {key}")
+        # print(f"**** ADIOSBackendArray.__getitem__: {self.varname} key = {key}")
 
         return indexing.explicit_indexing_adapter(
             key,
@@ -90,11 +90,50 @@ class ADIOSBackendArray(BackendArray):
         )
 
     def _raw_indexing_method(self, key: tuple) -> np.typing.ArrayLike:
-        # print(f"ADIOSBackendArray._raw_indexing_method:
-        #    {self.varname} key = {key} steps = {self.steps}")
-        # thread safe method that access to data on disk
+        # print(f"****ADIOSBackendArray._raw_indexing_method: {self.varname} "
+        #      f"key = {key} steps = {self.steps}")
+        # print(f"    data shape {data.shape}")
+
+        # thread safe method that access to data on disk needed because 
+        # adios is not thread safe even for reading
         # with self.lock:
-        self.adiosvar.set_step_selection([0, self.steps])
+        start = []
+        count = []
+        dimid = 0
+        first_sl = True
+        for sl in key:
+            if isinstance(sl, slice):
+                if sl.start == None:
+                    st = 0
+                else:
+                    st = sl.start
+
+                if sl.stop == None:
+                    ct = self.shape[dimid] - st
+                else:
+                    ct = sl.stop - st
+
+                if sl.step != 1 and sl.step != None:
+                    msg = (
+                        "The indexing operation with step != 1 you are attempting to perform "
+                        "is not valid on ADIOS2.Variable object. "
+                    )
+                    raise IndexError(msg)
+            else:
+                st = sl - 1
+                ct = 1
+
+            if self.steps > 1 and first_sl:  # key[0] is the step selection
+                # print(f"    data step selection start = {st}  count = {ct}")
+                self.adiosvar.set_step_selection([st, ct])
+            else:
+                start.append(st)
+                count.append(ct)
+                dimid += 1
+            first_sl = False
+        # print(f"    data selection start = {start}  count = {count}")
+        self.adiosvar.set_selection([start, count])
+
         data = self.fh.read(self.adiosvar)
         if self.steps > 1:
             # ADIOS does not have time dimension. Read returns n-dim array
@@ -107,7 +146,6 @@ class ADIOSBackendArray(BackendArray):
                     f"shape={data.shape}, steps={self.steps}"
                 )
             data = data.reshape((self.steps, dim0) + data.shape[1:])
-        # print(f"    data shape {data.shape}")
         return data
 
 
@@ -139,7 +177,7 @@ class AdiosBackendEntrypoint(BackendEntrypoint):
 
     def close():
         """Close the ADIOS file"""
-        print("AdiosBackendEntrypoint.close() called")
+        # print("AdiosBackendEntrypoint.close() called")
         # Note that this is a strange method without 'self', so we cannot close the file because
         # we don't have any handle to it
         #        if self._fh is not None:
@@ -176,13 +214,13 @@ class AdiosBackendEntrypoint(BackendEntrypoint):
         #        adios_version=None,
     ) -> Dataset:
         filename_or_obj = _normalize_path(filename_or_obj)
-        print(f"AdiosBackendEntrypoint: path = {filename_or_obj} type = {type(filename_or_obj)}")
+        # print(f"AdiosBackendEntrypoint: path = {filename_or_obj} type = {type(filename_or_obj)}")
 
-        if isinstance(filename_or_obj, os.PathLike):
-            print(f"    os.PathLike: {os.fspath(filename_or_obj)}")
-
-        if isinstance(filename_or_obj, str):
-            print(f"    str: {os.path.abspath(os.path.expanduser(filename_or_obj))}")
+        # if isinstance(filename_or_obj, os.PathLike):
+        #    print(f"    os.PathLike: {os.fspath(filename_or_obj)}")
+        #
+        # if isinstance(filename_or_obj, str):
+        #    print(f"    str: {os.path.abspath(os.path.expanduser(filename_or_obj))}")
 
         #        if isinstance(filename_or_obj, BufferedIOBase):
         #            raise ValueError("ADIOS2 does not support BufferedIOBase input")
@@ -194,7 +232,7 @@ class AdiosBackendEntrypoint(BackendEntrypoint):
         vars = self._fh.available_variables()
         attrs = self._fh.available_attributes()
         attr_items = attrs.items()
-        print(f"AdiosBackendEntrypoint: {len(vars)} variables, {len(attrs)} attributes")
+        # print(f"AdiosBackendEntrypoint: {len(vars)} variables, {len(attrs)} attributes")
         xvars = {}
 
         for varname, varinfo in vars.items():
