@@ -69,7 +69,7 @@ adios_to_numpy_type = {
 class ADIOSBackendArray(BackendArray):
     """ADIOS2 backend for lazily indexed arrays"""
 
-    def __init__(self, shape, dtype, lock, adiosfile: FileReader, varname: str):
+    def __init__(self, shape: list, dtype: np.dtype, lock, adiosfile: FileReader, varname: str):
         self.shape = shape
         self.dtype = dtype
         self.lock = lock
@@ -77,7 +77,7 @@ class ADIOSBackendArray(BackendArray):
         self.varname = varname
         self.adiosvar = self.fh.inquire_variable(varname)
         self.steps = self.adiosvar.steps()
-        # print(f"ADIOSBackendArray.__init__: {dtype} {varname} {shape}")
+        # print(f"ADIOSBackendArray.__init__: {dtype} {varname} {shape} {dtype.itemsize}")
 
     def __getitem__(self, key: indexing.ExplicitIndexer) -> np.typing.ArrayLike:
         # print(f"ADIOSBackendArray.__getitem__: {self.varname} key = {key}")
@@ -233,19 +233,20 @@ class AdiosBackendEntrypoint(BackendEntrypoint):
                     shape_list.insert(0, steps)
                     dims.insert(0, "t")
                     # print(f"\tAdd time to shape {shape_list}  {dims}")
-                nptype = adios_to_numpy_type[varinfo["Type"]]
+                nptype = np.dtype(adios_to_numpy_type[varinfo["Type"]])
                 xdata = indexing.LazilyIndexedArray(
                     ADIOSBackendArray(shape_list, nptype, None, self._fh, varname)
                 )
                 # print(f"\tDefine VARIABLE {varname} with dims {dims}")
-                xvar = Variable(dims, xdata, attrs=xattrs, encoding=None)
+                xvar = Variable(dims, xdata, attrs=xattrs, encoding={"dtype": nptype})
+                # print(f"{xvar.dtype} {xvar.attrs["name"]} {xvar.dims} {xvar.encoding}")
             else:
                 if steps > 1:
                     avar = self._fh.inquire_variable(varname)
                     avar.set_step_selection([0, avar.steps()])
                     data = self._fh.read(avar)
                     # print(f"\tCreate timed scalar variable {varname}")
-                    xvar = Variable("t", data, attrs=xattrs, encoding=None)
+                    xvar = Variable("t", data, attrs=xattrs, encoding={"dtype": data.dtype})
                 else:
                     data = self._fh.read(varname)
                     if varinfo["Type"] == "string":
