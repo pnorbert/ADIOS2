@@ -29,6 +29,10 @@ public:
     // to 'remoteHost'. Return the local port through which one can talk to the remote server
     int LaunchRemoteServerViaConnectionManager(const std::string remoteHost);
 
+    // Invalidate previous launch. If the connection proved to be unsuccessful, let the Remote know
+    // and remove the open port from the list, so that the next time another engine can try again
+    void InvalidateRemoteServerLocalPort(const std::string remoteHost);
+
     // Talk to local connection manager and ask for a key
     // Return a hex string of a key
     std::string GetKeyFromConnectionManager(const std::string keyID);
@@ -59,6 +63,7 @@ public:
 
 private:
     const std::shared_ptr<adios2::HostOptions> m_HostOptions;
+    static std::map<std::string, int> m_RemoteServerLocalPortMap;
 };
 
 } // end namespace adios2

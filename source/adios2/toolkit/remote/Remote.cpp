@@ -68,13 +68,22 @@ Remote::Remote(const adios2::HostOptions &hostOptions)
 {
 }
 
+std::map<std::string, int> Remote::m_RemoteServerLocalPortMap;
+
 int Remote::LaunchRemoteServerViaConnectionManager(const std::string remoteHost)
 {
+    auto itPort = m_RemoteServerLocalPortMap.find(remoteHost);
+    if (itPort != m_RemoteServerLocalPortMap.end())
+    {
+        return itPort->second;
+    }
+
     if (remoteHost.empty() || remoteHost == "localhost")
     {
         // std::cout << "Remote::LaunchRemoteServerViaConnectionManager: Assume server is already "
         //              "running at on localhost at port = "
         //           << 26200 << std::endl;
+        m_RemoteServerLocalPortMap.emplace(remoteHost, 26200);
         return 26200;
     }
 
@@ -150,6 +159,7 @@ int Remote::LaunchRemoteServerViaConnectionManager(const std::string remoteHost)
     }
 
     socket.Close();
+    m_RemoteServerLocalPortMap.emplace(remoteHost, serverPort);
     return serverPort;
 }
 
@@ -207,6 +217,11 @@ std::string Remote::GetKeyFromConnectionManager(const std::string keyID)
 
     socket.Close();
     return keyhex;
+}
+
+void Remote::InvalidateRemoteServerLocalPort(const std::string remoteHost)
+{
+    m_RemoteServerLocalPortMap.erase(remoteHost);
 }
 
 } // end namespace adios2

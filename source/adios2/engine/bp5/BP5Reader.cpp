@@ -419,6 +419,10 @@ void BP5Reader::PerformGets()
             int localPort =
                 m_Remote->LaunchRemoteServerViaConnectionManager(m_Parameters.RemoteHost);
             m_Remote->Open("localhost", localPort, RemoteName, m_OpenMode, RowMajorOrdering);
+            if (!(*m_Remote)) // open failed
+            {
+                m_Remote->InvalidateRemoteServerLocalPort(m_Parameters.RemoteHost);
+            }
         }
 #endif
 #ifdef ADIOS2_HAVE_KVCACHE
@@ -436,14 +440,14 @@ void BP5Reader::PerformGets()
         if (m_Remote == nullptr)
         {
             helper::Throw<std::ios_base::failure>(
-                "Engine", "BP5Reader", "OpenFiles",
+                "Engine", "BP5Reader", "RemoteObject",
                 "Remote file " + m_Name +
                     " cannot be opened. Possible server or file specification error.");
         }
         if (!(*m_Remote)) // evaluate validity of object, not just that the pointer is non-NULL
         {
             helper::Throw<std::ios_base::failure>(
-                "Engine", "BP5Reader", "OpenFiles",
+                "Engine", "BP5Reader", "RemoteOpen",
                 "Remote file " + m_Name +
                     " cannot be opened. Possible server or file specification error.");
         }
