@@ -57,6 +57,9 @@ if rank == 0:
     ioRead = adios.DeclareIO("ioReader")
 
     ibpStream = ioRead.Open("HeatMap2D_py_bindings.bp", adios2.Mode.Read, MPI.COMM_SELF)
+    md = ibpStream.GetMetadata()
+    print(f"md type {type(md)} size = {len(md)}")
+    print(md.hex())
 
     ibpStream.BeginStep()
 

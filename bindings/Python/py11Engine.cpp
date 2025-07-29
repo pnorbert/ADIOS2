@@ -35,6 +35,18 @@ Engine::operator bool() const noexcept
     return *m_Engine ? true : false;
 }
 
+pybind11::bytearray Engine::GetMetadata() const
+{
+    helper::CheckForNullptr(m_Engine, "in call to Engine::GetMetadata");
+    char *md;
+    size_t len;
+    m_Engine->GetMetadata(&md, &len);
+    auto ret = pybind11::bytearray(md, len);
+    memset(md, 1, len);
+    free(md);
+    return ret;
+}
+
 StepStatus Engine::BeginStep(const StepMode mode, const float timeoutSeconds)
 {
     helper::CheckForNullptr(m_Engine, "in call to Engine::BeginStep");

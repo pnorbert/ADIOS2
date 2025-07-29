@@ -480,6 +480,9 @@ PYBIND11_MODULE(ADIOS2_PYTHON_MODULE_NAME, m)
                  const bool opBool = engine ? true : false;
                  return opBool;
              })
+
+        .def("GetMetadata",
+             (pybind11::bytearray(adios2::py11::Engine::*)()) & adios2::py11::Engine::GetMetadata)
         .def("BeginStep",
              (adios2::StepStatus(adios2::py11::Engine::*)(const adios2::StepMode, const float)) &
                  adios2::py11::Engine::BeginStep,
