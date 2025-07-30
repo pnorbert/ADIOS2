@@ -104,6 +104,33 @@ void BP5Reader::GetMetadata(char **md, size_t *size)
     p += sizes[2];
 }
 
+Engine::Metadata BP5Reader::GetMetadata()
+{
+    std::cout << "BP5Reader::GetMetadata() enter" << std::endl;
+    Metadata m;
+    /* BP5 modifies the metadata block in memory during processing
+       so we have to read it from file again
+    */
+    std::cout << "BP5Reader::GetMetadata() CurrentPos" << std::endl;
+    auto currentPos = m_MDFileManager.CurrentPos(0);
+    size_t mdsize = m_Metadata.Size();
+    char *mdbuf = (char *)malloc(mdsize);
+    std::cout << "BP5Reader::GetMetadata() ReadFile size = " << mdsize << std::endl;
+    m_MDFileManager.ReadFile(mdbuf, mdsize, 0);
+    std::cout << "BP5Reader::GetMetadata() SeekTo" << std::endl;
+    m_MDFileManager.SeekTo(currentPos, 0);
+
+    std::cout << "BP5Reader::GetMetadata() prep" << std::endl;
+    m.sizes.push_back(mdsize);
+    m.ptrs.push_back((void *)mdbuf);
+    m.sizes.push_back(m_MetaMetadata.m_Buffer.size());
+    m.ptrs.push_back(m_MetaMetadata.m_Buffer.data());
+    m.sizes.push_back(m_MetadataIndex.m_Buffer.size());
+    m.ptrs.push_back(m_MetadataIndex.m_Buffer.data());
+    std::cout << "BP5Reader::GetMetadata() exit" << std::endl;
+    return m;
+}
+
 void BP5Reader::ProcessMetadataFromMemory(const char *md)
 {
     uint64_t size_mdidx, size_md, size_mmd;

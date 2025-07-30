@@ -9,6 +9,7 @@
  */
 
 #include <pybind11/pybind11.h>
+#include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 
 #include <complex>
@@ -151,6 +152,35 @@ PYBIND11_MODULE(ADIOS2_PYTHON_MODULE_NAME, m)
             _stream << "(" << self.error << ", " << self.norm << ", " << self.relative << ")";
             return _stream.str();
         });
+
+    pybind11::class_<adios2::py11::EngineMetadata>(m, "EngineMetadata")
+        .def(pybind11::init())
+        .def("set", &adios2::py11::EngineMetadata::Set)
+        .def("getsizes", &adios2::py11::EngineMetadata::GetSizes)
+        .def("getptrs", &adios2::py11::EngineMetadata::GetPtrs)
+        .def("PtrToBytes", &adios2::py11::EngineMetadata::PtrToBytes)
+        .def(pybind11::pickle(
+            [](const adios2::py11::EngineMetadata &p) { // __getstate__
+                /* Return a tuple that fully encodes the state of the object */
+                auto sizes = p.GetSizes();
+                auto ptrs = p.GetPtrs();
+                pybind11::list dumps;
+                for (size_t n = 0; n < sizes.size(); ++n)
+                {
+                    dumps.append(p.PtrToBytes(n));
+                }
+                return dumps;
+                // return pybind11::make_tuple(p.GetSizes(), p.GetPtrs());
+            },
+            [](pybind11::list t) { // __setstate__
+                if (t.size() != 2)
+                    throw std::runtime_error("Invalid state of EngineMetadata!");
+
+                /* Create a new C++ instance */
+                adios2::py11::EngineMetadata md;
+                md.Set(t[0].cast<std::vector<size_t>>(), t[1].cast<std::vector<void *>>());
+                return md;
+            }));
 
     pybind11::class_<adios2::py11::ADIOS>(m, "ADIOS")
         // Python 2
@@ -482,7 +512,9 @@ PYBIND11_MODULE(ADIOS2_PYTHON_MODULE_NAME, m)
              })
 
         .def("GetMetadata",
-             (pybind11::bytearray(adios2::py11::Engine::*)()) & adios2::py11::Engine::GetMetadata)
+             (adios2::py11::EngineMetadata(adios2::py11::Engine::*)()) &
+                 adios2::py11::Engine::GetMetadata,
+             pybind11::return_value_policy::take_ownership)
         .def("BeginStep",
              (adios2::StepStatus(adios2::py11::Engine::*)(const adios2::StepMode, const float)) &
                  adios2::py11::Engine::BeginStep,

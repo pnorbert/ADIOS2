@@ -58,6 +58,12 @@ void Engine::GetMetadata(char **md, size_t *size)
     *size = 0;
 }
 
+Engine::Metadata Engine::GetMetadata()
+{
+    ThrowUp("GetMetadata");
+    return Metadata();
+}
+
 StepStatus Engine::BeginStep()
 {
     if (m_OpenMode == Mode::Read)

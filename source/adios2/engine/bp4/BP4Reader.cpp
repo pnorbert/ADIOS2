@@ -76,6 +76,15 @@ void BP4Reader::GetMetadata(char **md, size_t *size)
     p += sizes[1];
 }
 
+Engine::Metadata BP4Reader::GetMetadata()
+{
+    Metadata m;
+    m.sizes.push_back(m_BP4Deserializer.m_Metadata.m_Buffer.size());
+    m.ptrs.push_back(m_BP4Deserializer.m_Metadata.m_Buffer.data());
+    m.sizes.push_back(m_BP4Deserializer.m_MetadataIndex.m_Buffer.size());
+    m.ptrs.push_back(m_BP4Deserializer.m_MetadataIndex.m_Buffer.data());
+}
+
 StepStatus BP4Reader::BeginStep(StepMode mode, const float timeoutSeconds)
 {
     PERFSTUBS_SCOPED_TIMER("BP4Reader::BeginStep");

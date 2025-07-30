@@ -13,6 +13,7 @@
 
 #include <pybind11/numpy.h>
 #include <pybind11/pytypes.h>
+#include <pybind11/stl.h>
 
 #include <string>
 
@@ -27,6 +28,29 @@ namespace py11
 
 // forward declare
 class IO; // friend
+
+class EngineMetadata
+{
+public:
+    EngineMetadata() = default;
+    ~EngineMetadata() = default;
+
+    void Set(const std::vector<size_t> &sizes, const std::vector<void *> &ptrs)
+    {
+        m_sizes = sizes;
+        m_ptrs = ptrs;
+    }
+    const std::vector<size_t> &GetSizes() const { return m_sizes; }
+    const std::vector<void *> &GetPtrs() const { return m_ptrs; }
+    const pybind11::bytes PtrToBytes(size_t idx) const
+    {
+        return pybind11::bytes((char *)m_ptrs[idx], m_sizes[idx]);
+    };
+
+private:
+    std::vector<size_t> m_sizes;
+    std::vector<void *> m_ptrs;
+};
 
 class Engine
 {
@@ -46,7 +70,7 @@ public:
 
     explicit operator bool() const noexcept;
 
-    pybind11::bytearray GetMetadata() const;
+    EngineMetadata GetMetadata();
 
     StepStatus BeginStep(const StepMode mode, const float timeoutSeconds = -1.f);
     StepStatus BeginStep();
@@ -97,6 +121,7 @@ public:
 private:
     Engine(core::Engine *engine);
     core::Engine *m_Engine = nullptr;
+    EngineMetadata m_EngineMetadata;
 };
 
 } // end namespace py11

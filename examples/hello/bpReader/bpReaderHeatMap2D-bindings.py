@@ -12,6 +12,7 @@
 
 from mpi4py import MPI
 import numpy
+import pickle
 import adios2.bindings as adios2
 
 # MPI
@@ -58,8 +59,19 @@ if rank == 0:
 
     ibpStream = ioRead.Open("HeatMap2D_py_bindings.bp", adios2.Mode.Read, MPI.COMM_SELF)
     md = ibpStream.GetMetadata()
-    print(f"md type {type(md)} size = {len(md)}")
-    print(md.hex())
+    print(f"md type {type(md)}")
+    sizes = md.getsizes()
+    print(f"mdsizes {type(sizes)}")
+    ptrs = md.getptrs()
+    print(f"mdptrs {type(ptrs)}")
+    p = md.__getstate__()
+    print(f"md pickle type {type(p)} {type(p[0])} {type(p[1])}")
+    print(f"  sizes {p[0]}")
+    print(f"  ptrs {p[1]}")
+
+    b = pickle.dumps(md)
+    print(f"md pickle dump type {type(b)} size {len(b)}")
+    print(b.hex())
 
     ibpStream.BeginStep()
 

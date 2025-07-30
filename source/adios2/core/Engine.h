@@ -43,6 +43,7 @@ namespace core
  * Close */
 class Engine
 {
+
 public:
     using AdvanceAsyncCallback = std::function<void(std::shared_ptr<core::Engine>)>;
 
@@ -105,6 +106,14 @@ public:
      * the pointer must be deallocated by user using free()
      */
     virtual void GetMetadata(char **md, size_t *size);
+
+    // unserialized metadata struct to support GetMetadata() for Python's use
+    struct Metadata
+    {
+        std::vector<size_t> sizes;
+        std::vector<void *> ptrs;
+    };
+    virtual Metadata GetMetadata();
 
     StepStatus BeginStep();
 

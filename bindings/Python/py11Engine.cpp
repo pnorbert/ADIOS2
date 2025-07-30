@@ -35,16 +35,15 @@ Engine::operator bool() const noexcept
     return *m_Engine ? true : false;
 }
 
-pybind11::bytearray Engine::GetMetadata() const
+EngineMetadata Engine::GetMetadata()
 {
+    std::cout << "py11Engine::GetMetadata() enter" << std::endl;
     helper::CheckForNullptr(m_Engine, "in call to Engine::GetMetadata");
-    char *md;
-    size_t len;
-    m_Engine->GetMetadata(&md, &len);
-    auto ret = pybind11::bytearray(md, len);
-    memset(md, 1, len);
-    free(md);
-    return ret;
+
+    core::Engine::Metadata md = m_Engine->GetMetadata();
+    m_EngineMetadata.Set(md.sizes, static_cast<std::vector<void *>>(md.ptrs));
+    std::cout << "py11Engine::GetMetadata() exit" << std::endl;
+    return m_EngineMetadata;
 }
 
 StepStatus Engine::BeginStep(const StepMode mode, const float timeoutSeconds)

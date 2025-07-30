@@ -51,6 +51,7 @@ public:
     ~BP5Reader();
 
     void GetMetadata(char **md, size_t *size) final;
+    Metadata GetMetadata() final;
     StepStatus BeginStep(StepMode mode = StepMode::Read, const float timeoutSeconds = -1.0) final;
 
     size_t CurrentStep() const final;
