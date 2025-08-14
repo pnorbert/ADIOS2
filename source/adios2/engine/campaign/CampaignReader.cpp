@@ -19,6 +19,7 @@
 #include <adios2-perfstubs-interface.h>
 #include <adios2sys/SystemTools.hxx>
 
+#include <deque>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -33,6 +34,8 @@ namespace core
 {
 namespace engine
 {
+
+std::mutex mutexCampaign;
 
 CampaignReader::CampaignReader(IO &io, const std::string &name, const Mode mode, helper::Comm comm)
 : Engine("CampaignReader", io, name, mode, std::move(comm))
@@ -421,6 +424,8 @@ std::string CampaignReader::SaveRemoteMD(size_t dsIdx, size_t repIdx, adios2::co
 
 void CampaignReader::InitTransports()
 {
+    auto tstart = Now();
+    Seconds t;
     std::string path = m_Name;
     if (!adios2sys::SystemTools::FileExists(path) && path[0] != '/' && path[0] != '\\' &&
         !m_Options.campaignstorepath.empty())
@@ -434,6 +439,9 @@ void CampaignReader::InitTransports()
 
     m_CampaignData.Open(path);
     m_CampaignData.ReadDatabase();
+
+    t = Now() - tstart;
+    std::cout << t.count() << ": read database" << std::endl;
 
     if (m_Options.verbose > 0)
     {
@@ -526,6 +534,9 @@ void CampaignReader::InitTransports()
         }
     }
 
+    std::deque<std::future<void>> futures; // ADIOS opens in threads
+    const unsigned int nMaxFutures = adios2::helper::NumHardwareThreadsPerNode();
+
     // process ADIOS/HDF5 datasets per time-series first
     for (auto &itTS : m_CampaignData.timeseries)
     {
@@ -599,7 +610,24 @@ void CampaignReader::InitTransports()
         }
         atsfile << "- end" << std::endl;
         atsfile.close();
-        OpenDatasetWithADIOS(ts.name, ds.format, io, atsFilePath);
+        size_t ioidx = 0;
+        {
+            std::lock_guard<std::mutex> lockGuard(mutexCampaign);
+            m_IOs.push_back(&io);
+            ioidx = m_IOs.size() - 1; // to pass in async need passable values
+        }
+        while (futures.size() >= nMaxFutures)
+        {
+            futures.front().get();
+            futures.pop_front();
+        }
+        while (futures.size() >= nMaxFutures)
+        {
+            futures.front().get();
+            futures.pop_front();
+        }
+        futures.push_back(std::async(&CampaignReader::OpenDatasetWithADIOS, this, ts.name,
+                                     ds.format, ioidx, atsFilePath));
     }
 
     // process individual datasets not in any time-series (and all images/texts)
@@ -664,7 +692,25 @@ void CampaignReader::InitTransports()
         {
             continue;
         }
-        OpenDatasetWithADIOS(ds.name, ds.format, io, localPath);
+        size_t ioidx = 0;
+        {
+            std::lock_guard<std::mutex> lockGuard(mutexCampaign);
+            m_IOs.push_back(&io);
+            ioidx = m_IOs.size() - 1; // to pass in async need passable values
+        }
+        while (futures.size() >= nMaxFutures)
+        {
+            futures.front().get();
+            futures.pop_front();
+        }
+        /*
+        {
+            t = Now() - tstart;
+            std::cout << t.count() << ": open dataset" << std::endl;
+        }
+        */
+        futures.push_back(std::async(&CampaignReader::OpenDatasetWithADIOS, this, ds.name,
+                                     ds.format, ioidx, localPath));
     }
 
     // process images separately as all resolutions are presented as different variables
@@ -734,19 +780,45 @@ void CampaignReader::InitTransports()
             }
         }
     }
+
+    t = Now() - tstart;
+    std::cout << t.count() << ": wait for completion of all threads" << std::endl;
+    // wait for all async threads
+    for (auto &f : futures)
+    {
+        f.get();
+    }
+    t = Now() - tstart;
+    std::cout << t.count() << ": Done" << std::endl;
 }
 
-void CampaignReader::OpenDatasetWithADIOS(std::string prefixName, FileFormat format,
-                                          adios2::core::IO &io, std::string &localPath)
+void CampaignReader::OpenDatasetWithADIOS(std::string prefixName, FileFormat format, size_t ioidx,
+                                          std::string localPath)
 {
+    // Multithreading the individual open for ADIOS BP files (but not for HDF5 files)
+    // and later inquiring variables from this engine while opening others.
+    // Serializing the access to CampaignReader own structures m_IO, m_IOs, m_Engines.
+
+    static std::mutex mutexHDF5;
+    if (format == FileFormat::HDF5)
+        mutexHDF5.lock();
+
+    mutexCampaign.lock();
+    adios2::core::IO &io = *m_IOs[ioidx];
+    mutexCampaign.unlock();
+
     adios2::core::Engine &e = io.Open(localPath, m_OpenMode, m_Comm.Duplicate());
 
-    m_IOs.push_back(&io);
-    m_Engines.push_back(&e);
+    size_t eidx = 0;
+    {
+        std::lock_guard<std::mutex> lockGuard(mutexCampaign);
+        m_Engines.push_back(&e);
+        eidx = m_Engines.size() - 1;
+    }
 
     auto vmap = io.GetAvailableVariables();
     auto amap = io.GetAvailableAttributes();
-    VarInternalInfo internalInfo(nullptr, m_IOs.size() - 1, m_Engines.size() - 1);
+    VarInternalInfo internalInfo(nullptr, ioidx, eidx);
 
     for (auto &vr : vmap)
     {
@@ -775,7 +847,10 @@ void CampaignReader::OpenDatasetWithADIOS(std::string prefixName, FileFormat for
     else if (type == helper::GetDataType<T>())                                                     \
     {                                                                                              \
         Variable<T> *vi = io.InquireVariable<T>(vname);                                            \
-        Variable<T> v = DuplicateVariable(vi, m_IO, newname, internalInfo);                        \
+        {                                                                                          \
+            std::lock_guard<std::mutex> lockGuard(mutexCampaign);                                  \
+            Variable<T> v = DuplicateVariable(vi, m_IO, newname, internalInfo);                    \
+        }                                                                                          \
     }
 
         ADIOS2_FOREACH_STDTYPE_1ARG(declare_type)
@@ -797,12 +872,17 @@ void CampaignReader::OpenDatasetWithADIOS(std::string prefixName, FileFormat for
     else if (type == helper::GetDataType<T>())                                                     \
     {                                                                                              \
         Attribute<T> *ai = io.InquireAttribute<T>(aname);                                          \
-        Attribute<T> v = DuplicateAttribute(ai, m_IO, newname);                                    \
+        {                                                                                          \
+            std::lock_guard<std::mutex> lockGuard(mutexCampaign);                                  \
+            Attribute<T> v = DuplicateAttribute(ai, m_IO, newname);                                \
+        }                                                                                          \
     }
 
         ADIOS2_FOREACH_STDTYPE_1ARG(declare_type)
 #undef declare_type
     }
+    if (format == FileFormat::HDF5)
+        mutexHDF5.unlock();
 }
 
 void CampaignReader::DoClose(const int transportIndex)
@@ -841,12 +921,16 @@ void CampaignReader::CreateTextVariable(const std::string &name, const size_t le
                                         const std::string localPath)
 {
     // TEXT -> create a variable, will read from DB directly, no local path
-    Variable<char> &v = m_IO.DefineVariable<char>(name, Dims{len}, Dims{0ULL}, Dims{len}, false);
-    v.m_AvailableStepsCount = 1;
-    v.m_AvailableStepsStart = 0;
-    CampaignVarInternalInfo internalInfo(&v, dsIdx, repIdx, localPath);
-    m_CampaignVarInternalInfo.emplace(v.m_Name, internalInfo);
-    CreateDatasetAttributes("text", name, dsIdx, repIdx, localPath);
+    {
+        std::lock_guard<std::mutex> lockGuard(mutexCampaign);
+        Variable<char> &v =
+            m_IO.DefineVariable<char>(name, Dims{len}, Dims{0ULL}, Dims{len}, false);
+        v.m_AvailableStepsCount = 1;
+        v.m_AvailableStepsStart = 0;
+        CampaignVarInternalInfo internalInfo(&v, dsIdx, repIdx, localPath);
+        m_CampaignVarInternalInfo.emplace(v.m_Name, internalInfo);
+        CreateDatasetAttributes("text", name, dsIdx, repIdx, localPath);
+    }
 }
 
 void CampaignReader::CreateImageVariable(const std::string &name, const size_t len,
@@ -854,13 +938,16 @@ void CampaignReader::CreateImageVariable(const std::string &name, const size_t l
                                          const std::string localPath)
 {
     // TEXT -> create a variable, will read from DB directly, no local path
-    Variable<uint8_t> &v =
-        m_IO.DefineVariable<uint8_t>(name, Dims{len}, Dims{0ULL}, Dims{len}, false);
-    v.m_AvailableStepsCount = 1;
-    v.m_AvailableStepsStart = 0;
-    CampaignVarInternalInfo internalInfo(&v, dsIdx, repIdx, localPath);
-    m_CampaignVarInternalInfo.emplace(v.m_Name, internalInfo);
-    CreateDatasetAttributes("image", name, dsIdx, repIdx, localPath);
+    {
+        std::lock_guard<std::mutex> lockGuard(mutexCampaign);
+        Variable<uint8_t> &v =
+            m_IO.DefineVariable<uint8_t>(name, Dims{len}, Dims{0ULL}, Dims{len}, false);
+        v.m_AvailableStepsCount = 1;
+        v.m_AvailableStepsStart = 0;
+        CampaignVarInternalInfo internalInfo(&v, dsIdx, repIdx, localPath);
+        m_CampaignVarInternalInfo.emplace(v.m_Name, internalInfo);
+        CreateDatasetAttributes("image", name, dsIdx, repIdx, localPath);
+    }
 }
 
 void CampaignReader::DestructorClose(bool Verbose) noexcept { m_CampaignData.Close(); }

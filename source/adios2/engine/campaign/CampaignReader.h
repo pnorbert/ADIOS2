@@ -140,8 +140,8 @@ private:
 
     void GetVariableFromDB(std::string name, size_t dsIdx, size_t repIdx, DataType type,
                            void *data);
-    void OpenDatasetWithADIOS(std::string prefixName, FileFormat format, adios2::core::IO &io,
-                              std::string &localPath);
+    void OpenDatasetWithADIOS(std::string prefixName, FileFormat format, size_t ioidx,
+                              std::string localPath);
 
     /**
      * Called if destructor is called on an open engine.  Should warn or take

@@ -10,6 +10,7 @@
 #include "adiosSystem.h"
 #include <chrono> //system_clock, now
 #include <ctime>
+#include <mutex>
 #include <stdexcept> // std::runtime_error, std::exception
 #include <system_error>
 #include <thread>
@@ -191,42 +192,45 @@ size_t RaiseLimitNoFile()
 #else
     static size_t raisedLimit = 0;
     static bool firstCallRaiseLimit = true;
-
-    if (firstCallRaiseLimit)
+    static std::mutex mutex;
     {
-        struct rlimit limit;
-        errno = 0;
-        int err = getrlimit(RLIMIT_NOFILE, &limit);
-        raisedLimit = limit.rlim_cur;
-        if (!err)
+        std::lock_guard<std::mutex> lockGuard(mutex);
+        if (firstCallRaiseLimit)
         {
-            /*std::cout
-                << "adios2::helper::RaiseLimitNoFile() found limits soft = "
-                << limit.rlim_cur << " hard = " << limit.rlim_max <<
-               std::endl;*/
-            if (limit.rlim_cur < limit.rlim_max)
+            struct rlimit limit;
+            errno = 0;
+            int err = getrlimit(RLIMIT_NOFILE, &limit);
+            raisedLimit = limit.rlim_cur;
+            if (!err)
             {
-                limit.rlim_cur = limit.rlim_max;
-                err = setrlimit(RLIMIT_NOFILE, &limit);
-                if (!err)
+                /*std::cout
+                    << "adios2::helper::RaiseLimitNoFile() found limits soft = "
+                    << limit.rlim_cur << " hard = " << limit.rlim_max <<
+                   std::endl;*/
+                if (limit.rlim_cur < limit.rlim_max)
                 {
-                    getrlimit(RLIMIT_NOFILE, &limit);
-                    raisedLimit = limit.rlim_cur;
-                    /*std::cout << "adios2::helper::RaiseLimitNoFile() set "
-                                 "limits soft = "
-                              << limit.rlim_cur << " hard = " << limit.rlim_max
-                              << std::endl;*/
+                    limit.rlim_cur = limit.rlim_max;
+                    err = setrlimit(RLIMIT_NOFILE, &limit);
+                    if (!err)
+                    {
+                        getrlimit(RLIMIT_NOFILE, &limit);
+                        raisedLimit = limit.rlim_cur;
+                        /*std::cout << "adios2::helper::RaiseLimitNoFile() set "
+                                     "limits soft = "
+                                  << limit.rlim_cur << " hard = " << limit.rlim_max
+                                  << std::endl;*/
+                    }
                 }
             }
-        }
 
-        if (err)
-        {
-            std::cerr << "adios2::helper::RaiseLimitNoFile(soft=" << limit.rlim_cur
-                      << ", hard=" << limit.rlim_max << ") failed with error code " << errno << ": "
-                      << strerror(errno) << std::endl;
+            if (err)
+            {
+                std::cerr << "adios2::helper::RaiseLimitNoFile(soft=" << limit.rlim_cur
+                          << ", hard=" << limit.rlim_max << ") failed with error code " << errno
+                          << ": " << strerror(errno) << std::endl;
+            }
+            firstCallRaiseLimit = false;
         }
-        firstCallRaiseLimit = false;
     }
     return raisedLimit;
 #endif
