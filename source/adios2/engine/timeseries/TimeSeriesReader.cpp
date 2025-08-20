@@ -320,8 +320,7 @@ void TimeSeriesReader::ProcessIO(adios2::core::IO &io, adios2::core::Engine &e)
 
 void TimeSeriesReader::InitFile(const helper::TimeSeriesEntry &tse, bool process)
 {
-    static size_t fileCount = 0;
-    adios2::core::IO &io = m_IO.m_ADIOS.DeclareIO("TimeSeriesReader" + std::to_string(fileCount));
+    adios2::core::IO &io = m_IO.m_ADIOS.DeclareIO("TSR" + m_Name + std::to_string(m_FileCount));
     if (!tse.remotehost.empty() && !tse.remotepath.empty())
     {
         io.SetParameter("RemoteDataPath", tse.remotepath);
@@ -336,7 +335,7 @@ void TimeSeriesReader::InitFile(const helper::TimeSeriesEntry &tse, bool process
     {
         ProcessIO(io, e);
     }
-    ++fileCount;
+    ++m_FileCount;
 }
 
 void TimeSeriesReader::DoClose(const int transportIndex)

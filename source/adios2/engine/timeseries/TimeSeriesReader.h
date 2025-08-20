@@ -70,6 +70,7 @@ private:
 
     int m_CurrentStep = 0;
     size_t m_StepsCount = 0;
+    size_t m_FileCount = 0;
     int m_StartStepInCurrentFile = 0; // separate record for streamin mode
     bool m_FirstStep = true;
     bool m_BetweenStepPairs = false;
