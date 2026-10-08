@@ -34,6 +34,9 @@ static const char *const engines[] = {"BP3",
 #ifdef ADIOS2_HAVE_DATAMAN
                                       "DataMan",
 #endif
+#ifdef ADIOS2_HAVE_SODIUM
+                                      "WANStreamer",
+#endif
 #ifdef ADIOS2_HAVE_DATASPACES
                                       "DataSpaces",
 #endif

@@ -45,6 +45,10 @@
 #include "adios2/engine/dataman/DataManReader.h"
 #include "adios2/engine/dataman/DataManWriter.h"
 #endif
+#ifdef ADIOS2_HAVE_SODIUM
+#include "adios2/engine/wanstreamer/WANStreamerReader.h"
+#include "adios2/engine/wanstreamer/WANStreamerWriter.h"
+#endif
 
 #ifdef ADIOS2_HAVE_SST // external dependencies
 #include "adios2/engine/sst/SstReader.h"
@@ -89,6 +93,13 @@ std::unordered_map<std::string, IO::EngineFactoryEntry> Factory = {
 #else
      IO::NoEngineEntry("ERROR: this version didn't compile with "
                        "DataMan library, can't use DataMan engine\n")
+#endif
+    },
+    {"wanstreamer",
+#ifdef ADIOS2_HAVE_SODIUM
+     {IO::MakeEngine<engine::WANStreamerReader>, IO::MakeEngine<engine::WANStreamerWriter>}
+#else
+     IO::NoEngineEntry("ERROR: WANStreamer requires Sodium support\n")
 #endif
     },
     {"ssc", IO::NoEngineEntry("ERROR: this version didn't compile with "

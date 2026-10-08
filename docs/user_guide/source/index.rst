@@ -47,6 +47,7 @@ Funded by the `Exascale Computing Project (ECP) <https://www.exascaleproject.org
    advanced/ecp_hardware
    advanced/derived_variables
    advanced/performance
+   advanced/data_streaming_wan
 
 .. toctree::
    :caption: Tutorials
