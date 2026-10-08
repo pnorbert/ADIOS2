@@ -24,6 +24,7 @@ Parameters are passed at:
 .. include:: sst.rst
 .. include:: ssc.rst
 .. include:: dataman.rst
+.. include:: wanstreamer.rst
 .. include:: dataspaces.rst
 .. include:: inline.rst
 .. include:: null.rst

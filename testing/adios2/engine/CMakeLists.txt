@@ -22,6 +22,10 @@ if(ADIOS2_HAVE_DataMan)
   add_subdirectory(dataman)
 endif()
 
+if(ADIOS2_HAVE_Sodium)
+  add_subdirectory(wanstreamer)
+endif()
+
 if(ADIOS2_HAVE_MHS)
   add_subdirectory(mhs)
 endif()

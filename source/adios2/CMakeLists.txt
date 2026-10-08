@@ -393,6 +393,17 @@ if(ADIOS2_HAVE_DataMan)
   )
 endif()
 
+if(ADIOS2_HAVE_Sodium)
+  target_sources(adios2_core PRIVATE
+    engine/wanstreamer/WANStreamerProtocol.cpp
+    engine/wanstreamer/WANStreamerProtocol.h
+    engine/wanstreamer/WANStreamerReader.cpp
+    engine/wanstreamer/WANStreamerReader.h
+    engine/wanstreamer/WANStreamerWriter.cpp
+    engine/wanstreamer/WANStreamerWriter.h)
+  target_link_libraries(adios2_core PRIVATE sodium)
+endif()
+
 if(ADIOS2_HAVE_MHS)
   target_sources(adios2_core PRIVATE
     engine/mhs/MhsWriter.cpp
